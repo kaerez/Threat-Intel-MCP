@@ -1,6 +1,7 @@
 """Tests for version comparison logic in DatabaseService."""
 
 import pytest
+
 from cve_mcp.services.database import DatabaseService
 
 

@@ -1,13 +1,14 @@
 """Tests for API schemas."""
 
 import pytest
+from pydantic import ValidationError
+
 from cve_mcp.api.schemas import (
     BatchSearchRequest,
     CheckKEVStatusRequest,
     GetCVEDetailsRequest,
     SearchCVERequest,
 )
-from pydantic import ValidationError
 
 
 def test_search_cve_request_valid():
