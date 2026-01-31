@@ -160,6 +160,7 @@ class TestAPISchemas:
     def test_search_cve_request_cvss_validation(self):
         """CVSS scores must be between 0 and 10."""
         from pydantic import ValidationError
+
         from cve_mcp.api.schemas import SearchCVERequest
 
         # Invalid: CVSS > 10
@@ -173,6 +174,7 @@ class TestAPISchemas:
     def test_cve_id_pattern_validation(self):
         """CVE ID must match CVE-YYYY-NNNNN pattern."""
         from pydantic import ValidationError
+
         from cve_mcp.api.schemas import GetCVEDetailsRequest
 
         # Valid CVE ID
