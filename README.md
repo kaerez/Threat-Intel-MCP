@@ -20,12 +20,13 @@ This MCP server provides comprehensive threat intelligence through multiple inte
    - Exploit references (Metasploit, ExploitDB, GitHub PoCs)
    - **Semantic search**: "Find CVEs similar to this vulnerability description"
 
-2. **MITRE ATT&CK** 🔨 In Development
-   - 700+ techniques + sub-techniques
+2. **MITRE ATT&CK** ✅ Production
+   - 700+ techniques + sub-techniques with AI-powered semantic search
    - 14 tactics (kill chain phases)
-   - 140+ threat actor groups
-   - 700+ software/tools
+   - 140+ threat actor groups with semantic attribution
+   - 700+ software/tools with technique mappings
    - **Semantic search**: "Find techniques similar to this incident description"
+   - **Dual search modes**: Traditional keyword (<50ms) + AI semantic (<100ms)
 
 3. **MITRE ATLAS (AI/ML)** 📋 Planned
    - 50+ AI/ML attack techniques
@@ -50,14 +51,15 @@ This MCP server provides comprehensive threat intelligence through multiple inte
 
 ## Key Features
 
-- **240,000+ CVE records** — Full NVD dataset
-- **700+ ATT&CK techniques** — Enterprise, Mobile, ICS frameworks
-- **Semantic search** — Find similar vulnerabilities/techniques by description
+- **240,000+ CVE records** — Full NVD dataset with CVSS, KEV, EPSS scoring
+- **700+ ATT&CK techniques** 🆕 — AI-powered semantic search for incident response
+- **140+ threat actor groups** 🆕 — Semantic attribution based on observed TTPs
+- **Dual search modes** 🆕 — Traditional keyword (<50ms) + AI semantic (<100ms)
 - **Cross-domain queries** — CVE ↔ ATT&CK ↔ Threat Actors in single query
-- **Offline-first** — All queries run against local PostgreSQL
-- **Sub-50ms latency** — Indexed database with Redis caching
-- **Daily sync** — Automatic updates from NVD, MITRE, CISA, EPSS
-- **RAG-ready** — Eliminates 90-day staleness, integrates with Ansvar AI platform
+- **Offline-first** — All queries run against local PostgreSQL + pgvector
+- **Sub-100ms latency** — Indexed database with vector similarity search
+- **Monthly sync** — Automatic updates from NVD, MITRE, CISA, EPSS
+- **RAG-ready** — <7 day freshness, eliminates 90-day staleness
 
 Built by [Ansvar Systems](https://ansvar.eu) — Stockholm, Sweden
 
@@ -149,33 +151,52 @@ curl -X POST http://localhost:8307/call \
 
 Once connected, just ask naturally:
 
+**CVE Intelligence:**
 - *"Search for critical Apache vulnerabilities with CVSS > 9"*
 - *"Is Log4Shell (CVE-2021-44228) in the CISA KEV catalog?"*
 - *"What's the EPSS exploit prediction score for CVE-2021-44228?"*
 - *"Find all CVEs affecting nginx version 1.20.0"*
 - *"Show me public exploits for CVE-2021-44228"*
-- *"Find authentication bypass vulnerabilities with active exploits"*
-- *"Which critical CVEs were published in the last 30 days?"*
-- *"Explain CWE-79 (Cross-Site Scripting)"*
+
+**ATT&CK Semantic Search:** 🆕
+- *"Find techniques similar to: attacker sent phishing email with malicious PDF that executed PowerShell"*
+- *"Which threat actors target financial institutions with supply chain attacks?"*
+- *"Get detection methods for technique T1566.001 (Spearphishing Attachment)"*
+- *"Find all persistence techniques for Windows platforms"*
+
+**Cross-Domain Queries:** 🆕
+- *"Get CVE-2021-44228 details and find ATT&CK techniques for remote code execution exploits"*
+- *"Which threat actors are known to exploit authentication bypass CVEs?"*
 
 ---
 
 ## What's Included
 
+**CVE Intelligence:**
 - **240,000+ CVE Records** — Full NVD dataset with CVSS v2/v3/v4 scoring
 - **1,200+ CISA KEV Entries** — Track actively exploited vulnerabilities
 - **200,000+ EPSS Scores** — Exploit prediction likelihood (0-1 scale)
 - **15,000+ Exploit References** — Metasploit, ExploitDB, GitHub PoCs
 - **CPE Product Mappings** — Which software versions are vulnerable
-- **Offline-First Architecture** — All queries run against local PostgreSQL
-- **Sub-50ms Query Latency** — Indexed database with Redis caching
-- **Daily Automatic Sync** — Background updates from NVD, CISA, EPSS
+
+**ATT&CK Intelligence:** 🆕
+- **700+ ATT&CK Techniques** — Enterprise, Mobile, ICS with AI semantic search
+- **140+ Threat Actor Groups** — APT groups with TTP attribution
+- **14 Tactics** — Full kill chain from Initial Access to Impact
+- **700+ Software/Tools** — Malware and tool mappings
+
+**Architecture:**
+- **Offline-First** — All queries run against local PostgreSQL + pgvector
+- **Sub-100ms Latency** — Indexed database with vector similarity search
+- **Monthly Sync** — Background updates from NVD, MITRE, CISA, EPSS
 
 **Detailed coverage:** [DESIGN.md](./DESIGN.md)
 
 ---
 
 ## Available Tools
+
+### CVE Intelligence (8 tools)
 
 | Tool | Description | Example Query |
 |------|-------------|---------------|
@@ -187,6 +208,18 @@ Once connected, just ask naturally:
 | `get_exploits` | Get public exploit code references | "Show exploits for CVE-2021-44228" |
 | `get_cwe_details` | Get CWE weakness information | "Explain CWE-79" |
 | `batch_search` | Bulk CVE lookup (max 100) | "Get details for these 10 CVEs..." |
+
+### ATT&CK Intelligence (7 tools) 🆕
+
+| Tool | Description | Example Query |
+|------|-------------|---------------|
+| `search_techniques` | Traditional keyword search for techniques | "Find all phishing techniques for Windows" |
+| `find_similar_techniques` | AI semantic search for techniques | "Attacker used malicious PDF to run PowerShell" |
+| `get_technique_details` | Get full technique details + detection methods | "Get details for T1566.001" |
+| `get_technique_badges` | Get ATT&CK Navigator badge URLs | "Get badges for T1566, T1059.001" |
+| `search_threat_actors` | Traditional keyword search for threat actors | "Find APT groups using spearphishing" |
+| `find_similar_threat_actors` | AI semantic search for threat actor attribution | "APT targeting finance with custom malware" |
+| `get_group_profile` | Get full threat actor profile + TTPs | "Get profile for APT32 (G0050)" |
 
 ---
 
@@ -439,6 +472,8 @@ So we're open-sourcing it. Real-time vulnerability intelligence shouldn't requir
 
 - **[DESIGN.md](./DESIGN.md)** — Complete design specification
 - **[docs/SETUP.md](./docs/SETUP.md)** — Detailed deployment guide
+- **[docs/modules/](./docs/modules/)** — Module-specific documentation
+  - [ATT&CK module](./docs/modules/attack.md) — Semantic search, tools, workflows 🆕
 - **[docs/architecture/](./docs/architecture/)** — Architecture decision records
   - [Tier 1 offline-first assessment](./docs/architecture/2026-01-30-mcp-offline-first-assessment.md)
   - [Build vs. buy analysis](./docs/architecture/2026-01-30-mcp-build-vs-buy-analysis.md)
