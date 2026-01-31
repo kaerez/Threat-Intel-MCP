@@ -7,8 +7,11 @@ from typing import Any
 from cve_mcp.api.schemas import (
     BatchSearchRequest,
     CheckKEVStatusRequest,
+    FindSimilarATLASCaseStudiesRequest,
+    FindSimilarATLASTechniquesRequest,
     FindSimilarTechniquesRequest,
     FindSimilarThreatActorsRequest,
+    GetATLASTechniqueDetailsRequest,
     GetCVEDetailsRequest,
     GetCWEDetailsRequest,
     GetEPSSScoreRequest,
@@ -17,13 +20,15 @@ from cve_mcp.api.schemas import (
     GetTechniqueBadgesRequest,
     GetTechniqueDetailsRequest,
     MCPToolDefinition,
+    SearchATLASCaseStudiesRequest,
+    SearchATLASTechniquesRequest,
     SearchByProductRequest,
     SearchCVERequest,
     SearchTechniquesRequest,
     SearchThreatActorsRequest,
 )
 from cve_mcp.config import get_settings
-from cve_mcp.services import attack_queries
+from cve_mcp.services import atlas_queries, attack_queries
 from cve_mcp.services.cache import cache_service
 from cve_mcp.services.database import db_service
 
@@ -436,6 +441,165 @@ MCP_TOOLS: list[MCPToolDefinition] = [
                 "group_id": {
                     "type": "string",
                     "description": "Group ID (e.g., G0001)",
+                },
+            },
+        },
+    ),
+    # ATLAS Tools
+    MCPToolDefinition(
+        name="search_atlas_techniques",
+        description="Search MITRE ATLAS AI/ML attack techniques using traditional keyword and filter-based search. Filter by tactics, ML lifecycle stage, and AI system type. ATLAS focuses on adversarial ML attacks against AI/ML systems.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Full-text search in technique name/description",
+                },
+                "tactics": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Filter by tactics (e.g., ['reconnaissance', 'ml-attack', 'impact'])",
+                },
+                "ml_lifecycle_stage": {
+                    "type": "string",
+                    "description": "Filter by ML lifecycle stage (e.g., 'data-collection', 'training', 'deployment')",
+                },
+                "ai_system_type": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Filter by AI system type (e.g., ['computer-vision', 'nlp', 'recommendation'])",
+                },
+                "active_only": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "Exclude deprecated/revoked techniques",
+                },
+                "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 500,
+                    "default": 50,
+                    "description": "Max results",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="find_similar_atlas_techniques",
+        description="Find MITRE ATLAS AI/ML attack techniques using AI-powered semantic similarity search. Describe an adversarial ML attack scenario in natural language and get matching techniques with similarity scores. Uses AI embeddings for intelligent matching. Example: 'Attacker poisoned training data to create backdoor in image classifier'",
+        inputSchema={
+            "type": "object",
+            "required": ["description"],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 5000,
+                    "description": "Natural language description of AI/ML attack scenario",
+                },
+                "min_similarity": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "maximum": 1.0,
+                    "default": 0.7,
+                    "description": "Minimum similarity threshold (0-1)",
+                },
+                "tactics": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Filter by tactics",
+                },
+                "ml_lifecycle_stage": {
+                    "type": "string",
+                    "description": "Filter by ML lifecycle stage",
+                },
+                "ai_system_type": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Filter by AI system type",
+                },
+                "active_only": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "Exclude deprecated/revoked techniques",
+                },
+                "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 10,
+                    "description": "Max results",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="get_atlas_technique_details",
+        description="Get complete details for a specific MITRE ATLAS AI/ML attack technique including tactics, ML lifecycle stage, AI system types, detection methods, and mitigations.",
+        inputSchema={
+            "type": "object",
+            "required": ["technique_id"],
+            "properties": {
+                "technique_id": {
+                    "type": "string",
+                    "pattern": "^AML\\.T\\d{4}$",
+                    "description": "ATLAS technique ID (e.g., AML.T0001)",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="search_atlas_case_studies",
+        description="Search MITRE ATLAS real-world case studies of AI/ML attacks. Filter by techniques used and search case study names and summaries.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Full-text search in case study name/summary",
+                },
+                "techniques": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Filter by ATLAS techniques used (e.g., ['AML.T0001'])",
+                },
+                "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 500,
+                    "default": 50,
+                    "description": "Max results",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="find_similar_atlas_case_studies",
+        description="Find similar MITRE ATLAS case studies using AI-powered semantic similarity search. Describe an AI/ML incident or attack scenario and get matching real-world case studies with similarity scores. Example: 'Autonomous vehicle fooled by adversarial road signs'",
+        inputSchema={
+            "type": "object",
+            "required": ["description"],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 5000,
+                    "description": "Natural language description of AI/ML incident or scenario",
+                },
+                "min_similarity": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "maximum": 1.0,
+                    "default": 0.7,
+                    "description": "Minimum similarity threshold (0-1)",
+                },
+                "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 10,
+                    "description": "Max results",
                 },
             },
         },
@@ -853,6 +1017,137 @@ async def handle_get_group_profile(params: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# ATLAS Tool Handlers
+
+
+async def handle_search_atlas_techniques(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle search_atlas_techniques tool call."""
+    start_time = time.time()
+    request = SearchATLASTechniquesRequest(**params)
+
+    async with db_service.session() as session:
+        techniques, total_count = await atlas_queries.search_techniques(
+            session,
+            query=request.query,
+            tactics=request.tactics,
+            ml_lifecycle_stage=request.ml_lifecycle_stage,
+            ai_system_type=request.ai_system_type,
+            active_only=request.active_only,
+            limit=request.limit,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": {
+            "techniques": techniques,
+            "total_results": total_count,
+            "returned_results": len(techniques),
+        },
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_find_similar_atlas_techniques(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle find_similar_atlas_techniques tool call (semantic search)."""
+    start_time = time.time()
+    request = FindSimilarATLASTechniquesRequest(**params)
+
+    async with db_service.session() as session:
+        techniques = await atlas_queries.find_similar_techniques(
+            session,
+            description=request.description,
+            min_similarity=request.min_similarity,
+            tactics=request.tactics,
+            ml_lifecycle_stage=request.ml_lifecycle_stage,
+            ai_system_type=request.ai_system_type,
+            active_only=request.active_only,
+            limit=request.limit,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": {
+            "techniques": techniques,
+            "returned_results": len(techniques),
+            "query_embedding_generated": True,
+            "min_similarity": request.min_similarity,
+        },
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_get_atlas_technique_details(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle get_atlas_technique_details tool call."""
+    start_time = time.time()
+    request = GetATLASTechniqueDetailsRequest(**params)
+
+    async with db_service.session() as session:
+        data = await atlas_queries.get_technique_details(
+            session,
+            technique_id=request.technique_id,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": data,
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_search_atlas_case_studies(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle search_atlas_case_studies tool call."""
+    start_time = time.time()
+    request = SearchATLASCaseStudiesRequest(**params)
+
+    async with db_service.session() as session:
+        case_studies, total_count = await atlas_queries.search_case_studies(
+            session,
+            query=request.query,
+            techniques=request.techniques,
+            limit=request.limit,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": {
+            "case_studies": case_studies,
+            "total_results": total_count,
+            "returned_results": len(case_studies),
+        },
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_find_similar_atlas_case_studies(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle find_similar_atlas_case_studies tool call (semantic search)."""
+    start_time = time.time()
+    request = FindSimilarATLASCaseStudiesRequest(**params)
+
+    async with db_service.session() as session:
+        case_studies = await atlas_queries.find_similar_case_studies(
+            session,
+            description=request.description,
+            min_similarity=request.min_similarity,
+            limit=request.limit,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": {
+            "case_studies": case_studies,
+            "returned_results": len(case_studies),
+            "query_embedding_generated": True,
+            "min_similarity": request.min_similarity,
+        },
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
 # Tool handler mapping
 TOOL_HANDLERS = {
     "search_cve": handle_search_cve,
@@ -871,6 +1166,12 @@ TOOL_HANDLERS = {
     "search_threat_actors": handle_search_threat_actors,
     "find_similar_threat_actors": handle_find_similar_threat_actors,
     "get_group_profile": handle_get_group_profile,
+    # ATLAS handlers
+    "search_atlas_techniques": handle_search_atlas_techniques,
+    "find_similar_atlas_techniques": handle_find_similar_atlas_techniques,
+    "get_atlas_technique_details": handle_get_atlas_technique_details,
+    "search_atlas_case_studies": handle_search_atlas_case_studies,
+    "find_similar_atlas_case_studies": handle_find_similar_atlas_case_studies,
 }
 
 

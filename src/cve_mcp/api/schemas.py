@@ -249,3 +249,73 @@ class GetGroupProfileRequest(BaseModel):
     """Request schema for get_group_profile tool."""
 
     group_id: str = Field(..., description="Group ID (e.g., G0001)")
+
+
+# ATLAS Request Schemas
+
+
+class SearchATLASTechniquesRequest(BaseModel):
+    """Request schema for search_atlas_techniques tool."""
+
+    query: str | None = Field(None, description="Full-text search in name/description")
+    tactics: list[str] | None = Field(None, description="Filter by tactics")
+    ml_lifecycle_stage: str | None = Field(
+        None, description="Filter by ML lifecycle stage (e.g., training, deployment)"
+    )
+    ai_system_type: list[str] | None = Field(
+        None, description="Filter by AI system type (e.g., computer-vision, nlp)"
+    )
+    active_only: bool = Field(True, description="Exclude deprecated/revoked techniques")
+    limit: int = Field(50, ge=1, le=500, description="Max results")
+
+
+class FindSimilarATLASTechniquesRequest(BaseModel):
+    """Request schema for find_similar_atlas_techniques tool (semantic search)."""
+
+    description: str = Field(
+        ...,
+        min_length=10,
+        max_length=5000,
+        description="Natural language description of AI/ML attack scenario"
+    )
+    min_similarity: float = Field(0.7, ge=0.0, le=1.0, description="Minimum similarity threshold")
+    tactics: list[str] | None = Field(None, description="Filter by tactics")
+    ml_lifecycle_stage: str | None = Field(
+        None, description="Filter by ML lifecycle stage"
+    )
+    ai_system_type: list[str] | None = Field(
+        None, description="Filter by AI system type"
+    )
+    active_only: bool = Field(True, description="Exclude deprecated/revoked techniques")
+    limit: int = Field(10, ge=1, le=100, description="Max results")
+
+
+class GetATLASTechniqueDetailsRequest(BaseModel):
+    """Request schema for get_atlas_technique_details tool."""
+
+    technique_id: str = Field(
+        ...,
+        description="ATLAS technique ID (e.g., AML.T0001)",
+        pattern=r"^AML\.T\d{4}$"
+    )
+
+
+class SearchATLASCaseStudiesRequest(BaseModel):
+    """Request schema for search_atlas_case_studies tool."""
+
+    query: str | None = Field(None, description="Full-text search in name/summary")
+    techniques: list[str] | None = Field(None, description="Filter by techniques used")
+    limit: int = Field(50, ge=1, le=500, description="Max results")
+
+
+class FindSimilarATLASCaseStudiesRequest(BaseModel):
+    """Request schema for find_similar_atlas_case_studies tool (semantic search)."""
+
+    description: str = Field(
+        ...,
+        min_length=10,
+        max_length=5000,
+        description="Natural language description of AI/ML incident or scenario"
+    )
+    min_similarity: float = Field(0.7, ge=0.0, le=1.0, description="Minimum similarity threshold")
+    limit: int = Field(10, ge=1, le=100, description="Max results")

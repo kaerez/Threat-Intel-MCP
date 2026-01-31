@@ -79,10 +79,10 @@ class TestMCPToolDefinitions:
     """Test MCP tool schemas are properly defined."""
 
     def test_all_tools_defined(self):
-        """All 15 MCP tools are defined (8 CVE + 7 ATT&CK)."""
+        """All 20 MCP tools are defined (8 CVE + 7 ATT&CK + 5 ATLAS)."""
         from cve_mcp.api.tools import MCP_TOOLS
 
-        assert len(MCP_TOOLS) == 15
+        assert len(MCP_TOOLS) == 20
 
         tool_names = {tool.name for tool in MCP_TOOLS}
         expected_cve_tools = {
@@ -104,7 +104,14 @@ class TestMCPToolDefinitions:
             "find_similar_threat_actors",
             "get_group_profile",
         }
-        expected_tools = expected_cve_tools | expected_attack_tools
+        expected_atlas_tools = {
+            "search_atlas_techniques",
+            "find_similar_atlas_techniques",
+            "get_atlas_technique_details",
+            "search_atlas_case_studies",
+            "find_similar_atlas_case_studies",
+        }
+        expected_tools = expected_cve_tools | expected_attack_tools | expected_atlas_tools
         assert tool_names == expected_tools
 
     def test_tools_have_required_fields(self):
