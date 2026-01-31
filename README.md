@@ -1,31 +1,65 @@
-# CVE + Exploit Intelligence MCP Server
+# Threat Intelligence MCP Server
 
-**Offline-first vulnerability intelligence for AI assistants.**
+**Offline-first threat intelligence with semantic search for AI assistants.**
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Tests](https://github.com/Ansvar-Systems/CVE-MCP/actions/workflows/test.yml/badge.svg)](https://github.com/Ansvar-Systems/CVE-MCP/actions/workflows/test.yml)
 [![Security](https://github.com/Ansvar-Systems/CVE-MCP/actions/workflows/docker-security.yml/badge.svg)](https://github.com/Ansvar-Systems/CVE-MCP/actions/workflows/docker-security.yml)
 [![Database](https://img.shields.io/badge/database-240K%2B%20CVEs-green)](docs/SETUP.md)
 
-Query **240,000+ CVE records** with CVSS scores, CISA KEV status, EPSS exploit predictions, and public exploit tracking — directly from Claude, Cursor, or any MCP-compatible client.
+Query **240,000+ CVE records**, **700+ ATT&CK techniques**, **140+ threat actors** with semantic similarity search — directly from Claude, Cursor, or any MCP-compatible client.
 
-If you're building security tools, conducting vulnerability assessments, or performing threat modeling, this is your real-time CVE intelligence source.
+## Modules
+
+This MCP server provides comprehensive threat intelligence through multiple integrated modules:
+
+1. **CVE Intelligence** ✅ Production
+   - 240,000+ CVE records with CVSS scoring
+   - CISA KEV tracking (1,200+ actively exploited CVEs)
+   - EPSS exploit prediction (200,000+ scores)
+   - Exploit references (Metasploit, ExploitDB, GitHub PoCs)
+   - **Semantic search**: "Find CVEs similar to this vulnerability description"
+
+2. **MITRE ATT&CK** 🔨 In Development
+   - 700+ techniques + sub-techniques
+   - 14 tactics (kill chain phases)
+   - 140+ threat actor groups
+   - 700+ software/tools
+   - **Semantic search**: "Find techniques similar to this incident description"
+
+3. **MITRE ATLAS (AI/ML)** 📋 Planned
+   - 50+ AI/ML attack techniques
+   - LLM-specific threats
+   - Case studies
+
+4. **CAPEC (Attack Patterns)** 📋 Planned
+   - 500+ attack patterns
+   - ATT&CK technique mappings
+   - Prerequisites & mitigations
+
+5. **Threat Actors** 📋 Planned
+   - APT groups
+   - Ransomware gangs
+   - Industry targeting
+   - Attribution indicators
+
+6. **Incident Intelligence** 📋 Planned
+   - Recent breaches
+   - Attack vectors
+   - Lessons learned
+
+## Key Features
+
+- **240,000+ CVE records** — Full NVD dataset
+- **700+ ATT&CK techniques** — Enterprise, Mobile, ICS frameworks
+- **Semantic search** — Find similar vulnerabilities/techniques by description
+- **Cross-domain queries** — CVE ↔ ATT&CK ↔ Threat Actors in single query
+- **Offline-first** — All queries run against local PostgreSQL
+- **Sub-50ms latency** — Indexed database with Redis caching
+- **Daily sync** — Automatic updates from NVD, MITRE, CISA, EPSS
+- **RAG-ready** — Eliminates 90-day staleness, integrates with Ansvar AI platform
 
 Built by [Ansvar Systems](https://ansvar.eu) — Stockholm, Sweden
-
----
-
-## Why This Exists
-
-CVE data is scattered across NVD's API, CISA's KEV catalog, EPSS feeds, and exploit databases. Whether you're:
-- A **security engineer** assessing vulnerability risk and exploit likelihood
-- A **threat modeler** enriching STRIDE scenarios with real CVE intelligence
-- A **DevSecOps team** tracking which vulnerabilities have active exploits
-- A **compliance officer** monitoring CISA KEV requirements
-
-...you need fast, offline access to current vulnerability data. Not API rate limits. Not internet dependencies.
-
-This MCP server makes CVE intelligence **searchable, offline-first, and AI-readable**.
 
 ---
 

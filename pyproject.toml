@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "cve-mcp"
+name = "threat-intel-mcp"
 version = "1.0.0"
-description = "CVE + Exploit Intelligence MCP Server - Offline-First Tier 1 Architecture"
+description = "Threat Intelligence MCP Server - CVE, ATT&CK, threat actors, semantic search"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"

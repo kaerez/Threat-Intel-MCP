@@ -4,6 +4,9 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings
 
+# Project metadata
+PROJECT_NAME = "Threat Intel MCP"
+
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
