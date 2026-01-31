@@ -154,7 +154,7 @@ def parse_group(stix_obj: dict[str, Any]) -> dict[str, Any] | None:
         "group_id": group_id,
         "stix_id": stix_obj["id"],
         "name": stix_obj["name"],
-        "description": stix_obj["description"],
+        "description": stix_obj.get("description", ""),  # Some groups have no description
         "aliases": aliases,
         "version": stix_obj.get("x_mitre_version"),
         "created": _parse_datetime(stix_obj["created"]),

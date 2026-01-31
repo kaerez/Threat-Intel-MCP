@@ -198,8 +198,18 @@ async def import_stix_bundle(
 
     # Import into database
     async with AsyncSessionLocal() as session:
-        # Import techniques
-        for tech_data in techniques_data:
+        # Import techniques - parents first, then sub-techniques (FK constraint)
+        parent_techniques = [t for t in techniques_data if not t.get("is_subtechnique")]
+        sub_techniques = [t for t in techniques_data if t.get("is_subtechnique")]
+
+        for tech_data in parent_techniques:
+            technique = AttackTechnique(**tech_data)
+            await session.merge(technique)
+
+        # Flush to ensure parents exist before sub-techniques
+        await session.flush()
+
+        for tech_data in sub_techniques:
             technique = AttackTechnique(**tech_data)
             await session.merge(technique)
 

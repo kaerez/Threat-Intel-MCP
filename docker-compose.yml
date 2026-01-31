@@ -2,7 +2,7 @@ version: '3.9'
 
 services:
   postgres:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg15  # Includes pgvector extension for semantic search
     container_name: cve-mcp-postgres
     environment:
       POSTGRES_DB: cve_mcp
@@ -11,7 +11,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "5433:5432"  # Use 5433 externally to avoid conflict with platform postgres
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U cve_user -d cve_mcp"]
       interval: 10s
