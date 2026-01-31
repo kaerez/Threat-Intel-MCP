@@ -102,6 +102,7 @@ def upgrade() -> None:
         sa.Column("version", sa.String(20)),
         sa.Column("created", sa.DateTime(), nullable=False),
         sa.Column("modified", sa.DateTime(), nullable=False),
+        sa.Column("stix_extensions", postgresql.JSONB()),
         sa.Column("data_last_updated", sa.DateTime(), server_default=sa.func.now()),
     )
 

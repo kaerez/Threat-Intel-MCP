@@ -1,12 +1,11 @@
 """ATLAS (AI/ML threat framework) database models."""
 
 from datetime import datetime
-from typing import TYPE_CHECKING
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     Boolean,
     DateTime,
-    ForeignKey,
     Index,
     String,
     Text,
@@ -14,7 +13,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column
-from pgvector.sqlalchemy import Vector
 
 from cve_mcp.models.base import Base
 
@@ -41,11 +39,17 @@ class ATLASTechnique(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False)
 
     # ATLAS-specific: ML lifecycle stages
-    tactics: Mapped[list[str] | None] = mapped_column(ARRAY(Text))  # reconnaissance, ml-attack, impact
+    tactics: Mapped[list[str] | None] = mapped_column(
+        ARRAY(Text)
+    )  # reconnaissance, ml-attack, impact
 
     # Target systems
-    ml_lifecycle_stage: Mapped[str | None] = mapped_column(String(100))  # data-collection, training, deployment
-    ai_system_type: Mapped[list[str] | None] = mapped_column(ARRAY(Text))  # computer-vision, nlp, etc.
+    ml_lifecycle_stage: Mapped[str | None] = mapped_column(
+        String(100)
+    )  # data-collection, training, deployment
+    ai_system_type: Mapped[list[str] | None] = mapped_column(
+        ARRAY(Text)
+    )  # computer-vision, nlp, etc.
 
     # Detection and mitigation
     detection: Mapped[str | None] = mapped_column(Text)
@@ -146,6 +150,11 @@ class ATLASCaseStudy(Base):
     version: Mapped[str | None] = mapped_column(String(20))
     created: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     modified: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    # STIX extensions
+    stix_extensions: Mapped[dict | None] = mapped_column(JSONB)
+
+    # Sync metadata
     data_last_updated: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
     __table_args__ = (
