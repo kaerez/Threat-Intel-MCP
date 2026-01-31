@@ -1,6 +1,6 @@
 """ATT&CK query service with traditional and semantic search.
 
-Provides 8 async query functions for MITRE ATT&CK data:
+Provides 7 async query functions for MITRE ATT&CK data:
 - Traditional search: keyword/filter-based queries
 - Semantic search: AI-powered similarity matching using pgvector
 """
