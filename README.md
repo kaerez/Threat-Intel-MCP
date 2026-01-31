@@ -69,39 +69,115 @@ See **[DESIGN.md](./DESIGN.md)** for complete specifications including:
 └─────────────────────────────────────────┘
 ```
 
-## 🚀 Deployment
+## 🚀 Quick Start
+
+### Prerequisites
+- Docker & Docker Compose
+- 8 GB RAM minimum (for PostgreSQL)
+- 10 GB disk space
+
+### 1. Deploy Server
 
 ```bash
-# 1. Clone repository
+# Clone and start
 git clone https://github.com/Ansvar-Systems/CVE-MCP.git
 cd CVE-MCP
-
-# 2. Configure environment
 cp .env.example .env
-# Edit .env with your NVD API key (optional but recommended)
-
-# 3. Start services
 docker-compose up -d
 
-# 4. Run initial sync (6-8 hours)
-docker-compose exec celery-worker celery -A tasks call tasks.sync_nvd_full
+# Initial sync (6-8 hours for full NVD dataset)
+docker-compose exec celery-worker celery -A cve_mcp.tasks.celery_app call cve_mcp.tasks.sync_nvd.sync_nvd_full
 
-# 5. Verify
+# Verify server is running
 curl http://localhost:8307/health
 ```
 
+### 2. Configure Claude Desktop
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "cve-exploit": {
+      "command": "docker",
+      "args": ["exec", "cve-mcp-server", "python", "-m", "cve_mcp.main"],
+      "env": {}
+    }
+  }
+}
+```
+
+Or use HTTP transport:
+
+```json
+{
+  "mcpServers": {
+    "cve-exploit": {
+      "url": "http://localhost:8307",
+      "transport": "http"
+    }
+  }
+}
+```
+
+Restart Claude Desktop. You should see "cve-exploit" in the 🔌 menu.
+
+### 3. Test It Works
+
+In Claude Desktop, try:
+```
+Search for critical Apache vulnerabilities with CVSS > 9
+```
+
+Claude will call `search_cve` and return results with KEV status and EPSS scores.
+
+**See [docs/SETUP.md](./docs/SETUP.md) for detailed setup guide.**
+
+## 🚀 Manual Deployment
+
+## ✅ Quickstart Verification
+
+Test your deployment works:
+
+```bash
+# 1. Check health
+curl http://localhost:8307/health | jq
+
+# 2. List available tools
+curl http://localhost:8307/tools | jq '.tools[].name'
+
+# 3. Search for CVEs
+curl -X POST http://localhost:8307/call \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "search_cve",
+    "arguments": {"keyword": "apache", "cvss_min": 9.0, "limit": 3}
+  }' | jq
+
+# 4. Check Log4Shell KEV status
+curl -X POST http://localhost:8307/call \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "check_kev_status",
+    "arguments": {"cve_id": "CVE-2021-44228"}
+  }' | jq
+```
+
+**Expected:** All commands return JSON responses without errors.
+
 ## 📊 MCP Tools
 
-| Tool | Description | Example |
-|------|-------------|---------|
-| `search_cve` | Search CVEs by keyword, CVSS score, severity | Search for "authentication bypass" with CVSS > 7 |
-| `get_cve_details` | Get full CVE record with references, CPE, exploits | Get complete details for CVE-2024-1234 |
-| `check_kev_status` | Check if CVE is in CISA KEV catalog | Is CVE-2024-1234 actively exploited? |
-| `get_epss_score` | Get exploit prediction score (0-1) | What's the likelihood CVE-2024-1234 will be exploited? |
-| `search_by_product` | Find CVEs affecting specific product/version | Find vulnerabilities in Apache 2.4.49 |
-| `get_exploits` | Get public exploit code references | Show Metasploit/ExploitDB exploits for CVE-2024-1234 |
-| `get_cwe_details` | Get CWE weakness information | Get details for CWE-79 (XSS) |
-| `batch_search` | Bulk CVE lookup (max 100) | Get details for 50 CVEs in one query |
+| Tool | Description | Example Query |
+|------|-------------|---------------|
+| `search_cve` | Search CVEs by keyword, CVSS score, severity | "Find critical Apache vulnerabilities" |
+| `get_cve_details` | Get full CVE record with references, CPE, exploits | "Show me details for CVE-2021-44228" |
+| `check_kev_status` | Check if CVE is in CISA KEV catalog | "Is Log4Shell in the KEV catalog?" |
+| `get_epss_score` | Get exploit prediction score (0-1) | "What's the EPSS score for CVE-2021-44228?" |
+| `search_by_product` | Find CVEs affecting specific product/version | "Find CVEs in nginx 1.20.0" |
+| `get_exploits` | Get public exploit code references | "Show exploits for CVE-2021-44228" |
+| `get_cwe_details` | Get CWE weakness information | "Explain CWE-79" |
+| `batch_search` | Bulk CVE lookup (max 100) | "Get details for these 10 CVEs..." |
 
 ## 📈 Performance
 
@@ -208,13 +284,17 @@ All data sources are **free and public** - no API keys required (NVD API key opt
 
 ## 📝 Status
 
-**Current:** Design Complete, Ready for Implementation
-**Next Steps:**
-1. ✅ Repository created
-2. ✅ Design specification complete
-3. 🔄 Database schema implementation
-4. 🔄 Sync services development
-5. 🔄 MCP server implementation
+**Current:** Production Ready ✅
+
+**Completed:**
+1. ✅ Database schema (9 models, full-text search)
+2. ✅ MCP server (8 tools, FastAPI)
+3. ✅ Sync services (NVD, KEV, EPSS, ExploitDB)
+4. ✅ Docker deployment (PostgreSQL, Redis, Celery)
+5. ✅ CI/CD (CodeQL, Semgrep, Trivy, tests)
+6. ✅ Security hardened (CORS, audit logs)
+7. ✅ Type-safe (strict mypy)
+8. ✅ Integration tests
 
 ## 🤝 Contributing
 

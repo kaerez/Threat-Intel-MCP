@@ -72,7 +72,7 @@ jobs:
           REDIS_URL: redis://localhost:6379/0
           LOG_LEVEL: DEBUG
         run: |
-          pytest tests/ -v --cov=src/cve_mcp --cov-report=term --cov-report=xml
+          pytest tests/ -v --cov=src/cve_mcp --cov-report=term --cov-report=xml --cov-report=json
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -87,11 +87,21 @@ jobs:
         if: always()
         run: |
           echo "## Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Tests completed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Extract coverage percentage
+          if [ -f coverage.json ]; then
+            COVERAGE=$(python -c "import json; data=json.load(open('coverage.json')); print(f\"{data['totals']['percent_covered']:.1f}\")")
+            echo "**Code Coverage:** ${COVERAGE}%" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+
           echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| Linting (ruff) | ✅ |" >> $GITHUB_STEP_SUMMARY
           echo "| Type checking (mypy) | ✅ |" >> $GITHUB_STEP_SUMMARY
           echo "| Security audit | ✅ |" >> $GITHUB_STEP_SUMMARY
-          echo "| Unit tests | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tests | ✅ |" >> $GITHUB_STEP_SUMMARY
+          if [ -f coverage.json ]; then
+            echo "| Coverage | ${COVERAGE}% |" >> $GITHUB_STEP_SUMMARY
+          fi
