@@ -90,11 +90,12 @@ async def main() -> None:
         # Print summary
         logger.info("=" * 60)
         logger.info("Sync Summary:")
-        logger.info(f"  Views:             {stats['views']}")
-        logger.info(f"  Categories:        {stats['categories']}")
-        logger.info(f"  Weaknesses:        {stats['weaknesses']}")
-        logger.info(f"  External Mappings: {stats['external_mappings']}")
-        logger.info(f"  CAPEC Links:       {stats['capec_links']}")
+        logger.info(f"  Views:                {stats['views']}")
+        logger.info(f"  Categories:           {stats['categories']}")
+        logger.info(f"  Weaknesses:           {stats['weaknesses']}")
+        logger.info(f"  Category Memberships: {stats['category_memberships']}")
+        logger.info(f"  External Mappings:    {stats['external_mappings']}")
+        logger.info(f"  CAPEC Links:          {stats['capec_links']}")
         logger.info("=" * 60)
         logger.info("Sync completed successfully!")
 

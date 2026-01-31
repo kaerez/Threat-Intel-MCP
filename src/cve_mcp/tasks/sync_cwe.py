@@ -28,6 +28,7 @@ from cve_mcp.models.cwe import (
     CWEExternalMapping,
     CWEView,
     CWEWeakness,
+    CWEWeaknessCategory,
 )
 from cve_mcp.models.metadata import SyncMetadata
 from cve_mcp.services.embeddings import generate_embeddings_batch
@@ -145,6 +146,35 @@ def parse_cwe_xml(xml_content: bytes) -> dict[str, Any]:
 
     logger.info(f"Parsed {len(views)} views")
 
+    # Extract member lists for category memberships
+    for cat_data in categories:
+        cat_id = cat_data["category_id"]
+        # Find members element
+        cat_elem = categories_elem.find(f"{ns}Category[@ID='{cat_id.replace('CWE-', '')}']")
+        if cat_elem is not None:
+            members_elem = cat_elem.find(f"{ns}Relationships")
+            if members_elem is not None:
+                member_ids = []
+                for member in members_elem.findall(f"{ns}Has_Member"):
+                    member_id = member.get("CWE_ID")
+                    if member_id:
+                        member_ids.append(f"CWE-{member_id}")
+                cat_data["members"] = member_ids
+
+    # Extract member lists for view memberships
+    for view_data in views:
+        view_id_num = view_data["view_id"].replace("CWE-", "")
+        view_elem = views_elem.find(f"{ns}View[@ID='{view_id_num}']")
+        if view_elem is not None:
+            members_elem = view_elem.find(f"{ns}Members")
+            if members_elem is not None:
+                member_ids = []
+                for member in members_elem.findall(f"{ns}Has_Member"):
+                    member_id = member.get("CWE_ID")
+                    if member_id:
+                        member_ids.append(f"CWE-{member_id}")
+                view_data["members"] = member_ids
+
     return {
         "weaknesses": weaknesses,
         "categories": categories,
@@ -213,6 +243,74 @@ async def sync_categories(
             logger.info(f"Synced {i + 1}/{len(categories)} categories")
 
     return len(categories)
+
+
+async def sync_category_memberships(
+    session: Any,
+    categories: list[dict[str, Any]],
+    views: list[dict[str, Any]],
+) -> int:
+    """Sync weakness-category-view relationships.
+
+    Categories and views contain member lists that define which
+    weaknesses belong to which organizational groupings.
+
+    Args:
+        session: Database session
+        categories: List of parsed category data with members
+        views: List of parsed view data with members
+
+    Returns:
+        Number of category memberships synced
+    """
+    logger.info("Syncing category memberships")
+
+    # Clear existing memberships
+    await session.execute(CWEWeaknessCategory.__table__.delete())
+
+    count = 0
+
+    # Process category memberships
+    for cat_data in categories:
+        category_id = cat_data["category_id"]
+        members = cat_data.get("members", [])
+        # Default to CWE-1000 (Research Concepts) view for categories
+        view_id = "CWE-1000"
+
+        for member_id in members:
+            # Ensure CWE- prefix
+            if not member_id.startswith("CWE-"):
+                member_id = f"CWE-{member_id}"
+
+            membership = CWEWeaknessCategory(
+                weakness_id=member_id,
+                category_id=category_id,
+                view_id=view_id,
+            )
+            session.add(membership)
+            count += 1
+
+    # Process view memberships
+    for view_data in views:
+        view_id = view_data["view_id"]
+        members = view_data.get("members", [])
+
+        for member_id in members:
+            if not member_id.startswith("CWE-"):
+                member_id = f"CWE-{member_id}"
+
+            # For views, the category_id could be the view itself or a default
+            # Use the view_id as category_id for direct view memberships
+            membership = CWEWeaknessCategory(
+                weakness_id=member_id,
+                category_id=view_id,  # View acts as its own category
+                view_id=view_id,
+            )
+            session.add(membership)
+            count += 1
+
+    logger.info(f"Synced {count} category memberships")
+    return count
 
 
 async def sync_weaknesses(
@@ -445,11 +543,16 @@ async def sync_cwe_full(
             # Sync categories (they reference views)
             categories_count = await sync_categories(session, parsed_data["categories"])
 
-            # Sync weaknesses with embeddings
+            # Sync weaknesses with embeddings (before memberships to ensure FKs exist)
             weaknesses_count = await sync_weaknesses(
                 session,
                 parsed_data["weaknesses"],
                 generate_embeddings,
+            )
+
+            # Sync category memberships (after weaknesses exist for FK constraints)
+            memberships_count = await sync_category_memberships(
+                session, parsed_data["categories"], parsed_data["views"]
             )
 
             # Sync external mappings from weakness taxonomy data
@@ -468,6 +571,7 @@ async def sync_cwe_full(
                 "views": views_count,
                 "categories": categories_count,
                 "weaknesses": weaknesses_count,
+                "category_memberships": memberships_count,
                 "external_mappings": mappings_count,
                 "capec_links": capec_links_count,
             }
