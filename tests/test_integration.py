@@ -247,7 +247,7 @@ class TestUtilities:
         """NVD parser utility exists."""
         from cve_mcp.utils import nvd_parser
 
-        assert hasattr(nvd_parser, "parse_cve_item")
+        assert hasattr(nvd_parser, "parse_nvd_cve")
 
     def test_cache_key_generation(self):
         """Cache service generates consistent keys."""
