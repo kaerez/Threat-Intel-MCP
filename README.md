@@ -46,13 +46,20 @@ This MCP server provides comprehensive threat intelligence through multiple inte
    - **Semantic search**: "Find patterns similar to this attack description"
    - **Dual search modes**: Traditional keyword (<50ms) + AI semantic (<100ms)
 
-5. **Threat Actors** 📋 Planned
+5. **CWE (Common Weakness Enumeration)** ✅ Production
+   - 900+ software weaknesses with AI-powered semantic search
+   - Hierarchical search (Pillar → Class → Base → Variant)
+   - External mappings (OWASP Top 10, SANS Top 25)
+   - Actionable intelligence (mitigations, detection methods)
+   - Cross-framework correlation (CWE → CAPEC → ATT&CK)
+
+6. **Threat Actors** 📋 Planned
    - APT groups
    - Ransomware gangs
    - Industry targeting
    - Attribution indicators
 
-6. **Incident Intelligence** 📋 Planned
+7. **Incident Intelligence** 📋 Planned
    - Recent breaches
    - Attack vectors
    - Lessons learned
@@ -63,8 +70,10 @@ This MCP server provides comprehensive threat intelligence through multiple inte
 - **700+ ATT&CK techniques** — AI-powered semantic search for incident response
 - **200+ ATLAS techniques** — AI/ML adversarial attack techniques with semantic search
 - **30+ AI/ML case studies** — Real-world AI security incidents with technique mappings
-- **550+ CAPEC patterns** 🆕 — Attack pattern enumeration with semantic search
-- **300+ mitigations** 🆕 — Security controls mapped to attack patterns
+- **550+ CAPEC patterns** — Attack pattern enumeration with semantic search
+- **300+ mitigations** — Security controls mapped to attack patterns
+- **900+ CWE weaknesses** 🆕 — Software weakness catalog with semantic search
+- **OWASP Top 10 mappings** 🆕 — Industry standard weakness prioritization
 - **140+ threat actor groups** — Semantic attribution based on observed TTPs
 - **Dual search modes** — Traditional keyword (<50ms) + AI semantic (<100ms)
 - **Cross-domain queries** — CVE ↔ ATT&CK ↔ ATLAS ↔ Threat Actors in single query
@@ -186,11 +195,18 @@ Once connected, just ask naturally:
 - *"Find AI security incidents similar to autonomous vehicle sensor attacks"*
 - *"What ATLAS techniques apply to LLM prompt injection attacks?"*
 
-**Attack Patterns (CAPEC):** 🆕
+**Attack Patterns (CAPEC):**
 - *"Find patterns similar to: SQL injection through web form to extract user credentials"*
 - *"Search for injection attack patterns with high severity"*
 - *"Find mitigations for buffer overflow attacks"*
 - *"What CAPEC patterns relate to CWE-79 (XSS)?"*
+
+**Software Weaknesses (CWE):** 🆕
+- *"Find weaknesses related to SQL injection"*
+- *"Find weaknesses similar to: user input parsed as code without validation"*
+- *"Show OWASP A03:2021 (Injection) weaknesses"*
+- *"Show CWE-79 parent/child hierarchy"*
+- *"What CWE weaknesses are exploited by CAPEC-66?"*
 
 ---
 
@@ -215,11 +231,17 @@ Once connected, just ask naturally:
 - **30+ Case Studies** — Real-world AI/ML security incidents
 - **ML Lifecycle Filtering** — Data collection, training, deployment stages
 
-**CAPEC Intelligence (Attack Patterns):** 🆕
+**CAPEC Intelligence (Attack Patterns):**
 - **550+ Attack Patterns** — Common attack patterns with AI semantic search
 - **300+ Mitigations** — Security controls with effectiveness ratings
 - **9 Categories** — Logical groupings (Injection, Social Engineering, etc.)
 - **CWE/ATT&CK Mappings** — Cross-framework relationships
+
+**CWE Intelligence (Software Weaknesses):** 🆕
+- **900+ Weaknesses** — Software and hardware weakness types with AI semantic search
+- **5 Abstraction Levels** — Pillar → Class → Base → Variant → Compound hierarchy
+- **External Mappings** — OWASP Top 10, SANS Top 25, CERT references
+- **Actionable Intelligence** — Mitigations, detection methods, consequences
 
 **Architecture:**
 - **Offline-First** — All queries run against local PostgreSQL + pgvector
@@ -267,7 +289,7 @@ Once connected, just ask naturally:
 | `search_atlas_case_studies` | Search real-world AI/ML security incidents | "Find case studies about autonomous vehicles" |
 | `find_similar_atlas_case_studies` | AI semantic search for similar AI incidents | "Object detection fooled by adversarial patches" |
 
-### CAPEC Intelligence (5 tools) 🆕
+### CAPEC Intelligence (5 tools)
 
 | Tool | Description | Example Query |
 |------|-------------|---------------|
@@ -276,6 +298,17 @@ Once connected, just ask naturally:
 | `get_capec_pattern_details` | Get full pattern details + prerequisites/mitigations | "Get details for CAPEC-66" |
 | `search_capec_mitigations` | Search security controls and countermeasures | "Find mitigations for injection attacks" |
 | `find_similar_capec_mitigations` | AI semantic search for mitigations | "Input validation to prevent injection" |
+
+### CWE Intelligence (6 tools) 🆕
+
+| Tool | Description | Example Query |
+|------|-------------|---------------|
+| `search_cwe_weaknesses` | Traditional keyword search with hierarchical filtering | "Find SQL injection weaknesses at Base level" |
+| `find_similar_cwe_weaknesses` | AI semantic search for weaknesses | "User input concatenated into SQL query" |
+| `get_cwe_weakness_details` | Get full weakness details + mitigations/detection | "Get details for CWE-79" |
+| `search_by_external_mapping` | Search by OWASP/SANS/CERT mappings | "Find OWASP A03:2021 weaknesses" |
+| `get_cwe_hierarchy` | Navigate parent/child weakness relationships | "Show CWE-79 hierarchy" |
+| `find_weaknesses_for_capec` | Cross-framework: CWE weaknesses for CAPEC pattern | "What weaknesses does CAPEC-66 exploit?" |
 
 ---
 
@@ -297,7 +330,7 @@ Once connected, just ask naturally:
               ▼
 ┌─────────────────────────────────────────┐
 │  CVE MCP Server (FastAPI)               │
-│  - 25 MCP tools                         │
+│  - 31 MCP tools                         │
 │  - Query routing & validation           │
 └─────────────┬───────────────────────────┘
               │
@@ -317,6 +350,7 @@ Once connected, just ask naturally:
 │  - MITRE ATT&CK                         │
 │  - MITRE ATLAS                          │
 │  - MITRE CAPEC                          │
+│  - MITRE CWE                            │
 └─────────────────────────────────────────┘
 ```
 
@@ -451,6 +485,7 @@ vulns = await mcp_client.call_tool(
 | **MITRE ATT&CK** | Public | Monthly | 700+ techniques, 140+ groups |
 | **MITRE ATLAS** | Public | Monthly | 200+ techniques, 30+ case studies |
 | **MITRE CAPEC** | Public | Monthly | 550+ patterns, 300+ mitigations |
+| **MITRE CWE** | Public | Monthly | 900+ weaknesses, OWASP/SANS mappings |
 
 All data sources are **free and public** — no API keys required (NVD API key optional for higher rate limits).
 
@@ -537,7 +572,8 @@ So we're open-sourcing it. Real-time vulnerability intelligence shouldn't requir
 - **[docs/modules/](./docs/modules/)** — Module-specific documentation
   - [ATT&CK module](./docs/modules/attack.md) — Semantic search, tools, workflows
   - [ATLAS module](./docs/modules/atlas.md) — AI/ML security, case studies, workflows
-  - [CAPEC module](./docs/modules/capec.md) — Attack patterns, mitigations, workflows 🆕
+  - [CAPEC module](./docs/modules/capec.md) — Attack patterns, mitigations, workflows
+  - [CWE module](./docs/modules/cwe.md) — Software weaknesses, OWASP mappings, workflows 🆕
 - **[docs/architecture/](./docs/architecture/)** — Architecture decision records
   - [Tier 1 offline-first assessment](./docs/architecture/2026-01-30-mcp-offline-first-assessment.md)
   - [Build vs. buy analysis](./docs/architecture/2026-01-30-mcp-build-vs-buy-analysis.md)
@@ -550,9 +586,9 @@ So we're open-sourcing it. Real-time vulnerability intelligence shouldn't requir
 **Current:** Production Ready ✅
 
 **Completed:**
-1. ✅ Database schema (15 models, full-text search, vector embeddings)
-2. ✅ MCP server (25 tools, FastAPI)
-3. ✅ Sync services (NVD, KEV, EPSS, ExploitDB, ATT&CK, ATLAS, CAPEC)
+1. ✅ Database schema (20 models, full-text search, vector embeddings)
+2. ✅ MCP server (31 tools, FastAPI)
+3. ✅ Sync services (NVD, KEV, EPSS, ExploitDB, ATT&CK, ATLAS, CAPEC, CWE)
 4. ✅ Docker deployment (PostgreSQL, Redis, Celery)
 5. ✅ CI/CD (CodeQL, Semgrep, Trivy, 45 tests)
 6. ✅ Security hardened (CORS, audit logs, TLS)
@@ -561,6 +597,7 @@ So we're open-sourcing it. Real-time vulnerability intelligence shouldn't requir
 9. ✅ MITRE ATT&CK module (semantic search, threat actors)
 10. ✅ MITRE ATLAS module (AI/ML security, case studies)
 11. ✅ MITRE CAPEC module (attack patterns, mitigations, semantic search)
+12. ✅ MITRE CWE module (software weaknesses, OWASP/SANS mappings, semantic search)
 
 ---
 
