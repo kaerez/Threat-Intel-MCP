@@ -2,7 +2,6 @@
 
 import json
 from contextlib import asynccontextmanager
-from typing import Any
 
 import structlog
 from fastapi import FastAPI, HTTPException, Request

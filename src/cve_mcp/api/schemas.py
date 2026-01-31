@@ -159,7 +159,7 @@ class MCPToolDefinition(BaseModel):
 
     name: str
     description: str
-    inputSchema: dict[str, Any]
+    inputSchema: dict[str, Any]  # noqa: N815 - MCP protocol uses camelCase
 
 
 class MCPToolsListResponse(BaseModel):
@@ -179,4 +179,4 @@ class MCPToolCallResponse(BaseModel):
     """Response from an MCP tool call."""
 
     content: list[dict[str, Any]]
-    isError: bool = False
+    isError: bool = False  # noqa: N815 - MCP protocol uses camelCase

@@ -8,7 +8,7 @@ import structlog
 from sqlalchemy import select, update
 
 from cve_mcp.config import get_settings
-from cve_mcp.models import CVE, CISAKEV, SyncMetadata
+from cve_mcp.models import CISAKEV, CVE, SyncMetadata
 from cve_mcp.models.base import AsyncSessionLocal
 from cve_mcp.tasks.celery_app import celery_app
 

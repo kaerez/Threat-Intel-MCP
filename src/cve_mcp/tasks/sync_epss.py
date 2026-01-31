@@ -4,7 +4,7 @@ import asyncio
 import csv
 import gzip
 from datetime import datetime
-from io import BytesIO, StringIO
+from io import BytesIO
 
 import httpx
 import structlog

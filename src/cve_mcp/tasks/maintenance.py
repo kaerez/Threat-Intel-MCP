@@ -1,12 +1,11 @@
 """Maintenance tasks for CVE MCP server."""
 
 import asyncio
-from datetime import datetime
 
 import structlog
 from sqlalchemy import select, text, update
 
-from cve_mcp.models import CVE, EPSSScore, ExploitReference, SyncMetadata
+from cve_mcp.models import CVE, EPSSScore, ExploitReference
 from cve_mcp.models.base import AsyncSessionLocal
 from cve_mcp.tasks.celery_app import celery_app
 

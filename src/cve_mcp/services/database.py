@@ -5,13 +5,13 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Any
 
-from packaging.version import Version, InvalidVersion
-from sqlalchemy import func, select, text, update
+from packaging.version import InvalidVersion, Version
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cve_mcp.models import (
-    CVE,
     CISAKEV,
+    CVE,
     CVECPEMapping,
     CVEReference,
     CWEData,

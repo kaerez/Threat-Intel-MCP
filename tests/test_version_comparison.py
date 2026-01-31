@@ -1,8 +1,6 @@
 """Tests for version comparison logic in DatabaseService."""
 
 import pytest
-from packaging.version import InvalidVersion
-
 from cve_mcp.services.database import DatabaseService
 
 

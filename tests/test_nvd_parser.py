@@ -1,6 +1,5 @@
 """Tests for NVD parser."""
 
-import pytest
 
 from cve_mcp.utils.nvd_parser import parse_nvd_cve
 

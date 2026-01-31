@@ -19,7 +19,7 @@ RUN useradd --create-home --shell /bin/bash cve_mcp
 WORKDIR /app
 
 # Copy project files
-COPY pyproject.toml ./
+COPY pyproject.toml README.md ./
 COPY src/ ./src/
 COPY alembic/ ./alembic/
 COPY alembic.ini ./

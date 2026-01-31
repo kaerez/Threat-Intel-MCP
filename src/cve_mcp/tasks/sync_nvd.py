@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 import httpx
 import structlog
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, select
 
 from cve_mcp.config import get_settings
 from cve_mcp.models import CVE, CVECPEMapping, CVEReference, SyncMetadata
