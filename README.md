@@ -7,7 +7,7 @@
 [![Security](https://github.com/Ansvar-Systems/CVE-MCP/actions/workflows/docker-security.yml/badge.svg)](https://github.com/Ansvar-Systems/CVE-MCP/actions/workflows/docker-security.yml)
 [![Database](https://img.shields.io/badge/database-240K%2B%20CVEs-green)](docs/SETUP.md)
 
-Query **240,000+ CVE records**, **700+ ATT&CK techniques**, **200+ ATLAS AI/ML techniques**, **550+ CAPEC attack patterns**, **140+ threat actors** with semantic similarity search — directly from Claude, Cursor, or any MCP-compatible client.
+Query **240,000+ CVE records**, **700+ ATT&CK techniques**, **200+ D3FEND defenses**, **200+ ATLAS AI/ML techniques**, **550+ CAPEC attack patterns**, **140+ threat actors** with semantic similarity search — directly from Claude, Cursor, or any MCP-compatible client.
 
 ## Modules
 
@@ -53,13 +53,20 @@ This MCP server provides comprehensive threat intelligence through multiple inte
    - Actionable intelligence (mitigations, detection methods)
    - Cross-framework correlation (CWE → CAPEC → ATT&CK)
 
-6. **Threat Actors** 📋 Planned
+6. **MITRE D3FEND (Defensive Countermeasures)** ✅ Production
+   - 200+ defensive techniques with AI-powered semantic search
+   - 7 defensive tactics (Model, Harden, Detect, Isolate, Deceive, Evict, Restore)
+   - Direct ATT&CK technique mappings (counters, enables, related-to)
+   - Coverage analysis for defensive posture assessment
+   - **Key feature**: "How do I defend against this attack?" queries
+
+8. **Threat Actors** 📋 Planned
    - APT groups
    - Ransomware gangs
    - Industry targeting
    - Attribution indicators
 
-7. **Incident Intelligence** 📋 Planned
+9. **Incident Intelligence** 📋 Planned
    - Recent breaches
    - Attack vectors
    - Lessons learned
@@ -72,8 +79,10 @@ This MCP server provides comprehensive threat intelligence through multiple inte
 - **30+ AI/ML case studies** — Real-world AI security incidents with technique mappings
 - **550+ CAPEC patterns** — Attack pattern enumeration with semantic search
 - **300+ mitigations** — Security controls mapped to attack patterns
-- **900+ CWE weaknesses** 🆕 — Software weakness catalog with semantic search
-- **OWASP Top 10 mappings** 🆕 — Industry standard weakness prioritization
+- **900+ CWE weaknesses** — Software weakness catalog with semantic search
+- **OWASP Top 10 mappings** — Industry standard weakness prioritization
+- **200+ D3FEND defenses** 🆕 — Defensive countermeasures with ATT&CK mappings
+- **Attack-to-defense correlation** 🆕 — "How do I defend against T1059?"
 - **140+ threat actor groups** — Semantic attribution based on observed TTPs
 - **Dual search modes** — Traditional keyword (<50ms) + AI semantic (<100ms)
 - **Cross-domain queries** — CVE ↔ ATT&CK ↔ ATLAS ↔ Threat Actors in single query
@@ -201,12 +210,19 @@ Once connected, just ask naturally:
 - *"Find mitigations for buffer overflow attacks"*
 - *"What CAPEC patterns relate to CWE-79 (XSS)?"*
 
-**Software Weaknesses (CWE):** 🆕
+**Software Weaknesses (CWE):**
 - *"Find weaknesses related to SQL injection"*
 - *"Find weaknesses similar to: user input parsed as code without validation"*
 - *"Show OWASP A03:2021 (Injection) weaknesses"*
 - *"Show CWE-79 parent/child hierarchy"*
 - *"What CWE weaknesses are exploited by CAPEC-66?"*
+
+**Defensive Countermeasures (D3FEND):** 🆕
+- *"How do I defend against T1059 (Command and Scripting Interpreter)?"*
+- *"Find defenses similar to: network segmentation to prevent lateral movement"*
+- *"What's my ATT&CK coverage with D3-AL, D3-NI, and D3-SEA?"*
+- *"Get details for D3-AL (Application Lockdown)"*
+- *"Search for detection techniques in D3FEND"*
 
 ---
 
@@ -237,11 +253,17 @@ Once connected, just ask naturally:
 - **9 Categories** — Logical groupings (Injection, Social Engineering, etc.)
 - **CWE/ATT&CK Mappings** — Cross-framework relationships
 
-**CWE Intelligence (Software Weaknesses):** 🆕
+**CWE Intelligence (Software Weaknesses):**
 - **900+ Weaknesses** — Software and hardware weakness types with AI semantic search
 - **5 Abstraction Levels** — Pillar → Class → Base → Variant → Compound hierarchy
 - **External Mappings** — OWASP Top 10, SANS Top 25, CERT references
 - **Actionable Intelligence** — Mitigations, detection methods, consequences
+
+**D3FEND Intelligence (Defensive Countermeasures):** 🆕
+- **200+ Defensive Techniques** — Countermeasures with AI semantic search
+- **7 Defensive Tactics** — Model, Harden, Detect, Isolate, Deceive, Evict, Restore
+- **ATT&CK Mappings** — Direct correlation to offensive techniques
+- **Coverage Analysis** — Assess defensive posture against ATT&CK techniques
 
 **Architecture:**
 - **Offline-First** — All queries run against local PostgreSQL + pgvector
@@ -299,7 +321,7 @@ Once connected, just ask naturally:
 | `search_capec_mitigations` | Search security controls and countermeasures | "Find mitigations for injection attacks" |
 | `find_similar_capec_mitigations` | AI semantic search for mitigations | "Input validation to prevent injection" |
 
-### CWE Intelligence (6 tools) 🆕
+### CWE Intelligence (6 tools)
 
 | Tool | Description | Example Query |
 |------|-------------|---------------|
@@ -309,6 +331,16 @@ Once connected, just ask naturally:
 | `search_by_external_mapping` | Search by OWASP/SANS/CERT mappings | "Find OWASP A03:2021 weaknesses" |
 | `get_cwe_hierarchy` | Navigate parent/child weakness relationships | "Show CWE-79 hierarchy" |
 | `find_weaknesses_for_capec` | Cross-framework: CWE weaknesses for CAPEC pattern | "What weaknesses does CAPEC-66 exploit?" |
+
+### D3FEND Intelligence (5 tools) 🆕
+
+| Tool | Description | Example Query |
+|------|-------------|---------------|
+| `search_defenses` | Traditional keyword search for defensive techniques | "Find network isolation defenses" |
+| `find_similar_defenses` | AI semantic search for defenses | "Prevent lateral movement between systems" |
+| `get_defense_details` | Get full technique details + ATT&CK mappings | "Get details for D3-AL" |
+| `get_defenses_for_attack` | **KEY:** Find defenses for ATT&CK technique | "How do I defend against T1059?" |
+| `get_attack_coverage` | Analyze defensive posture vs ATT&CK | "What's my coverage with these D3FEND techniques?" |
 
 ---
 
@@ -330,7 +362,7 @@ Once connected, just ask naturally:
               ▼
 ┌─────────────────────────────────────────┐
 │  CVE MCP Server (FastAPI)               │
-│  - 31 MCP tools                         │
+│  - 36 MCP tools                         │
 │  - Query routing & validation           │
 └─────────────┬───────────────────────────┘
               │
@@ -351,6 +383,7 @@ Once connected, just ask naturally:
 │  - MITRE ATLAS                          │
 │  - MITRE CAPEC                          │
 │  - MITRE CWE                            │
+│  - MITRE D3FEND                         │
 └─────────────────────────────────────────┘
 ```
 
@@ -486,6 +519,7 @@ vulns = await mcp_client.call_tool(
 | **MITRE ATLAS** | Public | Monthly | 200+ techniques, 30+ case studies |
 | **MITRE CAPEC** | Public | Monthly | 550+ patterns, 300+ mitigations |
 | **MITRE CWE** | Public | Monthly | 900+ weaknesses, OWASP/SANS mappings |
+| **MITRE D3FEND** | Public | Quarterly | 200+ defenses, ATT&CK mappings |
 
 All data sources are **free and public** — no API keys required (NVD API key optional for higher rate limits).
 
@@ -573,7 +607,8 @@ So we're open-sourcing it. Real-time vulnerability intelligence shouldn't requir
   - [ATT&CK module](./docs/modules/attack.md) — Semantic search, tools, workflows
   - [ATLAS module](./docs/modules/atlas.md) — AI/ML security, case studies, workflows
   - [CAPEC module](./docs/modules/capec.md) — Attack patterns, mitigations, workflows
-  - [CWE module](./docs/modules/cwe.md) — Software weaknesses, OWASP mappings, workflows 🆕
+  - [CWE module](./docs/modules/cwe.md) — Software weaknesses, OWASP mappings, workflows
+  - [D3FEND module](./docs/modules/d3fend.md) — Defensive countermeasures, ATT&CK correlation 🆕
 - **[docs/architecture/](./docs/architecture/)** — Architecture decision records
   - [Tier 1 offline-first assessment](./docs/architecture/2026-01-30-mcp-offline-first-assessment.md)
   - [Build vs. buy analysis](./docs/architecture/2026-01-30-mcp-build-vs-buy-analysis.md)
@@ -598,6 +633,7 @@ So we're open-sourcing it. Real-time vulnerability intelligence shouldn't requir
 10. ✅ MITRE ATLAS module (AI/ML security, case studies)
 11. ✅ MITRE CAPEC module (attack patterns, mitigations, semantic search)
 12. ✅ MITRE CWE module (software weaknesses, OWASP/SANS mappings, semantic search)
+13. ✅ MITRE D3FEND module (defensive countermeasures, ATT&CK mappings, semantic search)
 
 ---
 
