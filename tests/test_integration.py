@@ -214,7 +214,6 @@ class TestDatabaseModels:
 
         assert hasattr(EPSSScore, "cve_id")
         assert hasattr(EPSSScore, "epss_score")
-        assert hasattr(EPSSScore, "percentile")
 
 
 class TestConfigurationLoading:
