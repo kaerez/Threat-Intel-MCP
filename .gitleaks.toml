@@ -1,0 +1,36 @@
+# CVE-MCP - Secret Detection Configuration
+# https://github.com/gitleaks/gitleaks
+
+title = "CVE-MCP - Secret Detection"
+
+[extend]
+# Use gitleaks default rules as base
+useDefault = true
+
+[allowlist]
+description = "Global allowlist for CVE-MCP project"
+
+# Patterns that are not secrets (test fixtures, documentation examples)
+regexes = [
+    # Test database credentials (not real)
+    '''postgres:postgres''',
+    '''test-token''',
+    '''dev-token''',
+    # Example API keys in documentation
+    '''your-api-key-here''',
+    '''example-key''',
+]
+
+# Paths to exclude from scanning
+paths = [
+    # Test fixtures may contain example credentials
+    '''tests/fixtures/.*''',
+    # Lock files contain hashes, not secrets
+    '''uv\.lock''',
+    '''poetry\.lock''',
+    # Generated documentation
+    '''docs/_build/.*''',
+]
+
+# Commits to ignore (if any historical false positives)
+# commits = []

@@ -1,0 +1,27 @@
+name: Socket Security
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+
+jobs:
+  socket-security:
+    name: Supply chain security
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Socket Security
+        uses: SocketDev/socket-action@v1
+        with:
+          issue-severity: high
+        continue-on-error: true  # Don't block PRs, just report
