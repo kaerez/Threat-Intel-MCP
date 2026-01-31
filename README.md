@@ -7,7 +7,7 @@
 [![Security](https://github.com/Ansvar-Systems/CVE-MCP/actions/workflows/docker-security.yml/badge.svg)](https://github.com/Ansvar-Systems/CVE-MCP/actions/workflows/docker-security.yml)
 [![Database](https://img.shields.io/badge/database-240K%2B%20CVEs-green)](docs/SETUP.md)
 
-Query **240,000+ CVE records**, **700+ ATT&CK techniques**, **140+ threat actors** with semantic similarity search — directly from Claude, Cursor, or any MCP-compatible client.
+Query **240,000+ CVE records**, **700+ ATT&CK techniques**, **200+ ATLAS AI/ML techniques**, **140+ threat actors** with semantic similarity search — directly from Claude, Cursor, or any MCP-compatible client.
 
 ## Modules
 
@@ -28,10 +28,13 @@ This MCP server provides comprehensive threat intelligence through multiple inte
    - **Semantic search**: "Find techniques similar to this incident description"
    - **Dual search modes**: Traditional keyword (<50ms) + AI semantic (<100ms)
 
-3. **MITRE ATLAS (AI/ML)** 📋 Planned
-   - 50+ AI/ML attack techniques
-   - LLM-specific threats
-   - Case studies
+3. **MITRE ATLAS (AI/ML)** ✅ Production
+   - 200+ AI/ML attack techniques with AI-powered semantic search
+   - 14 tactics (ML attack kill chain)
+   - 30+ real-world case studies with technique mappings
+   - ML lifecycle filtering (data collection, training, deployment)
+   - **Semantic search**: "Find techniques similar to this AI attack scenario"
+   - **Dual search modes**: Traditional keyword (<50ms) + AI semantic (<100ms)
 
 4. **CAPEC (Attack Patterns)** 📋 Planned
    - 500+ attack patterns
@@ -52,10 +55,12 @@ This MCP server provides comprehensive threat intelligence through multiple inte
 ## Key Features
 
 - **240,000+ CVE records** — Full NVD dataset with CVSS, KEV, EPSS scoring
-- **700+ ATT&CK techniques** 🆕 — AI-powered semantic search for incident response
-- **140+ threat actor groups** 🆕 — Semantic attribution based on observed TTPs
-- **Dual search modes** 🆕 — Traditional keyword (<50ms) + AI semantic (<100ms)
-- **Cross-domain queries** — CVE ↔ ATT&CK ↔ Threat Actors in single query
+- **700+ ATT&CK techniques** — AI-powered semantic search for incident response
+- **200+ ATLAS techniques** 🆕 — AI/ML adversarial attack techniques with semantic search
+- **30+ AI/ML case studies** 🆕 — Real-world AI security incidents with technique mappings
+- **140+ threat actor groups** — Semantic attribution based on observed TTPs
+- **Dual search modes** — Traditional keyword (<50ms) + AI semantic (<100ms)
+- **Cross-domain queries** — CVE ↔ ATT&CK ↔ ATLAS ↔ Threat Actors in single query
 - **Offline-first** — All queries run against local PostgreSQL + pgvector
 - **Sub-100ms latency** — Indexed database with vector similarity search
 - **Monthly sync** — Automatic updates from NVD, MITRE, CISA, EPSS
@@ -164,9 +169,15 @@ Once connected, just ask naturally:
 - *"Get detection methods for technique T1566.001 (Spearphishing Attachment)"*
 - *"Find all persistence techniques for Windows platforms"*
 
-**Cross-Domain Queries:** 🆕
+**Cross-Domain Queries:**
 - *"Get CVE-2021-44228 details and find ATT&CK techniques for remote code execution exploits"*
 - *"Which threat actors are known to exploit authentication bypass CVEs?"*
+
+**AI/ML Security (ATLAS):** 🆕
+- *"Find techniques similar to: attacker poisoned training data to create backdoor in image classifier"*
+- *"Search for model evasion and adversarial input techniques"*
+- *"Find AI security incidents similar to autonomous vehicle sensor attacks"*
+- *"What ATLAS techniques apply to LLM prompt injection attacks?"*
 
 ---
 
@@ -179,11 +190,17 @@ Once connected, just ask naturally:
 - **15,000+ Exploit References** — Metasploit, ExploitDB, GitHub PoCs
 - **CPE Product Mappings** — Which software versions are vulnerable
 
-**ATT&CK Intelligence:** 🆕
+**ATT&CK Intelligence:**
 - **700+ ATT&CK Techniques** — Enterprise, Mobile, ICS with AI semantic search
 - **140+ Threat Actor Groups** — APT groups with TTP attribution
 - **14 Tactics** — Full kill chain from Initial Access to Impact
 - **700+ Software/Tools** — Malware and tool mappings
+
+**ATLAS Intelligence (AI/ML Security):** 🆕
+- **200+ ATLAS Techniques** — Adversarial ML attacks with AI semantic search
+- **14 ML Tactics** — ML attack kill chain from Reconnaissance to Impact
+- **30+ Case Studies** — Real-world AI/ML security incidents
+- **ML Lifecycle Filtering** — Data collection, training, deployment stages
 
 **Architecture:**
 - **Offline-First** — All queries run against local PostgreSQL + pgvector
@@ -209,7 +226,7 @@ Once connected, just ask naturally:
 | `get_cwe_details` | Get CWE weakness information | "Explain CWE-79" |
 | `batch_search` | Bulk CVE lookup (max 100) | "Get details for these 10 CVEs..." |
 
-### ATT&CK Intelligence (7 tools) 🆕
+### ATT&CK Intelligence (7 tools)
 
 | Tool | Description | Example Query |
 |------|-------------|---------------|
@@ -220,6 +237,16 @@ Once connected, just ask naturally:
 | `search_threat_actors` | Traditional keyword search for threat actors | "Find APT groups using spearphishing" |
 | `find_similar_threat_actors` | AI semantic search for threat actor attribution | "APT targeting finance with custom malware" |
 | `get_group_profile` | Get full threat actor profile + TTPs | "Get profile for APT32 (G0050)" |
+
+### ATLAS Intelligence (5 tools) 🆕
+
+| Tool | Description | Example Query |
+|------|-------------|---------------|
+| `search_atlas_techniques` | Traditional keyword search for AI/ML techniques | "Find data poisoning techniques for training" |
+| `find_similar_atlas_techniques` | AI semantic search for AI/ML attack techniques | "Attacker injected adversarial examples into training data" |
+| `get_atlas_technique_details` | Get full technique details + detection/mitigation | "Get details for AML.T0020" |
+| `search_atlas_case_studies` | Search real-world AI/ML security incidents | "Find case studies about autonomous vehicles" |
+| `find_similar_atlas_case_studies` | AI semantic search for similar AI incidents | "Object detection fooled by adversarial patches" |
 
 ---
 
@@ -241,7 +268,7 @@ Once connected, just ask naturally:
               ▼
 ┌─────────────────────────────────────────┐
 │  CVE MCP Server (FastAPI)               │
-│  - 8 MCP tools                          │
+│  - 20 MCP tools                         │
 │  - Query routing & validation           │
 └─────────────┬───────────────────────────┘
               │
@@ -258,6 +285,8 @@ Once connected, just ask naturally:
 │  - CISA KEV                             │
 │  - FIRST EPSS                           │
 │  - ExploitDB                            │
+│  - MITRE ATT&CK                         │
+│  - MITRE ATLAS                          │
 └─────────────────────────────────────────┘
 ```
 
@@ -389,6 +418,8 @@ vulns = await mcp_client.call_tool(
 | **CISA KEV** | Public | Daily | 1,200+ exploited CVEs |
 | **FIRST EPSS** | Public | Daily | 200,000+ scores |
 | **ExploitDB** | Public | Weekly | 15,000+ exploits |
+| **MITRE ATT&CK** | Public | Monthly | 700+ techniques, 140+ groups |
+| **MITRE ATLAS** | Public | Monthly | 200+ techniques, 30+ case studies |
 
 All data sources are **free and public** — no API keys required (NVD API key optional for higher rate limits).
 
@@ -473,7 +504,8 @@ So we're open-sourcing it. Real-time vulnerability intelligence shouldn't requir
 - **[DESIGN.md](./DESIGN.md)** — Complete design specification
 - **[docs/SETUP.md](./docs/SETUP.md)** — Detailed deployment guide
 - **[docs/modules/](./docs/modules/)** — Module-specific documentation
-  - [ATT&CK module](./docs/modules/attack.md) — Semantic search, tools, workflows 🆕
+  - [ATT&CK module](./docs/modules/attack.md) — Semantic search, tools, workflows
+  - [ATLAS module](./docs/modules/atlas.md) — AI/ML security, case studies, workflows 🆕
 - **[docs/architecture/](./docs/architecture/)** — Architecture decision records
   - [Tier 1 offline-first assessment](./docs/architecture/2026-01-30-mcp-offline-first-assessment.md)
   - [Build vs. buy analysis](./docs/architecture/2026-01-30-mcp-build-vs-buy-analysis.md)
@@ -486,14 +518,16 @@ So we're open-sourcing it. Real-time vulnerability intelligence shouldn't requir
 **Current:** Production Ready ✅
 
 **Completed:**
-1. ✅ Database schema (9 models, full-text search)
-2. ✅ MCP server (8 tools, FastAPI)
-3. ✅ Sync services (NVD, KEV, EPSS, ExploitDB)
+1. ✅ Database schema (12 models, full-text search, vector embeddings)
+2. ✅ MCP server (20 tools, FastAPI)
+3. ✅ Sync services (NVD, KEV, EPSS, ExploitDB, ATT&CK, ATLAS)
 4. ✅ Docker deployment (PostgreSQL, Redis, Celery)
 5. ✅ CI/CD (CodeQL, Semgrep, Trivy, 45 tests)
 6. ✅ Security hardened (CORS, audit logs, TLS)
 7. ✅ Type-safe (strict mypy)
 8. ✅ Integration tests
+9. ✅ MITRE ATT&CK module (semantic search, threat actors)
+10. ✅ MITRE ATLAS module (AI/ML security, case studies)
 
 ---
 
