@@ -30,7 +30,7 @@ Enable in: **Settings → Actions → General**
 
 After enabling the features above, the **Security** tab will appear with:
 - Code scanning alerts (CodeQL, Semgrep)
-- Secret scanning alerts (Gitleaks)
+- Secret scanning alerts (GitHub native)
 - Dependency alerts (Dependabot, Trivy)
 
 ## Workflows Overview
@@ -40,10 +40,11 @@ After enabling the features above, the **Security** tab will appear with:
 | `test.yml` | Tests, linting, type checking | Push to main, PRs |
 | `docker-security.yml` | Container scanning, SBOM | Push to main, PRs, Daily 3 AM |
 | `trivy.yml` | Dependency vulnerabilities | All branches, PRs, Daily 3 AM |
-| `gitleaks.yml` | Secret detection | All branches, PRs |
 | `codeql.yml` | Static analysis | Push to main, PRs, Weekly |
 | `semgrep.yml` | SAST security rules | Push to main, PRs |
 | `publish.yml` | Docker image publishing | Git tags (v*) |
+
+**Note:** Secret scanning is provided by GitHub's native secret scanning (enabled in repository settings), which is more comprehensive than third-party tools.
 
 ## First-Time Setup Checklist
 
@@ -68,11 +69,14 @@ After enabling the features above, the **Security** tab will appear with:
 - **Cause:** GitHub Advanced Security features not enabled
 - **Fix:** Settings → Security → Enable all features listed above
 
-### Gitleaks failing
-- **Cause:** Missing configuration file
-- **Fix:** Already included in repository as `.gitleaks.toml`
+## Repository Visibility
 
-## Private Repository Considerations
+This repository is **public**, which provides:
+- Free GitHub Advanced Security features
+- Free secret scanning and code scanning
+- No license requirements for security tools
+
+## Previous Private Repository Considerations
 
 If this repository is private, you need:
 - GitHub Enterprise license for Advanced Security features
