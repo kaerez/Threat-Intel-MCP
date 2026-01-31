@@ -454,3 +454,66 @@ class FindWeaknessesForCAPECRequest(BaseModel):
     pattern_id: str = Field(
         ..., description="CAPEC pattern ID (e.g., CAPEC-66)", pattern=r"^(CAPEC-)?\d+$"
     )
+
+
+# D3FEND Request Schemas
+
+
+class SearchDefensesRequest(BaseModel):
+    """Request schema for search_defenses tool."""
+
+    query: str = Field(..., min_length=1, description="Full-text search in name/description")
+    tactic: list[str] | None = Field(
+        None, description="Filter by D3FEND tactics (e.g., ['Harden', 'Detect'])"
+    )
+    include_children: bool = Field(False, description="Include child techniques of matches")
+    limit: int = Field(50, ge=1, le=500, description="Max results")
+
+
+class FindSimilarDefensesRequest(BaseModel):
+    """Request schema for find_similar_defenses tool (semantic search)."""
+
+    description: str = Field(
+        ...,
+        min_length=10,
+        max_length=5000,
+        description="Natural language description of defensive need",
+    )
+    min_similarity: float = Field(0.7, ge=0.0, le=1.0, description="Minimum similarity threshold")
+    tactic: list[str] | None = Field(
+        None, description="Filter by D3FEND tactics (e.g., ['Harden', 'Detect'])"
+    )
+    limit: int = Field(10, ge=1, le=100, description="Max results")
+
+
+class GetDefenseDetailsRequest(BaseModel):
+    """Request schema for get_defense_details tool."""
+
+    technique_id: str = Field(
+        ..., description="D3FEND technique ID (e.g., D3-AL)", pattern=r"^(D3-)?[A-Z]{2,}$"
+    )
+
+
+class GetDefensesForAttackRequest(BaseModel):
+    """Request schema for get_defenses_for_attack tool."""
+
+    attack_technique_id: str = Field(
+        ...,
+        description="ATT&CK technique ID (e.g., T1059 or T1059.001)",
+        pattern=r"^T?\d{4}(\.\d{3})?$",
+    )
+    include_subtechniques: bool = Field(
+        True, description="Also find defenses for subtechniques (T1059.001, etc.)"
+    )
+    relationship_type: list[str] | None = Field(
+        None, description="Filter by relationship type (e.g., ['counters'])"
+    )
+
+
+class GetAttackCoverageRequest(BaseModel):
+    """Request schema for get_attack_coverage tool."""
+
+    technique_ids: list[str] = Field(
+        ..., description="List of D3FEND technique IDs to analyze coverage"
+    )
+    show_gaps: bool = Field(True, description="Include list of uncovered ATT&CK techniques")

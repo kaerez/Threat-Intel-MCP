@@ -14,6 +14,15 @@ from cve_mcp.models.cwe import (
     CWEWeakness,
     CWEWeaknessCategory,
 )
+from cve_mcp.models.d3fend import (
+    D3FENDArtifact,
+    D3FENDArtifactRelationshipType,
+    D3FENDRelationshipType,
+    D3FENDTactic,
+    D3FENDTechnique,
+    D3FENDTechniqueArtifact,
+    D3FENDTechniqueAttackMapping,
+)
 from cve_mcp.models.exploit import ExploitReference
 from cve_mcp.models.intelligence import CISAKEV, EPSSScore
 from cve_mcp.models.metadata import QueryAuditLog, SyncMetadata
@@ -32,6 +41,13 @@ __all__ = [
     "CWEView",
     "CWEWeakness",
     "CWEWeaknessCategory",
+    "D3FENDArtifact",
+    "D3FENDArtifactRelationshipType",
+    "D3FENDRelationshipType",
+    "D3FENDTactic",
+    "D3FENDTechnique",
+    "D3FENDTechniqueArtifact",
+    "D3FENDTechniqueAttackMapping",
     "SyncMetadata",
     "QueryAuditLog",
 ]

@@ -78,10 +78,10 @@ class TestMCPToolDefinitions:
     """Test MCP tool schemas are properly defined."""
 
     def test_all_tools_defined(self):
-        """All 31 MCP tools are defined (8 CVE + 7 ATT&CK + 5 ATLAS + 5 CAPEC + 6 CWE)."""
+        """All 36 MCP tools are defined (8 CVE + 7 ATT&CK + 5 ATLAS + 5 CAPEC + 6 CWE + 5 D3FEND)."""
         from cve_mcp.api.tools import MCP_TOOLS
 
-        assert len(MCP_TOOLS) == 31
+        assert len(MCP_TOOLS) == 36
 
         tool_names = {tool.name for tool in MCP_TOOLS}
         expected_cve_tools = {
@@ -125,12 +125,20 @@ class TestMCPToolDefinitions:
             "get_cwe_hierarchy",
             "find_weaknesses_for_capec",
         }
+        expected_d3fend_tools = {
+            "search_defenses",
+            "find_similar_defenses",
+            "get_defense_details",
+            "get_defenses_for_attack",
+            "get_attack_coverage",
+        }
         expected_tools = (
             expected_cve_tools
             | expected_attack_tools
             | expected_atlas_tools
             | expected_capec_tools
             | expected_cwe_tools
+            | expected_d3fend_tools
         )
         assert tool_names == expected_tools
 
