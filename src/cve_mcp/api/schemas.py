@@ -203,7 +203,7 @@ class FindSimilarTechniquesRequest(BaseModel):
         ...,
         min_length=10,
         max_length=5000,
-        description="Natural language description of attack scenario"
+        description="Natural language description of attack scenario",
     )
     min_similarity: float = Field(0.7, ge=0.0, le=1.0, description="Minimum similarity threshold")
     tactics: list[str] | None = Field(None, description="Filter by tactics")
@@ -239,7 +239,7 @@ class FindSimilarThreatActorsRequest(BaseModel):
         ...,
         min_length=10,
         max_length=5000,
-        description="Natural language description of threat actor or activity"
+        description="Natural language description of threat actor or activity",
     )
     min_similarity: float = Field(0.7, ge=0.0, le=1.0, description="Minimum similarity threshold")
     limit: int = Field(10, ge=1, le=100, description="Max results")
@@ -276,16 +276,12 @@ class FindSimilarATLASTechniquesRequest(BaseModel):
         ...,
         min_length=10,
         max_length=5000,
-        description="Natural language description of AI/ML attack scenario"
+        description="Natural language description of AI/ML attack scenario",
     )
     min_similarity: float = Field(0.7, ge=0.0, le=1.0, description="Minimum similarity threshold")
     tactics: list[str] | None = Field(None, description="Filter by tactics")
-    ml_lifecycle_stage: str | None = Field(
-        None, description="Filter by ML lifecycle stage"
-    )
-    ai_system_type: list[str] | None = Field(
-        None, description="Filter by AI system type"
-    )
+    ml_lifecycle_stage: str | None = Field(None, description="Filter by ML lifecycle stage")
+    ai_system_type: list[str] | None = Field(None, description="Filter by AI system type")
     active_only: bool = Field(True, description="Exclude deprecated/revoked techniques")
     limit: int = Field(10, ge=1, le=100, description="Max results")
 
@@ -294,9 +290,7 @@ class GetATLASTechniqueDetailsRequest(BaseModel):
     """Request schema for get_atlas_technique_details tool."""
 
     technique_id: str = Field(
-        ...,
-        description="ATLAS technique ID (e.g., AML.T0001)",
-        pattern=r"^AML\.T\d{4}$"
+        ..., description="ATLAS technique ID (e.g., AML.T0001)", pattern=r"^AML\.T\d{4}$"
     )
 
 
@@ -315,7 +309,80 @@ class FindSimilarATLASCaseStudiesRequest(BaseModel):
         ...,
         min_length=10,
         max_length=5000,
-        description="Natural language description of AI/ML incident or scenario"
+        description="Natural language description of AI/ML incident or scenario",
     )
     min_similarity: float = Field(0.7, ge=0.0, le=1.0, description="Minimum similarity threshold")
+    limit: int = Field(10, ge=1, le=100, description="Max results")
+
+
+# CAPEC Request Schemas
+
+
+class SearchCAPECPatternsRequest(BaseModel):
+    """Request schema for search_capec_patterns tool."""
+
+    query: str | None = Field(None, description="Full-text search in name/description")
+    abstraction: list[str] | None = Field(
+        None, description="Filter by abstraction levels (Meta, Standard, Detailed)"
+    )
+    likelihood: str | None = Field(
+        None, description="Filter by attack likelihood (High, Medium, Low)"
+    )
+    severity: str | None = Field(None, description="Filter by typical severity (High, Medium, Low)")
+    related_cwe: list[str] | None = Field(
+        None, description="Filter by related CWE IDs (e.g., ['CWE-79', 'CWE-89'])"
+    )
+    active_only: bool = Field(True, description="Exclude deprecated patterns")
+    limit: int = Field(50, ge=1, le=500, description="Max results")
+
+
+class FindSimilarCAPECPatternsRequest(BaseModel):
+    """Request schema for find_similar_capec_patterns tool (semantic search)."""
+
+    description: str = Field(
+        ...,
+        min_length=10,
+        max_length=5000,
+        description="Natural language description of attack scenario",
+    )
+    min_similarity: float = Field(0.7, ge=0.0, le=1.0, description="Minimum similarity threshold")
+    abstraction: list[str] | None = Field(None, description="Filter by abstraction levels")
+    likelihood: str | None = Field(None, description="Filter by attack likelihood")
+    severity: str | None = Field(None, description="Filter by typical severity")
+    active_only: bool = Field(True, description="Exclude deprecated patterns")
+    limit: int = Field(10, ge=1, le=100, description="Max results")
+
+
+class GetCAPECPatternDetailsRequest(BaseModel):
+    """Request schema for get_capec_pattern_details tool."""
+
+    pattern_id: str = Field(
+        ..., description="CAPEC pattern ID (e.g., CAPEC-66)", pattern=r"^CAPEC-\d+$"
+    )
+
+
+class SearchCAPECMitigationsRequest(BaseModel):
+    """Request schema for search_capec_mitigations tool."""
+
+    query: str | None = Field(None, description="Full-text search in name/description")
+    effectiveness: str | None = Field(
+        None, description="Filter by effectiveness (High, Medium, Low)"
+    )
+    patterns: list[str] | None = Field(
+        None, description="Filter by patterns mitigated (e.g., ['CAPEC-66'])"
+    )
+    limit: int = Field(50, ge=1, le=500, description="Max results")
+
+
+class FindSimilarCAPECMitigationsRequest(BaseModel):
+    """Request schema for find_similar_capec_mitigations tool (semantic search)."""
+
+    description: str = Field(
+        ...,
+        min_length=10,
+        max_length=5000,
+        description="Natural language description of mitigation need or security control",
+    )
+    min_similarity: float = Field(0.7, ge=0.0, le=1.0, description="Minimum similarity threshold")
+    effectiveness: str | None = Field(None, description="Filter by effectiveness")
     limit: int = Field(10, ge=1, le=100, description="Max results")

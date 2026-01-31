@@ -6,7 +6,6 @@ Focuses on useful integration tests that verify production behavior.
 """
 
 import pytest
-
 from cve_mcp.services.database import DatabaseService
 
 
@@ -79,10 +78,10 @@ class TestMCPToolDefinitions:
     """Test MCP tool schemas are properly defined."""
 
     def test_all_tools_defined(self):
-        """All 20 MCP tools are defined (8 CVE + 7 ATT&CK + 5 ATLAS)."""
+        """All 25 MCP tools are defined (8 CVE + 7 ATT&CK + 5 ATLAS + 5 CAPEC)."""
         from cve_mcp.api.tools import MCP_TOOLS
 
-        assert len(MCP_TOOLS) == 20
+        assert len(MCP_TOOLS) == 25
 
         tool_names = {tool.name for tool in MCP_TOOLS}
         expected_cve_tools = {
@@ -111,7 +110,16 @@ class TestMCPToolDefinitions:
             "search_atlas_case_studies",
             "find_similar_atlas_case_studies",
         }
-        expected_tools = expected_cve_tools | expected_attack_tools | expected_atlas_tools
+        expected_capec_tools = {
+            "search_capec_patterns",
+            "find_similar_capec_patterns",
+            "get_capec_pattern_details",
+            "search_capec_mitigations",
+            "find_similar_capec_mitigations",
+        }
+        expected_tools = (
+            expected_cve_tools | expected_attack_tools | expected_atlas_tools | expected_capec_tools
+        )
         assert tool_names == expected_tools
 
     def test_tools_have_required_fields(self):
@@ -164,21 +172,15 @@ class TestAPISchemas:
         from cve_mcp.api.schemas import SearchCVERequest
 
         # Valid request
-        request = SearchCVERequest(
-            keyword="apache",
-            cvss_min=7.0,
-            cvss_max=10.0,
-            limit=50
-        )
+        request = SearchCVERequest(keyword="apache", cvss_min=7.0, cvss_max=10.0, limit=50)
         assert request.keyword == "apache"
         assert request.cvss_min == 7.0
         assert request.limit == 50
 
     def test_search_cve_request_cvss_validation(self):
         """CVSS scores must be between 0 and 10."""
-        from pydantic import ValidationError
-
         from cve_mcp.api.schemas import SearchCVERequest
+        from pydantic import ValidationError
 
         # Invalid: CVSS > 10
         with pytest.raises(ValidationError):
@@ -190,9 +192,8 @@ class TestAPISchemas:
 
     def test_cve_id_pattern_validation(self):
         """CVE ID must match CVE-YYYY-NNNNN pattern."""
-        from pydantic import ValidationError
-
         from cve_mcp.api.schemas import GetCVEDetailsRequest
+        from pydantic import ValidationError
 
         # Valid CVE ID
         request = GetCVEDetailsRequest(cve_id="CVE-2021-44228")

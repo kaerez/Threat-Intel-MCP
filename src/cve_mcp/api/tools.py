@@ -9,9 +9,12 @@ from cve_mcp.api.schemas import (
     CheckKEVStatusRequest,
     FindSimilarATLASCaseStudiesRequest,
     FindSimilarATLASTechniquesRequest,
+    FindSimilarCAPECMitigationsRequest,
+    FindSimilarCAPECPatternsRequest,
     FindSimilarTechniquesRequest,
     FindSimilarThreatActorsRequest,
     GetATLASTechniqueDetailsRequest,
+    GetCAPECPatternDetailsRequest,
     GetCVEDetailsRequest,
     GetCWEDetailsRequest,
     GetEPSSScoreRequest,
@@ -23,12 +26,14 @@ from cve_mcp.api.schemas import (
     SearchATLASCaseStudiesRequest,
     SearchATLASTechniquesRequest,
     SearchByProductRequest,
+    SearchCAPECMitigationsRequest,
+    SearchCAPECPatternsRequest,
     SearchCVERequest,
     SearchTechniquesRequest,
     SearchThreatActorsRequest,
 )
 from cve_mcp.config import get_settings
-from cve_mcp.services import atlas_queries, attack_queries
+from cve_mcp.services import atlas_queries, attack_queries, capec_queries
 from cve_mcp.services.cache import cache_service
 from cve_mcp.services.database import db_service
 
@@ -58,7 +63,10 @@ MCP_TOOLS: list[MCPToolDefinition] = [
                 },
                 "severity": {
                     "type": "array",
-                    "items": {"type": "string", "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE"]},
+                    "items": {
+                        "type": "string",
+                        "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE"],
+                    },
                     "description": "Severity levels to include",
                 },
                 "has_kev": {
@@ -593,6 +601,182 @@ MCP_TOOLS: list[MCPToolDefinition] = [
                     "maximum": 1.0,
                     "default": 0.7,
                     "description": "Minimum similarity threshold (0-1)",
+                },
+                "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 10,
+                    "description": "Max results",
+                },
+            },
+        },
+    ),
+    # CAPEC Tools
+    MCPToolDefinition(
+        name="search_capec_patterns",
+        description="Search MITRE CAPEC attack patterns using traditional keyword and filter-based search. Filter by abstraction level, attack likelihood, and severity. CAPEC provides detailed descriptions of common attack patterns used by adversaries.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Full-text search in pattern name/description",
+                },
+                "abstraction": {
+                    "type": "array",
+                    "items": {"type": "string", "enum": ["Meta", "Standard", "Detailed"]},
+                    "description": "Filter by abstraction levels (Meta=high-level, Standard=middle, Detailed=specific)",
+                },
+                "likelihood": {
+                    "type": "string",
+                    "enum": ["High", "Medium", "Low"],
+                    "description": "Filter by attack likelihood",
+                },
+                "severity": {
+                    "type": "string",
+                    "enum": ["High", "Medium", "Low"],
+                    "description": "Filter by typical severity",
+                },
+                "related_cwe": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Filter by related CWE IDs (e.g., ['CWE-79', 'CWE-89'])",
+                },
+                "active_only": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "Exclude deprecated patterns",
+                },
+                "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 500,
+                    "default": 50,
+                    "description": "Max results",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="find_similar_capec_patterns",
+        description="Find MITRE CAPEC attack patterns using AI-powered semantic similarity search. Describe an attack scenario in natural language and get matching patterns with similarity scores. Uses AI embeddings for intelligent matching. Example: 'Attacker manipulates input fields to inject SQL commands and extract database contents'",
+        inputSchema={
+            "type": "object",
+            "required": ["description"],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 5000,
+                    "description": "Natural language description of attack scenario",
+                },
+                "min_similarity": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "maximum": 1.0,
+                    "default": 0.7,
+                    "description": "Minimum similarity threshold (0-1)",
+                },
+                "abstraction": {
+                    "type": "array",
+                    "items": {"type": "string", "enum": ["Meta", "Standard", "Detailed"]},
+                    "description": "Filter by abstraction levels",
+                },
+                "likelihood": {
+                    "type": "string",
+                    "enum": ["High", "Medium", "Low"],
+                    "description": "Filter by attack likelihood",
+                },
+                "severity": {
+                    "type": "string",
+                    "enum": ["High", "Medium", "Low"],
+                    "description": "Filter by typical severity",
+                },
+                "active_only": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "Exclude deprecated patterns",
+                },
+                "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 10,
+                    "description": "Max results",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="get_capec_pattern_details",
+        description="Get complete details for a specific MITRE CAPEC attack pattern including prerequisites, execution flow, consequences, mitigations, and related weaknesses (CWEs).",
+        inputSchema={
+            "type": "object",
+            "required": ["pattern_id"],
+            "properties": {
+                "pattern_id": {
+                    "type": "string",
+                    "pattern": "^CAPEC-\\d+$",
+                    "description": "CAPEC pattern ID (e.g., CAPEC-66)",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="search_capec_mitigations",
+        description="Search MITRE CAPEC mitigations (security controls) using traditional keyword search. Filter by effectiveness and patterns mitigated.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Full-text search in mitigation name/description",
+                },
+                "effectiveness": {
+                    "type": "string",
+                    "enum": ["High", "Medium", "Low"],
+                    "description": "Filter by effectiveness level",
+                },
+                "patterns": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Filter by patterns mitigated (e.g., ['CAPEC-66'])",
+                },
+                "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 500,
+                    "default": 50,
+                    "description": "Max results",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="find_similar_capec_mitigations",
+        description="Find MITRE CAPEC mitigations using AI-powered semantic similarity search. Describe what kind of security control or mitigation you need and get matching mitigations with similarity scores. Example: 'Input validation to prevent injection attacks'",
+        inputSchema={
+            "type": "object",
+            "required": ["description"],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 5000,
+                    "description": "Natural language description of mitigation need or security control",
+                },
+                "min_similarity": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "maximum": 1.0,
+                    "default": 0.7,
+                    "description": "Minimum similarity threshold (0-1)",
+                },
+                "effectiveness": {
+                    "type": "string",
+                    "enum": ["High", "Medium", "Low"],
+                    "description": "Filter by effectiveness level",
                 },
                 "limit": {
                     "type": "integer",
@@ -1148,6 +1332,140 @@ async def handle_find_similar_atlas_case_studies(params: dict[str, Any]) -> dict
     }
 
 
+# CAPEC Tool Handlers
+
+
+async def handle_search_capec_patterns(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle search_capec_patterns tool call."""
+    start_time = time.time()
+    request = SearchCAPECPatternsRequest(**params)
+
+    async with db_service.session() as session:
+        patterns, total_count = await capec_queries.search_patterns(
+            session,
+            query=request.query,
+            abstraction=request.abstraction,
+            likelihood=request.likelihood,
+            severity=request.severity,
+            related_cwe=request.related_cwe,
+            active_only=request.active_only,
+            limit=request.limit,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": {
+            "patterns": patterns,
+            "total_results": total_count,
+            "returned_results": len(patterns),
+        },
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_find_similar_capec_patterns(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle find_similar_capec_patterns tool call (semantic search)."""
+    start_time = time.time()
+    request = FindSimilarCAPECPatternsRequest(**params)
+
+    async with db_service.session() as session:
+        patterns = await capec_queries.find_similar_patterns(
+            session,
+            description=request.description,
+            min_similarity=request.min_similarity,
+            abstraction=request.abstraction,
+            likelihood=request.likelihood,
+            severity=request.severity,
+            active_only=request.active_only,
+            limit=request.limit,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": {
+            "patterns": patterns,
+            "returned_results": len(patterns),
+            "query_embedding_generated": True,
+            "min_similarity": request.min_similarity,
+        },
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_get_capec_pattern_details(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle get_capec_pattern_details tool call."""
+    start_time = time.time()
+    request = GetCAPECPatternDetailsRequest(**params)
+
+    async with db_service.session() as session:
+        data = await capec_queries.get_pattern_details(
+            session,
+            pattern_id=request.pattern_id,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": data,
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_search_capec_mitigations(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle search_capec_mitigations tool call."""
+    start_time = time.time()
+    request = SearchCAPECMitigationsRequest(**params)
+
+    async with db_service.session() as session:
+        mitigations, total_count = await capec_queries.search_mitigations(
+            session,
+            query=request.query,
+            effectiveness=request.effectiveness,
+            patterns=request.patterns,
+            limit=request.limit,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": {
+            "mitigations": mitigations,
+            "total_results": total_count,
+            "returned_results": len(mitigations),
+        },
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_find_similar_capec_mitigations(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle find_similar_capec_mitigations tool call (semantic search)."""
+    start_time = time.time()
+    request = FindSimilarCAPECMitigationsRequest(**params)
+
+    async with db_service.session() as session:
+        mitigations = await capec_queries.find_similar_mitigations(
+            session,
+            description=request.description,
+            min_similarity=request.min_similarity,
+            effectiveness=request.effectiveness,
+            limit=request.limit,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": {
+            "mitigations": mitigations,
+            "returned_results": len(mitigations),
+            "query_embedding_generated": True,
+            "min_similarity": request.min_similarity,
+        },
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
 # Tool handler mapping
 TOOL_HANDLERS = {
     "search_cve": handle_search_cve,
@@ -1172,6 +1490,12 @@ TOOL_HANDLERS = {
     "get_atlas_technique_details": handle_get_atlas_technique_details,
     "search_atlas_case_studies": handle_search_atlas_case_studies,
     "find_similar_atlas_case_studies": handle_find_similar_atlas_case_studies,
+    # CAPEC handlers
+    "search_capec_patterns": handle_search_capec_patterns,
+    "find_similar_capec_patterns": handle_find_similar_capec_patterns,
+    "get_capec_pattern_details": handle_get_capec_pattern_details,
+    "search_capec_mitigations": handle_search_capec_mitigations,
+    "find_similar_capec_mitigations": handle_find_similar_capec_mitigations,
 }
 
 
