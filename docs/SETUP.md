@@ -36,8 +36,8 @@ Complete guide for deploying and configuring the CVE + Exploit Intelligence MCP 
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/Ansvar-Systems/CVE-MCP.git
-cd CVE-MCP
+git clone https://github.com/Ansvar-Systems/Threat-Intel-MCP.git
+cd Threat-Intel-MCP
 ```
 
 ### 2. Configure Environment
@@ -497,7 +497,7 @@ For environments without internet access:
 ## Support
 
 For issues or questions:
-- GitHub Issues: https://github.com/Ansvar-Systems/CVE-MCP/issues
+- GitHub Issues: https://github.com/Ansvar-Systems/Threat-Intel-MCP/issues
 - Internal Ansvar: Platform Engineering team
 
 ## Next Steps

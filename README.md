@@ -3,8 +3,8 @@
 **Offline-first threat intelligence with semantic search for AI assistants.**
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Tests](https://github.com/Ansvar-Systems/CVE-MCP/actions/workflows/test.yml/badge.svg)](https://github.com/Ansvar-Systems/CVE-MCP/actions/workflows/test.yml)
-[![Security](https://github.com/Ansvar-Systems/CVE-MCP/actions/workflows/docker-security.yml/badge.svg)](https://github.com/Ansvar-Systems/CVE-MCP/actions/workflows/docker-security.yml)
+[![Tests](https://github.com/Ansvar-Systems/Threat-Intel-MCP/actions/workflows/test.yml/badge.svg)](https://github.com/Ansvar-Systems/Threat-Intel-MCP/actions/workflows/test.yml)
+[![Security](https://github.com/Ansvar-Systems/Threat-Intel-MCP/actions/workflows/docker-security.yml/badge.svg)](https://github.com/Ansvar-Systems/Threat-Intel-MCP/actions/workflows/docker-security.yml)
 [![Database](https://img.shields.io/badge/database-240K%2B%20CVEs-green)](docs/SETUP.md)
 
 Query **240,000+ CVE records**, **700+ ATT&CK techniques**, **200+ D3FEND defenses**, **200+ ATLAS AI/ML techniques**, **550+ CAPEC attack patterns**, **140+ threat actors** with semantic similarity search — directly from Claude, Cursor, or any MCP-compatible client.
@@ -96,8 +96,8 @@ Built by [Ansvar Systems](https://ansvar.eu) — Stockholm, Sweden
 **Step 1: Deploy Server**
 
 ```bash
-git clone https://github.com/Ansvar-Systems/CVE-MCP.git
-cd CVE-MCP
+git clone https://github.com/Ansvar-Systems/Threat-Intel-MCP.git
+cd Threat-Intel-MCP
 cp .env.example .env
 docker-compose up -d
 

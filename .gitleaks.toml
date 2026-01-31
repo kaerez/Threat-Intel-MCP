@@ -1,7 +1,7 @@
-# CVE-MCP - Secret Detection Configuration
+# Threat Intelligence MCP - Secret Detection Configuration
 # https://github.com/gitleaks/gitleaks
 
-title = "CVE-MCP - Secret Detection"
+title = "Threat Intelligence MCP - Secret Detection"
 
 [extend]
 # Use gitleaks default rules as base
