@@ -418,6 +418,7 @@ async def handle_search_by_product(params: dict[str, Any]) -> dict[str, Any]:
             product_name=request.product_name,
             vendor=request.vendor,
             version=request.version,
+            version_operator=request.version_operator,
             limit=request.limit,
         )
 

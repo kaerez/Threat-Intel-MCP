@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Any
 
+from packaging.version import Version, InvalidVersion
 from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -310,12 +311,50 @@ class DatabaseService:
             "interpretation": interpretation,
         }
 
+    def _compare_versions(self, cpe_version: str | None, target_version: str, operator: str) -> bool:
+        """Compare semantic versions using the specified operator.
+
+        Args:
+            cpe_version: The version from the CPE mapping (can be None or empty)
+            target_version: The version to compare against
+            operator: One of 'eq', 'lt', 'lte', 'gt', 'gte'
+
+        Returns:
+            True if the comparison matches, False otherwise
+        """
+        if not cpe_version:
+            return False
+
+        try:
+            cpe_ver = Version(cpe_version)
+            target_ver = Version(target_version)
+        except InvalidVersion:
+            # If version parsing fails, fall back to string comparison
+            if operator == "eq":
+                return cpe_version == target_version
+            # For other operators with invalid versions, return False
+            return False
+
+        if operator == "eq":
+            return cpe_ver == target_ver
+        elif operator == "lt":
+            return cpe_ver < target_ver
+        elif operator == "lte":
+            return cpe_ver <= target_ver
+        elif operator == "gt":
+            return cpe_ver > target_ver
+        elif operator == "gte":
+            return cpe_ver >= target_ver
+        else:
+            return False
+
     async def search_by_product(
         self,
         session: AsyncSession,
         product_name: str,
         vendor: str | None = None,
         version: str | None = None,
+        version_operator: str | None = None,
         limit: int = 50,
     ) -> tuple[list[dict[str, Any]], int]:
         """Find CVEs affecting a specific product."""
@@ -341,21 +380,38 @@ class DatabaseService:
         if vendor:
             query = query.where(CVECPEMapping.cpe_vendor.ilike(f"%{vendor}%"))
 
-        if version:
-            # Simple version matching - could be enhanced
+        if version and not version_operator:
+            # Simple exact version matching when no operator specified (backward compatibility)
             query = query.where(CVECPEMapping.cpe_version == version)
 
-        # Get count
-        count_query = select(func.count(func.distinct(CVE.cve_id))).select_from(query.subquery())
-        total_result = await session.execute(count_query)
-        total_count = total_result.scalar() or 0
-
-        # Apply limit and ordering
+        # Apply ordering (but not limit yet if we need version filtering)
         query = query.order_by(CVE.cvss_v3_score.desc().nulls_last())
-        query = query.limit(limit)
 
-        result = await session.execute(query)
-        rows = result.all()
+        # If version operator is specified, we need to filter in Python after fetching
+        if version and version_operator:
+            # Fetch all results for version comparison
+            result = await session.execute(query)
+            all_rows = result.all()
+
+            # Filter by version comparison
+            filtered_rows = []
+            for row in all_rows:
+                if self._compare_versions(row.cpe_version, version, version_operator):
+                    filtered_rows.append(row)
+
+            rows = filtered_rows[:limit]
+            total_count = len(filtered_rows)
+        else:
+            # Original path: apply limit at SQL level
+            # Get count
+            count_query = select(func.count(func.distinct(CVE.cve_id))).select_from(query.subquery())
+            total_result = await session.execute(count_query)
+            total_count = total_result.scalar() or 0
+
+            # Apply limit
+            query = query.limit(limit)
+            result = await session.execute(query)
+            rows = result.all()
 
         # Group by CVE
         cves_dict: dict[str, dict] = {}
