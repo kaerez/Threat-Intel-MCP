@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     mcp_host: str = "0.0.0.0"
     mcp_transport: str = "http"  # 'http' or 'stdio'
     log_level: str = "INFO"
+    cors_origins: str = "http://localhost,http://localhost:*,http://127.0.0.1,http://127.0.0.1:*"
 
     # Sync Configuration
     sync_window_start: str = "02:00"

@@ -46,10 +46,12 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # CORS middleware
+    # CORS middleware - defaults to localhost for security
+    # Set CORS_ORIGINS env var to customize (comma-separated list)
+    cors_origins = settings.cors_origins.split(",")
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
