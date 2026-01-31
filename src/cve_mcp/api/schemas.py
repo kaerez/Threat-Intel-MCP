@@ -386,3 +386,71 @@ class FindSimilarCAPECMitigationsRequest(BaseModel):
     min_similarity: float = Field(0.7, ge=0.0, le=1.0, description="Minimum similarity threshold")
     effectiveness: str | None = Field(None, description="Filter by effectiveness")
     limit: int = Field(10, ge=1, le=100, description="Max results")
+
+
+# CWE Request Schemas
+
+
+class SearchCWEWeaknessesRequest(BaseModel):
+    """Request schema for search_cwe_weaknesses tool."""
+
+    query: str | None = Field(None, description="Full-text search in name/description")
+    abstraction: list[str] | None = Field(
+        None, description="Filter by abstraction levels (Pillar, Class, Base, Variant, Compound)"
+    )
+    include_children: bool = Field(False, description="Include child weaknesses of matches")
+    active_only: bool = Field(True, description="Exclude deprecated weaknesses")
+    limit: int = Field(50, ge=1, le=500, description="Max results")
+
+
+class FindSimilarCWEWeaknessesRequest(BaseModel):
+    """Request schema for find_similar_cwe_weaknesses tool (semantic search)."""
+
+    description: str = Field(
+        ...,
+        min_length=10,
+        max_length=5000,
+        description="Natural language description of weakness or vulnerability",
+    )
+    min_similarity: float = Field(0.7, ge=0.0, le=1.0, description="Minimum similarity threshold")
+    abstraction: list[str] | None = Field(None, description="Filter by abstraction levels")
+    active_only: bool = Field(True, description="Exclude deprecated weaknesses")
+    limit: int = Field(10, ge=1, le=100, description="Max results")
+
+
+class GetCWEWeaknessDetailsRequest(BaseModel):
+    """Request schema for get_cwe_weakness_details tool."""
+
+    weakness_id: str = Field(
+        ..., description="CWE weakness ID (e.g., CWE-79 or 79)", pattern=r"^(CWE-)?\d+$"
+    )
+
+
+class SearchByExternalMappingRequest(BaseModel):
+    """Request schema for search_by_external_mapping tool."""
+
+    source: str = Field(
+        ..., description="External source name (e.g., 'OWASP Top Ten 2021', 'SANS Top 25')"
+    )
+    external_id: str | None = Field(None, description="External ID filter (e.g., 'A03:2021')")
+    limit: int = Field(50, ge=1, le=500, description="Max results")
+
+
+class GetCWEHierarchyRequest(BaseModel):
+    """Request schema for get_cwe_hierarchy tool."""
+
+    weakness_id: str = Field(
+        ..., description="CWE weakness ID (e.g., CWE-79 or 79)", pattern=r"^(CWE-)?\d+$"
+    )
+    direction: str = Field(
+        "both", description="Hierarchy direction: 'parents', 'children', or 'both'"
+    )
+    depth: int = Field(3, ge=1, le=10, description="Maximum depth to traverse")
+
+
+class FindWeaknessesForCAPECRequest(BaseModel):
+    """Request schema for find_weaknesses_for_capec tool."""
+
+    pattern_id: str = Field(
+        ..., description="CAPEC pattern ID (e.g., CAPEC-66)", pattern=r"^(CAPEC-)?\d+$"
+    )

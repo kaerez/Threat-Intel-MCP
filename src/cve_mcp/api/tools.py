@@ -11,12 +11,16 @@ from cve_mcp.api.schemas import (
     FindSimilarATLASTechniquesRequest,
     FindSimilarCAPECMitigationsRequest,
     FindSimilarCAPECPatternsRequest,
+    FindSimilarCWEWeaknessesRequest,
     FindSimilarTechniquesRequest,
     FindSimilarThreatActorsRequest,
+    FindWeaknessesForCAPECRequest,
     GetATLASTechniqueDetailsRequest,
     GetCAPECPatternDetailsRequest,
     GetCVEDetailsRequest,
     GetCWEDetailsRequest,
+    GetCWEHierarchyRequest,
+    GetCWEWeaknessDetailsRequest,
     GetEPSSScoreRequest,
     GetExploitsRequest,
     GetGroupProfileRequest,
@@ -25,15 +29,17 @@ from cve_mcp.api.schemas import (
     MCPToolDefinition,
     SearchATLASCaseStudiesRequest,
     SearchATLASTechniquesRequest,
+    SearchByExternalMappingRequest,
     SearchByProductRequest,
     SearchCAPECMitigationsRequest,
     SearchCAPECPatternsRequest,
     SearchCVERequest,
+    SearchCWEWeaknessesRequest,
     SearchTechniquesRequest,
     SearchThreatActorsRequest,
 )
 from cve_mcp.config import get_settings
-from cve_mcp.services import atlas_queries, attack_queries, capec_queries
+from cve_mcp.services import atlas_queries, attack_queries, capec_queries, cwe_queries
 from cve_mcp.services.cache import cache_service
 from cve_mcp.services.database import db_service
 
@@ -788,6 +794,178 @@ MCP_TOOLS: list[MCPToolDefinition] = [
             },
         },
     ),
+    # CWE Tools
+    MCPToolDefinition(
+        name="search_cwe_weaknesses",
+        description="Search MITRE CWE weaknesses using traditional keyword and filter-based search. Filter by abstraction level (Pillar, Class, Base, Variant, Compound) and optionally include child weaknesses in results. CWE provides a comprehensive catalog of software and hardware weakness types.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Full-text search in weakness name/description",
+                },
+                "abstraction": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": ["Pillar", "Class", "Base", "Variant", "Compound"],
+                    },
+                    "description": "Filter by abstraction levels (Pillar=highest, Variant=most specific)",
+                },
+                "include_children": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": "Include child weaknesses of matched results",
+                },
+                "active_only": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "Exclude deprecated weaknesses",
+                },
+                "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 500,
+                    "default": 50,
+                    "description": "Max results",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="find_similar_cwe_weaknesses",
+        description="Find MITRE CWE weaknesses using AI-powered semantic similarity search. Describe a vulnerability or coding issue in natural language and get matching weaknesses with similarity scores. Uses AI embeddings for intelligent matching. Example: 'User input is directly used in SQL queries without validation'",
+        inputSchema={
+            "type": "object",
+            "required": ["description"],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 5000,
+                    "description": "Natural language description of weakness or vulnerability",
+                },
+                "min_similarity": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "maximum": 1.0,
+                    "default": 0.7,
+                    "description": "Minimum similarity threshold (0-1)",
+                },
+                "abstraction": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": ["Pillar", "Class", "Base", "Variant", "Compound"],
+                    },
+                    "description": "Filter by abstraction levels",
+                },
+                "active_only": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "Exclude deprecated weaknesses",
+                },
+                "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 10,
+                    "description": "Max results",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="get_cwe_weakness_details",
+        description="Get complete details for a specific CWE weakness including common consequences, potential mitigations, detection methods, external mappings (OWASP, SANS), and relationships to other weaknesses.",
+        inputSchema={
+            "type": "object",
+            "required": ["weakness_id"],
+            "properties": {
+                "weakness_id": {
+                    "type": "string",
+                    "pattern": "^(CWE-)?\\d+$",
+                    "description": "CWE weakness ID (e.g., CWE-79 or 79)",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="search_by_external_mapping",
+        description="Search CWE weaknesses by external standard mappings like OWASP Top Ten or SANS Top 25. Useful for compliance and prioritization based on industry standards.",
+        inputSchema={
+            "type": "object",
+            "required": ["source"],
+            "properties": {
+                "source": {
+                    "type": "string",
+                    "description": "External source name (e.g., 'OWASP Top Ten 2021', 'SANS Top 25')",
+                },
+                "external_id": {
+                    "type": "string",
+                    "description": "External ID filter (e.g., 'A03:2021' for OWASP)",
+                },
+                "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 500,
+                    "default": 50,
+                    "description": "Max results",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="get_cwe_hierarchy",
+        description="Navigate the CWE parent/child hierarchy. Useful for understanding weakness relationships - e.g., finding all specific variants of a high-level weakness class, or understanding which broader category a specific weakness belongs to.",
+        inputSchema={
+            "type": "object",
+            "required": ["weakness_id"],
+            "properties": {
+                "weakness_id": {
+                    "type": "string",
+                    "pattern": "^(CWE-)?\\d+$",
+                    "description": "CWE weakness ID (e.g., CWE-79 or 79)",
+                },
+                "direction": {
+                    "type": "string",
+                    "enum": ["parents", "children", "both"],
+                    "default": "both",
+                    "description": "Direction to traverse hierarchy",
+                },
+                "depth": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10,
+                    "default": 3,
+                    "description": "Maximum depth to traverse",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="find_weaknesses_for_capec",
+        description="Cross-framework search: find CWE weaknesses that are exploited by a specific CAPEC attack pattern. Links attack patterns to the underlying weaknesses they target.",
+        inputSchema={
+            "type": "object",
+            "required": ["pattern_id"],
+            "properties": {
+                "pattern_id": {
+                    "type": "string",
+                    "pattern": "^(CAPEC-)?\\d+$",
+                    "description": "CAPEC pattern ID (e.g., CAPEC-66)",
+                },
+                "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 500,
+                    "default": 50,
+                    "description": "Max results",
+                },
+            },
+        },
+    ),
 ]
 
 
@@ -1466,6 +1644,154 @@ async def handle_find_similar_capec_mitigations(params: dict[str, Any]) -> dict[
     }
 
 
+# CWE Tool Handlers
+
+
+async def handle_search_cwe_weaknesses(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle search_cwe_weaknesses tool call."""
+    start_time = time.time()
+    request = SearchCWEWeaknessesRequest(**params)
+
+    async with db_service.session() as session:
+        weaknesses, total_count = await cwe_queries.search_weaknesses(
+            session,
+            query=request.query,
+            abstraction=request.abstraction,
+            include_children=request.include_children,
+            active_only=request.active_only,
+            limit=request.limit,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": {
+            "weaknesses": weaknesses,
+            "total_results": total_count,
+            "returned_results": len(weaknesses),
+        },
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_find_similar_cwe_weaknesses(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle find_similar_cwe_weaknesses tool call (semantic search)."""
+    start_time = time.time()
+    request = FindSimilarCWEWeaknessesRequest(**params)
+
+    async with db_service.session() as session:
+        weaknesses = await cwe_queries.find_similar_weaknesses(
+            session,
+            description=request.description,
+            min_similarity=request.min_similarity,
+            abstraction=request.abstraction,
+            active_only=request.active_only,
+            limit=request.limit,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": {
+            "weaknesses": weaknesses,
+            "returned_results": len(weaknesses),
+            "query_embedding_generated": True,
+            "min_similarity": request.min_similarity,
+        },
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_get_cwe_weakness_details(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle get_cwe_weakness_details tool call."""
+    start_time = time.time()
+    request = GetCWEWeaknessDetailsRequest(**params)
+
+    async with db_service.session() as session:
+        data = await cwe_queries.get_weakness_details(
+            session,
+            weakness_id=request.weakness_id,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": data,
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_search_by_external_mapping(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle search_by_external_mapping tool call."""
+    start_time = time.time()
+    request = SearchByExternalMappingRequest(**params)
+
+    async with db_service.session() as session:
+        weaknesses = await cwe_queries.search_by_external_mapping(
+            session,
+            source=request.source,
+            external_id=request.external_id,
+            limit=request.limit,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": {
+            "weaknesses": weaknesses,
+            "returned_results": len(weaknesses),
+            "source_filter": request.source,
+            "external_id_filter": request.external_id,
+        },
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_get_cwe_hierarchy(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle get_cwe_hierarchy tool call."""
+    start_time = time.time()
+    request = GetCWEHierarchyRequest(**params)
+
+    async with db_service.session() as session:
+        data = await cwe_queries.get_weakness_hierarchy(
+            session,
+            weakness_id=request.weakness_id,
+            direction=request.direction,
+            depth=request.depth,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": data,
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_find_weaknesses_for_capec(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle find_weaknesses_for_capec tool call."""
+    start_time = time.time()
+    request = FindWeaknessesForCAPECRequest(**params)
+
+    async with db_service.session() as session:
+        weaknesses = await cwe_queries.find_weaknesses_for_capec(
+            session,
+            pattern_id=request.pattern_id,
+            limit=request.limit,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": {
+            "weaknesses": weaknesses,
+            "returned_results": len(weaknesses),
+            "capec_pattern": request.pattern_id,
+        },
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
 # Tool handler mapping
 TOOL_HANDLERS = {
     "search_cve": handle_search_cve,
@@ -1496,6 +1822,13 @@ TOOL_HANDLERS = {
     "get_capec_pattern_details": handle_get_capec_pattern_details,
     "search_capec_mitigations": handle_search_capec_mitigations,
     "find_similar_capec_mitigations": handle_find_similar_capec_mitigations,
+    # CWE handlers
+    "search_cwe_weaknesses": handle_search_cwe_weaknesses,
+    "find_similar_cwe_weaknesses": handle_find_similar_cwe_weaknesses,
+    "get_cwe_weakness_details": handle_get_cwe_weakness_details,
+    "search_by_external_mapping": handle_search_by_external_mapping,
+    "get_cwe_hierarchy": handle_get_cwe_hierarchy,
+    "find_weaknesses_for_capec": handle_find_weaknesses_for_capec,
 }
 
 
