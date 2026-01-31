@@ -1,40 +1,163 @@
 # CVE + Exploit Intelligence MCP Server
 
-A **Tier 1 (offline-first)** Model Context Protocol (MCP) server providing comprehensive CVE vulnerability data, CISA Known Exploited Vulnerabilities (KEV), EPSS exploit prediction scores, and public exploit tracking.
+**Offline-first vulnerability intelligence for AI assistants.**
 
-## 🎯 Purpose
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Tests](https://github.com/Ansvar-Systems/CVE-MCP/actions/workflows/test.yml/badge.svg)](https://github.com/Ansvar-Systems/CVE-MCP/actions/workflows/test.yml)
+[![Security](https://github.com/Ansvar-Systems/CVE-MCP/actions/workflows/docker-security.yml/badge.svg)](https://github.com/Ansvar-Systems/CVE-MCP/actions/workflows/docker-security.yml)
+[![Database](https://img.shields.io/badge/database-240K%2B%20CVEs-green)](docs/SETUP.md)
 
-This MCP server enables AI assistants (Claude, Cursor, etc.) to access real-time vulnerability intelligence without external API calls during queries, making it suitable for air-gapped and highly regulated environments (banking, healthcare, government).
+Query **240,000+ CVE records** with CVSS scores, CISA KEV status, EPSS exploit predictions, and public exploit tracking — directly from Claude, Cursor, or any MCP-compatible client.
 
-## ✨ Key Features
+If you're building security tools, conducting vulnerability assessments, or performing threat modeling, this is your real-time CVE intelligence source.
 
-- ✅ **200,000+ CVE records** with full CVSS scoring (v2, v3, v4)
-- ✅ **CISA KEV integration** - Track actively exploited vulnerabilities
-- ✅ **EPSS scoring** - Exploit prediction likelihood (FIRST.org)
-- ✅ **CPE product mappings** - Which software versions are vulnerable
-- ✅ **Exploit tracking** - Metasploit, ExploitDB, GitHub PoCs
-- ✅ **Offline-first architecture** - All queries run against local PostgreSQL
-- ✅ **Sub-50ms latency** - Indexed database queries
-- ✅ **Air-gap compatible** - Daily background sync, no runtime internet dependency
+Built by [Ansvar Systems](https://ansvar.eu) — Stockholm, Sweden
 
-## 📋 Quick Start
+---
 
-See **[DESIGN.md](./DESIGN.md)** for complete specifications including:
-- Database schema (9 tables with full DDL)
-- API endpoints (8 MCP tools)
-- Sync services (daily NVD/KEV/EPSS updates)
-- Deployment guide (Docker Compose)
-- Performance targets
-- Security & compliance
+## Why This Exists
 
-## 🏗️ Architecture
+CVE data is scattered across NVD's API, CISA's KEV catalog, EPSS feeds, and exploit databases. Whether you're:
+- A **security engineer** assessing vulnerability risk and exploit likelihood
+- A **threat modeler** enriching STRIDE scenarios with real CVE intelligence
+- A **DevSecOps team** tracking which vulnerabilities have active exploits
+- A **compliance officer** monitoring CISA KEV requirements
+
+...you need fast, offline access to current vulnerability data. Not API rate limits. Not internet dependencies.
+
+This MCP server makes CVE intelligence **searchable, offline-first, and AI-readable**.
+
+---
+
+## Quick Start
+
+### Installation
+
+**Prerequisites:**
+- Docker & Docker Compose
+- 8 GB RAM minimum (for PostgreSQL)
+- 10 GB disk space
+
+**Step 1: Deploy Server**
+
+```bash
+git clone https://github.com/Ansvar-Systems/CVE-MCP.git
+cd CVE-MCP
+cp .env.example .env
+docker-compose up -d
+
+# Initial sync (6-8 hours for full NVD dataset)
+docker-compose exec celery-worker celery -A cve_mcp.tasks.celery_app call cve_mcp.tasks.sync_nvd.sync_nvd_full
+
+# Verify server is running
+curl http://localhost:8307/health
+```
+
+**Step 2: Configure Claude Desktop**
+
+Add to your `claude_desktop_config.json`:
+
+**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "cve-exploit": {
+      "url": "http://localhost:8307",
+      "transport": "http"
+    }
+  }
+}
+```
+
+Or use Docker exec method:
+
+```json
+{
+  "mcpServers": {
+    "cve-exploit": {
+      "command": "docker",
+      "args": ["exec", "cve-mcp-server", "python", "-m", "cve_mcp.main"],
+      "env": {}
+    }
+  }
+}
+```
+
+Restart Claude Desktop. You should see "cve-exploit" in the 🔌 menu.
+
+**Step 3: Verify It Works**
+
+```bash
+# Check health
+curl http://localhost:8307/health | jq
+
+# Search for CVEs
+curl -X POST http://localhost:8307/call \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "search_cve",
+    "arguments": {"keyword": "apache", "cvss_min": 9.0, "limit": 3}
+  }' | jq
+```
+
+**Detailed setup:** [docs/SETUP.md](./docs/SETUP.md)
+
+---
+
+## Example Queries
+
+Once connected, just ask naturally:
+
+- *"Search for critical Apache vulnerabilities with CVSS > 9"*
+- *"Is Log4Shell (CVE-2021-44228) in the CISA KEV catalog?"*
+- *"What's the EPSS exploit prediction score for CVE-2021-44228?"*
+- *"Find all CVEs affecting nginx version 1.20.0"*
+- *"Show me public exploits for CVE-2021-44228"*
+- *"Find authentication bypass vulnerabilities with active exploits"*
+- *"Which critical CVEs were published in the last 30 days?"*
+- *"Explain CWE-79 (Cross-Site Scripting)"*
+
+---
+
+## What's Included
+
+- **240,000+ CVE Records** — Full NVD dataset with CVSS v2/v3/v4 scoring
+- **1,200+ CISA KEV Entries** — Track actively exploited vulnerabilities
+- **200,000+ EPSS Scores** — Exploit prediction likelihood (0-1 scale)
+- **15,000+ Exploit References** — Metasploit, ExploitDB, GitHub PoCs
+- **CPE Product Mappings** — Which software versions are vulnerable
+- **Offline-First Architecture** — All queries run against local PostgreSQL
+- **Sub-50ms Query Latency** — Indexed database with Redis caching
+- **Daily Automatic Sync** — Background updates from NVD, CISA, EPSS
+
+**Detailed coverage:** [DESIGN.md](./DESIGN.md)
+
+---
+
+## Available Tools
+
+| Tool | Description | Example Query |
+|------|-------------|---------------|
+| `search_cve` | Search CVEs by keyword, CVSS score, severity | "Find critical Apache vulnerabilities" |
+| `get_cve_details` | Get full CVE record with references, CPE, exploits | "Show me details for CVE-2021-44228" |
+| `check_kev_status` | Check if CVE is in CISA KEV catalog | "Is Log4Shell in the KEV catalog?" |
+| `get_epss_score` | Get exploit prediction score (0-1) | "What's the EPSS score for CVE-2021-44228?" |
+| `search_by_product` | Find CVEs affecting specific product/version | "Find CVEs in nginx 1.20.0" |
+| `get_exploits` | Get public exploit code references | "Show exploits for CVE-2021-44228" |
+| `get_cwe_details` | Get CWE weakness information | "Explain CWE-79" |
+| `batch_search` | Bulk CVE lookup (max 100) | "Get details for these 10 CVEs..." |
+
+---
+
+## Architecture
 
 **Type:** Tier 1 MCP (Offline-First)
 **Pattern:** Based on [Ansvar Sanctions MCP](https://github.com/Ansvar-Systems/Sanctions-MCP) architecture
 
 ```
 ┌─────────────────────────────────────────┐
-│  MCP Client (Ansvar AI / Claude)        │
+│  MCP Client (Claude / Cursor)           │
 └─────────────┬───────────────────────────┘
               │ JSON-RPC 2.0
               ▼
@@ -45,12 +168,8 @@ See **[DESIGN.md](./DESIGN.md)** for complete specifications including:
               ▼
 ┌─────────────────────────────────────────┐
 │  CVE MCP Server (FastAPI)               │
-│  - search_cve                           │
-│  - get_cve_details                      │
-│  - check_kev_status                     │
-│  - get_epss_score                       │
-│  - search_by_product                    │
-│  - get_exploits                         │
+│  - 8 MCP tools                          │
+│  - Query routing & validation           │
 └─────────────┬───────────────────────────┘
               │
               ▼
@@ -69,117 +188,25 @@ See **[DESIGN.md](./DESIGN.md)** for complete specifications including:
 └─────────────────────────────────────────┘
 ```
 
-## 🚀 Quick Start
+### Why Offline-First?
 
-### Prerequisites
-- Docker & Docker Compose
-- 8 GB RAM minimum (for PostgreSQL)
-- 10 GB disk space
+Traditional CVE APIs have:
+- **Rate limits** → NVD API: 5 requests/30 seconds
+- **Latency** → 200-500ms per request
+- **Internet dependency** → Incompatible with air-gapped environments
+- **No correlation** → Must query multiple sources separately
 
-### 1. Deploy Server
+This MCP server:
+- **No rate limits** → Local database queries
+- **<50ms latency** → Indexed PostgreSQL with Redis cache
+- **Air-gap ready** → Daily background sync, no runtime internet
+- **Pre-correlated** → CVE + KEV + EPSS + Exploits in single query
 
-```bash
-# Clone and start
-git clone https://github.com/Ansvar-Systems/CVE-MCP.git
-cd CVE-MCP
-cp .env.example .env
-docker-compose up -d
+**Architecture decision:** [docs/architecture/2026-01-30-mcp-offline-first-assessment.md](./docs/architecture/2026-01-30-mcp-offline-first-assessment.md)
 
-# Initial sync (6-8 hours for full NVD dataset)
-docker-compose exec celery-worker celery -A cve_mcp.tasks.celery_app call cve_mcp.tasks.sync_nvd.sync_nvd_full
+---
 
-# Verify server is running
-curl http://localhost:8307/health
-```
-
-### 2. Configure Claude Desktop
-
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "cve-exploit": {
-      "command": "docker",
-      "args": ["exec", "cve-mcp-server", "python", "-m", "cve_mcp.main"],
-      "env": {}
-    }
-  }
-}
-```
-
-Or use HTTP transport:
-
-```json
-{
-  "mcpServers": {
-    "cve-exploit": {
-      "url": "http://localhost:8307",
-      "transport": "http"
-    }
-  }
-}
-```
-
-Restart Claude Desktop. You should see "cve-exploit" in the 🔌 menu.
-
-### 3. Test It Works
-
-In Claude Desktop, try:
-```
-Search for critical Apache vulnerabilities with CVSS > 9
-```
-
-Claude will call `search_cve` and return results with KEV status and EPSS scores.
-
-**See [docs/SETUP.md](./docs/SETUP.md) for detailed setup guide.**
-
-## 🚀 Manual Deployment
-
-## ✅ Quickstart Verification
-
-Test your deployment works:
-
-```bash
-# 1. Check health
-curl http://localhost:8307/health | jq
-
-# 2. List available tools
-curl http://localhost:8307/tools | jq '.tools[].name'
-
-# 3. Search for CVEs
-curl -X POST http://localhost:8307/call \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "search_cve",
-    "arguments": {"keyword": "apache", "cvss_min": 9.0, "limit": 3}
-  }' | jq
-
-# 4. Check Log4Shell KEV status
-curl -X POST http://localhost:8307/call \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "check_kev_status",
-    "arguments": {"cve_id": "CVE-2021-44228"}
-  }' | jq
-```
-
-**Expected:** All commands return JSON responses without errors.
-
-## 📊 MCP Tools
-
-| Tool | Description | Example Query |
-|------|-------------|---------------|
-| `search_cve` | Search CVEs by keyword, CVSS score, severity | "Find critical Apache vulnerabilities" |
-| `get_cve_details` | Get full CVE record with references, CPE, exploits | "Show me details for CVE-2021-44228" |
-| `check_kev_status` | Check if CVE is in CISA KEV catalog | "Is Log4Shell in the KEV catalog?" |
-| `get_epss_score` | Get exploit prediction score (0-1) | "What's the EPSS score for CVE-2021-44228?" |
-| `search_by_product` | Find CVEs affecting specific product/version | "Find CVEs in nginx 1.20.0" |
-| `get_exploits` | Get public exploit code references | "Show exploits for CVE-2021-44228" |
-| `get_cwe_details` | Get CWE weakness information | "Explain CWE-79" |
-| `batch_search` | Bulk CVE lookup (max 100) | "Get details for these 10 CVEs..." |
-
-## 📈 Performance
+## Performance
 
 | Metric | Target |
 |--------|--------|
@@ -190,27 +217,14 @@ curl -X POST http://localhost:8307/call \
 | Availability | 99.99% |
 | Database size | ~6 GB |
 
-## 🔒 Security
+---
 
-- ✅ Offline queries (no external API calls)
-- ✅ 7-year audit trail (query logging)
-- ✅ Air-gap deployment ready
-- ✅ TLS 1.3 for sync operations
-- ✅ PostgreSQL SSL connections
-- ✅ Rate limiting (100 req/min per client)
+## Use Cases
 
-## 📚 Documentation
+### Threat Modeling Intelligence
 
-- **[DESIGN.md](./DESIGN.md)** - Complete design specification (71 pages)
-- **[docs/architecture/](./docs/architecture/)** - Architecture decision records
-  - Tier 1 offline-first assessment
-  - Build vs. buy analysis
-
-## 🏢 Use Cases
-
-### STRIDE Threat Modeling (Ansvar AI)
 ```python
-# Enrich threat scenarios with current CVE data
+# Enrich STRIDE threat scenarios with current CVE data
 result = await mcp_client.call_tool(
     provider="cve-exploit",
     tool="search_cve",
@@ -223,7 +237,8 @@ result = await mcp_client.call_tool(
 # Returns CVEs with active exploitation, EPSS scores, exploit availability
 ```
 
-### CVSS Risk Scoring
+### Risk-Based Vulnerability Prioritization
+
 ```python
 # Get exploit prediction score for accurate risk assessment
 epss = await mcp_client.call_tool(
@@ -236,6 +251,7 @@ epss = await mcp_client.call_tool(
 ```
 
 ### Product Vulnerability Assessment
+
 ```python
 # Find all CVEs affecting a specific product version
 vulns = await mcp_client.call_tool(
@@ -250,7 +266,106 @@ vulns = await mcp_client.call_tool(
 # Returns CVEs with KEV status, exploits, CVSS scores
 ```
 
-## 🛠️ Development
+---
+
+## ⚠️ Important Disclaimers
+
+### Data Freshness
+
+> **📅 Data Currency Warning**
+>
+> CVE data is synced daily from public sources (NVD, CISA, EPSS, ExploitDB). Data freshness:
+> - **NVD CVEs**: Daily delta sync, monthly full refresh
+> - **CISA KEV**: Daily updates
+> - **EPSS scores**: Daily updates
+> - **ExploitDB**: Weekly updates
+>
+> **This is intelligence data, not real-time vulnerability scanning.** For production security monitoring, use dedicated vulnerability scanners (Nessus, Qualys, etc.).
+
+### Not a Vulnerability Scanner
+
+> **🚨 NOT A SECURITY SCANNER 🚨**
+>
+> This MCP server provides **vulnerability intelligence**, not **vulnerability detection**. It:
+> - ✅ Tells you WHAT vulnerabilities exist in the NVD database
+> - ✅ Tells you WHICH CVEs have public exploits or are actively exploited
+> - ✅ Helps you PRIORITIZE vulnerabilities using EPSS scores
+> - ❌ Does NOT scan your systems for vulnerabilities
+> - ❌ Does NOT detect if you're vulnerable to specific CVEs
+> - ❌ Does NOT replace vulnerability management tools
+>
+> **For actual vulnerability detection, use Nessus, Qualys, OpenVAS, or similar scanners.**
+
+### CVSS Scoring Interpretation
+
+> **⚠️ CVSS Is Not Risk**
+>
+> CVSS scores measure **severity** (impact + exploitability), not **risk** (likelihood × impact).
+>
+> Use EPSS scores for exploit likelihood. A CVSS 9.8 vulnerability with EPSS 0.01 (1% likelihood) may be lower priority than CVSS 7.5 with EPSS 0.95 (95% likelihood).
+>
+> **Recommended approach:** `CVSS score × EPSS score = Risk priority`
+
+---
+
+## Data Sources
+
+| Source | Type | Update Frequency | Records |
+|--------|------|------------------|---------|
+| **NVD API 2.0** | Public | Daily (delta), Monthly (full) | 240,000+ CVEs |
+| **CISA KEV** | Public | Daily | 1,200+ exploited CVEs |
+| **FIRST EPSS** | Public | Daily | 200,000+ scores |
+| **ExploitDB** | Public | Weekly | 15,000+ exploits |
+
+All data sources are **free and public** — no API keys required (NVD API key optional for higher rate limits).
+
+---
+
+## Related Projects: Security Intelligence Suite
+
+This server is part of **Ansvar's Security Intelligence Suite**:
+
+### 🛡️ CVE + Exploit Intelligence MCP (This Project)
+**Query 240,000+ CVE records with exploit intelligence**
+- Full NVD database with CVSS scoring
+- CISA KEV tracking and EPSS prediction
+- Exploit references (Metasploit, ExploitDB)
+- **Install:** See Quick Start above
+
+### 🌐 [Sanctions MCP](https://github.com/Ansvar-Systems/Sanctions-MCP)
+**Query global sanctions lists (OFAC, UN, EU)**
+- Tier 1 offline-first architecture reference
+- Same design pattern as this project
+- Used by financial services and compliance teams
+
+### 🔐 [Security Controls MCP](https://github.com/Ansvar-Systems/security-controls-mcp)
+**Query 1,451 security controls across 28 frameworks**
+- ISO 27001, NIST CSF, PCI DSS, SOC 2, CMMC
+- Bidirectional framework mapping
+- Control implementation guidance
+
+### 🇪🇺 [EU Regulations MCP](https://github.com/Ansvar-Systems/EU_compliance_MCP)
+**Query 47 EU regulations (GDPR, NIS2, DORA, AI Act)**
+- Full regulatory text with article-level search
+- Cross-regulation comparison
+- ISO 27001/NIST CSF mappings
+
+---
+
+## Security Features
+
+- ✅ **Offline queries** — No external API calls during runtime
+- ✅ **7-year audit trail** — Query logging for compliance
+- ✅ **Air-gap deployment** — Sync can run on separate network
+- ✅ **TLS 1.3** — Encrypted sync operations
+- ✅ **PostgreSQL SSL** — Encrypted database connections
+- ✅ **Rate limiting** — 100 req/min per client
+
+**Security setup guide:** [.github/SECURITY-SETUP.md](.github/SECURITY-SETUP.md)
+
+---
+
+## Development
 
 **Technology Stack:**
 - Python 3.11+
@@ -261,28 +376,37 @@ vulns = await mcp_client.call_tool(
 - SQLAlchemy 2.0 (async ORM)
 - Pydantic 2.x (validation)
 
-**Development Roadmap:** See [DESIGN.md § Development Roadmap](./DESIGN.md#development-roadmap)
+**CI/CD:**
+- CodeQL (security scanning)
+- Semgrep (SAST)
+- Trivy (container scanning)
+- pytest (45 tests)
+- mypy (strict type checking)
 
-**Estimated Build Time:** 6 weeks (2 engineers)
+---
 
-## 📊 Data Sources
+## About Ansvar Systems
 
-| Source | Type | Update Frequency | Records |
-|--------|------|------------------|---------|
-| **NVD API 2.0** | Public | Daily (delta), Monthly (full) | 240,000+ CVEs |
-| **CISA KEV** | Public | Daily | 1,200+ exploited CVEs |
-| **FIRST EPSS** | Public | Daily | 200,000+ scores |
-| **ExploitDB** | Public | Weekly | 15,000+ exploits |
+We build AI-accelerated threat modeling and compliance tools for automotive, financial services, and healthcare. This MCP server started as our internal CVE intelligence tool for Ansvar AI's threat modeling workflows.
 
-All data sources are **free and public** - no API keys required (NVD API key optional for higher rate limits).
+So we're open-sourcing it. Real-time vulnerability intelligence shouldn't require API keys and rate limits.
 
-## 🌐 Related Projects
+**[ansvar.eu](https://ansvar.eu)** — Stockholm, Sweden
 
-- **[Ansvar Sanctions MCP](https://github.com/Ansvar-Systems/Sanctions-MCP)** - Tier 1 architecture reference
-- **[Ansvar MCP Registry](https://github.com/Ansvar-Systems/Ansvar-Architecture-Documentation/blob/main/docs/mcp-server-registry.md)** - All Ansvar MCPs
-- **[MCP Quality Standard](https://github.com/Ansvar-Systems/Ansvar-Architecture-Documentation/blob/main/docs/mcp-quality-standard.md)** - Development standards
+---
 
-## 📝 Status
+## Documentation
+
+- **[DESIGN.md](./DESIGN.md)** — Complete design specification
+- **[docs/SETUP.md](./docs/SETUP.md)** — Detailed deployment guide
+- **[docs/architecture/](./docs/architecture/)** — Architecture decision records
+  - [Tier 1 offline-first assessment](./docs/architecture/2026-01-30-mcp-offline-first-assessment.md)
+  - [Build vs. buy analysis](./docs/architecture/2026-01-30-mcp-build-vs-buy-analysis.md)
+- **[.github/SECURITY-SETUP.md](./.github/SECURITY-SETUP.md)** — Security hardening guide
+
+---
+
+## Status
 
 **Current:** Production Ready ✅
 
@@ -291,21 +415,25 @@ All data sources are **free and public** - no API keys required (NVD API key opt
 2. ✅ MCP server (8 tools, FastAPI)
 3. ✅ Sync services (NVD, KEV, EPSS, ExploitDB)
 4. ✅ Docker deployment (PostgreSQL, Redis, Celery)
-5. ✅ CI/CD (CodeQL, Semgrep, Trivy, tests)
-6. ✅ Security hardened (CORS, audit logs)
+5. ✅ CI/CD (CodeQL, Semgrep, Trivy, 45 tests)
+6. ✅ Security hardened (CORS, audit logs, TLS)
 7. ✅ Type-safe (strict mypy)
 8. ✅ Integration tests
 
-## 🤝 Contributing
+---
 
-This is an internal Ansvar Systems project. For questions or contributions, contact the Platform Engineering team.
+## License
 
-## 📄 License
-
-Internal Ansvar Systems project. See [Ansvar MCP Suite License](https://github.com/Ansvar-Systems/security-controls-mcp/blob/main/LICENSE) for reference.
+Apache License 2.0. See [LICENSE](./LICENSE) for details.
 
 ---
 
-**Architecture Decision:** See [docs/architecture/2026-01-30-mcp-offline-first-assessment.md](./docs/architecture/2026-01-30-mcp-offline-first-assessment.md) for why we chose Tier 1 (offline-first) architecture over API-dependent design.
+## Contributing
 
-**Build vs. Buy:** See [docs/architecture/2026-01-30-mcp-build-vs-buy-analysis.md](./docs/architecture/2026-01-30-mcp-build-vs-buy-analysis.md) for analysis of existing MCP servers and decision to build custom.
+This is an internal Ansvar Systems project. For questions or contributions, contact the Platform Engineering team.
+
+---
+
+<p align="center">
+  <sub>Built with care in Stockholm, Sweden</sub>
+</p>
