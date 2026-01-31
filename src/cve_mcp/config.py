@@ -1,10 +1,11 @@
-"""Configuration settings for CVE MCP server."""
+"""Configuration settings for Threat Intelligence MCP server."""
 
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings
 
-# Project metadata
+# Project branding (for display in logs/UI)
+# Module name remains "cve_mcp" for backward compatibility
 PROJECT_NAME = "Threat Intel MCP"
 
 

@@ -7,16 +7,16 @@ name = "threat-intel-mcp"
 version = "1.0.0"
 description = "Threat Intelligence MCP Server - CVE, ATT&CK, threat actors, semantic search"
 readme = "README.md"
-license = "MIT"
+license = "Apache-2.0"
 requires-python = ">=3.11"
 authors = [
     { name = "Ansvar Systems" }
 ]
-keywords = ["cve", "mcp", "security", "vulnerability", "nvd", "epss", "cisa-kev"]
+keywords = ["cve", "mcp", "security", "vulnerability", "nvd", "epss", "cisa-kev", "mitre-attack", "threat-intelligence", "apt", "threat-actors", "semantic-search", "rag"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -48,6 +48,8 @@ dev = [
     "mypy>=1.8.0",
 ]
 
+# CLI command remains "cve-mcp" and module remains "cve_mcp" for backward compatibility
+# despite package rename to "threat-intel-mcp"
 [project.scripts]
 cve-mcp = "cve_mcp.main:main"
 

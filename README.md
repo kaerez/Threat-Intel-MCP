@@ -139,6 +139,12 @@ curl -X POST http://localhost:8307/call \
 
 ---
 
+## Upgrading from CVE-MCP
+
+**Note:** This project was renamed from "CVE-MCP" to "Threat Intelligence MCP" to reflect its expanded scope. The module name remains `cve_mcp` and the CLI command remains `cve-mcp` for backward compatibility. No migration required for existing installations.
+
+---
+
 ## Example Queries
 
 Once connected, just ask naturally:
