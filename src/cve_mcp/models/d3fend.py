@@ -53,7 +53,7 @@ class D3FENDTactic(Base):
 
     __tablename__ = "d3fend_tactics"
 
-    tactic_id: Mapped[str] = mapped_column(String(20), primary_key=True)  # D3-MODEL
+    tactic_id: Mapped[str] = mapped_column(String(50), primary_key=True)  # D3-MODEL
     name: Mapped[str] = mapped_column(String(200), nullable=False)  # Model
     description: Mapped[str | None] = mapped_column(Text)
     display_order: Mapped[int] = mapped_column(Integer, nullable=False)  # For matrix rendering
@@ -78,7 +78,7 @@ class D3FENDTechnique(Base):
     __tablename__ = "d3fend_techniques"
 
     # Primary identification
-    technique_id: Mapped[str] = mapped_column(String(20), primary_key=True)  # D3-AL
+    technique_id: Mapped[str] = mapped_column(String(50), primary_key=True)  # D3-AL
 
     # Semantic search (1536 dimensions for text-embedding-3-small)
     embedding: Mapped[list[float] | None] = mapped_column(Vector(1536))
@@ -91,13 +91,13 @@ class D3FENDTechnique(Base):
 
     # Tactic relationship
     tactic_id: Mapped[str | None] = mapped_column(
-        String(20),
+        String(50),
         ForeignKey("d3fend_tactics.tactic_id", ondelete="SET NULL"),
     )
 
     # Hierarchy (self-referential for sub-techniques)
     parent_id: Mapped[str | None] = mapped_column(
-        String(20),
+        String(50),
         ForeignKey("d3fend_techniques.technique_id", ondelete="SET NULL"),
     )
 
@@ -112,7 +112,7 @@ class D3FENDTechnique(Base):
     data_last_updated: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
     # Metadata
-    d3fend_version: Mapped[str | None] = mapped_column(String(20))  # Dataset version
+    d3fend_version: Mapped[str | None] = mapped_column(String(50))  # Dataset version
     deprecated: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Relationships
@@ -198,14 +198,14 @@ class D3FENDTechniqueAttackMapping(Base):
     mapping_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     d3fend_technique_id: Mapped[str] = mapped_column(
-        String(20),
+        String(50),
         ForeignKey("d3fend_techniques.technique_id", ondelete="CASCADE"),
         nullable=False,
     )
 
     # FK to the existing attack_techniques table
     attack_technique_id: Mapped[str] = mapped_column(
-        String(20),
+        String(50),
         ForeignKey("attack_techniques.technique_id", ondelete="CASCADE"),
         nullable=False,
     )
@@ -243,7 +243,7 @@ class D3FENDTechniqueArtifact(Base):
 
     # Composite primary key
     technique_id: Mapped[str] = mapped_column(
-        String(20),
+        String(50),
         ForeignKey("d3fend_techniques.technique_id", ondelete="CASCADE"),
         primary_key=True,
     )

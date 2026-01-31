@@ -5,7 +5,7 @@ and stores in database with optional embeddings.
 """
 
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 import httpx
@@ -159,7 +159,7 @@ async def sync_d3fend_data(
     if verbose:
         logger.setLevel(logging.DEBUG)
 
-    start_time = datetime.now(UTC)
+    start_time = datetime.utcnow()
     stats: dict[str, int] = {}
 
     try:
@@ -193,7 +193,7 @@ async def sync_d3fend_data(
         logger.info(f"Extracted {len(tactics_data)} unique tactics")
 
         # Sync tactics using upsert
-        now = datetime.now(UTC)
+        now = datetime.utcnow()
         for tactic_data in tactics_data:
             stmt = insert(D3FENDTactic).values(
                 tactic_id=tactic_data["tactic_id"],
@@ -343,11 +343,11 @@ async def sync_d3fend_data(
         # Update sync metadata with success
         sync_metadata = SyncMetadata(
             source="d3fend",
-            last_sync_time=datetime.now(UTC),
+            last_sync_time=datetime.utcnow(),
             last_sync_status="success",
             records_synced=stats["tactics"] + stats["techniques"],
             sync_duration_seconds=int(
-                (datetime.now(UTC) - start_time).total_seconds()
+                (datetime.utcnow() - start_time).total_seconds()
             ),
         )
         await session.merge(sync_metadata)
@@ -363,12 +363,12 @@ async def sync_d3fend_data(
         try:
             sync_metadata = SyncMetadata(
                 source="d3fend",
-                last_sync_time=datetime.now(UTC),
+                last_sync_time=datetime.utcnow(),
                 last_sync_status="failed",
                 records_synced=0,
                 error_message=error_message,
                 sync_duration_seconds=int(
-                    (datetime.now(UTC) - start_time).total_seconds()
+                    (datetime.utcnow() - start_time).total_seconds()
                 ),
             )
             await session.merge(sync_metadata)
