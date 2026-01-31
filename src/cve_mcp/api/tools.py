@@ -7,15 +7,23 @@ from typing import Any
 from cve_mcp.api.schemas import (
     BatchSearchRequest,
     CheckKEVStatusRequest,
+    FindSimilarTechniquesRequest,
+    FindSimilarThreatActorsRequest,
     GetCVEDetailsRequest,
     GetCWEDetailsRequest,
     GetEPSSScoreRequest,
     GetExploitsRequest,
+    GetGroupProfileRequest,
+    GetTechniqueBadgesRequest,
+    GetTechniqueDetailsRequest,
     MCPToolDefinition,
     SearchByProductRequest,
     SearchCVERequest,
+    SearchTechniquesRequest,
+    SearchThreatActorsRequest,
 )
 from cve_mcp.config import get_settings
+from cve_mcp.services import attack_queries
 from cve_mcp.services.cache import cache_service
 from cve_mcp.services.database import db_service
 
@@ -244,6 +252,190 @@ MCP_TOOLS: list[MCPToolDefinition] = [
                     "type": "boolean",
                     "default": True,
                     "description": "Include EPSS scores",
+                },
+            },
+        },
+    ),
+    # ATT&CK Tools
+    MCPToolDefinition(
+        name="search_techniques",
+        description="Search MITRE ATT&CK techniques using traditional keyword and filter-based search. Filter by tactics, platforms, and search technique names/descriptions.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Full-text search in technique name/description",
+                },
+                "tactics": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Filter by tactics (e.g., ['initial-access', 'execution'])",
+                },
+                "platforms": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Filter by platforms (e.g., ['windows', 'linux'])",
+                },
+                "include_subtechniques": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "Include subtechniques in results",
+                },
+                "active_only": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "Exclude deprecated/revoked techniques",
+                },
+                "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 500,
+                    "default": 50,
+                    "description": "Max results",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="find_similar_techniques",
+        description="Find MITRE ATT&CK techniques using AI-powered semantic similarity search. Perfect for incident response - describe an attack scenario in natural language and get matching techniques with similarity scores. Uses AI embeddings for intelligent matching beyond keyword search. Example: 'Attacker sent phishing email with malicious PDF that executed PowerShell commands'",
+        inputSchema={
+            "type": "object",
+            "required": ["description"],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 5000,
+                    "description": "Natural language description of attack scenario or technique",
+                },
+                "min_similarity": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "maximum": 1.0,
+                    "default": 0.7,
+                    "description": "Minimum similarity threshold (0-1)",
+                },
+                "tactics": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Filter by tactics",
+                },
+                "platforms": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Filter by platforms",
+                },
+                "active_only": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "Exclude deprecated/revoked techniques",
+                },
+                "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 10,
+                    "description": "Max results",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="get_technique_details",
+        description="Get complete details for a specific MITRE ATT&CK technique including tactics, platforms, detection methods, data sources, and mitigation strategies.",
+        inputSchema={
+            "type": "object",
+            "required": ["technique_id"],
+            "properties": {
+                "technique_id": {
+                    "type": "string",
+                    "description": "Technique ID (e.g., T1566 or T1566.001)",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="get_technique_badges",
+        description="Get ATT&CK Navigator badge URLs for multiple techniques. Returns a mapping of technique IDs to their badge URLs for documentation and reporting.",
+        inputSchema={
+            "type": "object",
+            "required": ["technique_ids"],
+            "properties": {
+                "technique_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of technique IDs (e.g., ['T1566', 'T1566.001'])",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="search_threat_actors",
+        description="Search MITRE ATT&CK threat actor groups using traditional keyword search. Filter by group names, aliases, and techniques used.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Full-text search in group name/aliases/description",
+                },
+                "techniques": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Filter by techniques used (e.g., ['T1566.001'])",
+                },
+                "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 500,
+                    "default": 50,
+                    "description": "Max results",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="find_similar_threat_actors",
+        description="Find MITRE ATT&CK threat actor groups using AI-powered semantic similarity search. Perfect for threat attribution - describe observed threat actor behavior and get matching groups with similarity scores. Uses AI embeddings for intelligent matching. Example: 'Advanced persistent threat targeting financial institutions with custom malware'",
+        inputSchema={
+            "type": "object",
+            "required": ["description"],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 5000,
+                    "description": "Natural language description of threat actor or observed activity",
+                },
+                "min_similarity": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "maximum": 1.0,
+                    "default": 0.7,
+                    "description": "Minimum similarity threshold (0-1)",
+                },
+                "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 10,
+                    "description": "Max results",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="get_group_profile",
+        description="Get complete profile for a specific MITRE ATT&CK threat actor group including aliases, techniques used, software, and attribution details.",
+        inputSchema={
+            "type": "object",
+            "required": ["group_id"],
+            "properties": {
+                "group_id": {
+                    "type": "string",
+                    "description": "Group ID (e.g., G0001)",
                 },
             },
         },
@@ -490,6 +682,177 @@ async def handle_batch_search(params: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# ATT&CK Tool Handlers
+
+
+async def handle_search_techniques(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle search_techniques tool call."""
+    start_time = time.time()
+    request = SearchTechniquesRequest(**params)
+
+    async with db_service.session() as session:
+        techniques, total_count = await attack_queries.search_techniques(
+            session,
+            query=request.query,
+            tactics=request.tactics,
+            platforms=request.platforms,
+            include_subtechniques=request.include_subtechniques,
+            active_only=request.active_only,
+            limit=request.limit,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": {
+            "techniques": techniques,
+            "total_results": total_count,
+            "returned_results": len(techniques),
+        },
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_find_similar_techniques(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle find_similar_techniques tool call (semantic search)."""
+    start_time = time.time()
+    request = FindSimilarTechniquesRequest(**params)
+
+    async with db_service.session() as session:
+        techniques = await attack_queries.find_similar_techniques(
+            session,
+            description=request.description,
+            min_similarity=request.min_similarity,
+            tactics=request.tactics,
+            platforms=request.platforms,
+            active_only=request.active_only,
+            limit=request.limit,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": {
+            "techniques": techniques,
+            "returned_results": len(techniques),
+            "query_embedding_generated": True,
+            "min_similarity": request.min_similarity,
+        },
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_get_technique_details(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle get_technique_details tool call."""
+    start_time = time.time()
+    request = GetTechniqueDetailsRequest(**params)
+
+    async with db_service.session() as session:
+        data = await attack_queries.get_technique_details(
+            session,
+            technique_id=request.technique_id,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": data,
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_get_technique_badges(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle get_technique_badges tool call."""
+    start_time = time.time()
+    request = GetTechniqueBadgesRequest(**params)
+
+    async with db_service.session() as session:
+        badges = await attack_queries.get_technique_badges(
+            session,
+            technique_ids=request.technique_ids,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": {
+            "badges": badges,
+            "count": len(badges),
+        },
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_search_threat_actors(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle search_threat_actors tool call."""
+    start_time = time.time()
+    request = SearchThreatActorsRequest(**params)
+
+    async with db_service.session() as session:
+        groups, total_count = await attack_queries.search_threat_actors(
+            session,
+            query=request.query,
+            techniques=request.techniques,
+            limit=request.limit,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": {
+            "groups": groups,
+            "total_results": total_count,
+            "returned_results": len(groups),
+        },
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_find_similar_threat_actors(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle find_similar_threat_actors tool call (semantic search)."""
+    start_time = time.time()
+    request = FindSimilarThreatActorsRequest(**params)
+
+    async with db_service.session() as session:
+        groups = await attack_queries.find_similar_threat_actors(
+            session,
+            description=request.description,
+            min_similarity=request.min_similarity,
+            limit=request.limit,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": {
+            "groups": groups,
+            "returned_results": len(groups),
+            "query_embedding_generated": True,
+            "min_similarity": request.min_similarity,
+        },
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_get_group_profile(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle get_group_profile tool call."""
+    start_time = time.time()
+    request = GetGroupProfileRequest(**params)
+
+    async with db_service.session() as session:
+        data = await attack_queries.get_group_profile(
+            session,
+            group_id=request.group_id,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": data,
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
 # Tool handler mapping
 TOOL_HANDLERS = {
     "search_cve": handle_search_cve,
@@ -500,6 +863,14 @@ TOOL_HANDLERS = {
     "get_exploits": handle_get_exploits,
     "get_cwe_details": handle_get_cwe_details,
     "batch_search": handle_batch_search,
+    # ATT&CK handlers
+    "search_techniques": handle_search_techniques,
+    "find_similar_techniques": handle_find_similar_techniques,
+    "get_technique_details": handle_get_technique_details,
+    "get_technique_badges": handle_get_technique_badges,
+    "search_threat_actors": handle_search_threat_actors,
+    "find_similar_threat_actors": handle_find_similar_threat_actors,
+    "get_group_profile": handle_get_group_profile,
 }
 
 

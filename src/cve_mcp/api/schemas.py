@@ -180,3 +180,72 @@ class MCPToolCallResponse(BaseModel):
 
     content: list[dict[str, Any]]
     isError: bool = False  # noqa: N815 - MCP protocol uses camelCase
+
+
+# ATT&CK Request Schemas
+
+
+class SearchTechniquesRequest(BaseModel):
+    """Request schema for search_techniques tool."""
+
+    query: str | None = Field(None, description="Full-text search in name/description")
+    tactics: list[str] | None = Field(None, description="Filter by tactics")
+    platforms: list[str] | None = Field(None, description="Filter by platforms")
+    include_subtechniques: bool = Field(True, description="Include subtechniques in results")
+    active_only: bool = Field(True, description="Exclude deprecated/revoked techniques")
+    limit: int = Field(50, ge=1, le=500, description="Max results")
+
+
+class FindSimilarTechniquesRequest(BaseModel):
+    """Request schema for find_similar_techniques tool (semantic search)."""
+
+    description: str = Field(
+        ...,
+        min_length=10,
+        max_length=5000,
+        description="Natural language description of attack scenario"
+    )
+    min_similarity: float = Field(0.7, ge=0.0, le=1.0, description="Minimum similarity threshold")
+    tactics: list[str] | None = Field(None, description="Filter by tactics")
+    platforms: list[str] | None = Field(None, description="Filter by platforms")
+    active_only: bool = Field(True, description="Exclude deprecated/revoked techniques")
+    limit: int = Field(10, ge=1, le=100, description="Max results")
+
+
+class GetTechniqueDetailsRequest(BaseModel):
+    """Request schema for get_technique_details tool."""
+
+    technique_id: str = Field(..., description="Technique ID (e.g., T1566 or T1566.001)")
+
+
+class GetTechniqueBadgesRequest(BaseModel):
+    """Request schema for get_technique_badges tool."""
+
+    technique_ids: list[str] = Field(..., description="List of technique IDs")
+
+
+class SearchThreatActorsRequest(BaseModel):
+    """Request schema for search_threat_actors tool."""
+
+    query: str | None = Field(None, description="Full-text search in name/aliases/description")
+    techniques: list[str] | None = Field(None, description="Filter by techniques used")
+    limit: int = Field(50, ge=1, le=500, description="Max results")
+
+
+class FindSimilarThreatActorsRequest(BaseModel):
+    """Request schema for find_similar_threat_actors tool (semantic search)."""
+
+    description: str = Field(
+        ...,
+        min_length=10,
+        max_length=5000,
+        description="Natural language description of threat actor or activity"
+    )
+    min_similarity: float = Field(0.7, ge=0.0, le=1.0, description="Minimum similarity threshold")
+    limit: int = Field(10, ge=1, le=100, description="Max results")
+
+
+class GetGroupProfileRequest(BaseModel):
+    """Request schema for get_group_profile tool."""
+
+    group_id: str = Field(..., description="Group ID (e.g., G0001)")
