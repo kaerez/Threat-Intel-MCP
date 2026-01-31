@@ -231,10 +231,11 @@ class TestSemanticVsTraditionalSearch:
         semantic_data = semantic_result["data"]
         semantic_techniques = semantic_data["techniques"]
 
-        # Both should ideally return results (but may differ)
-        # We verify structure even if one is empty
-        assert isinstance(traditional_techniques, list)
-        assert isinstance(semantic_techniques, list)
+        # Both should return at least 1 result
+        assert len(traditional_techniques) > 0, \
+            "Traditional search should return at least 1 result"
+        assert len(semantic_techniques) > 0, \
+            "Semantic search should return at least 1 result"
 
         # Verify semantic results have similarity_score
         if semantic_techniques:
