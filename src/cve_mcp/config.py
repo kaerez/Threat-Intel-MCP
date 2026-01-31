@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     nvd_api_key: str | None = None
     nvd_api_base_url: str = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 
+    # OpenAI for embeddings (optional - disables semantic search if not set)
+    OPENAI_API_KEY: str | None = None
+
     # CISA KEV
     cisa_kev_url: str = (
         "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
