@@ -12,15 +12,19 @@ from cve_mcp.api.schemas import (
     FindSimilarCAPECMitigationsRequest,
     FindSimilarCAPECPatternsRequest,
     FindSimilarCWEWeaknessesRequest,
+    FindSimilarDefensesRequest,
     FindSimilarTechniquesRequest,
     FindSimilarThreatActorsRequest,
     FindWeaknessesForCAPECRequest,
     GetATLASTechniqueDetailsRequest,
+    GetAttackCoverageRequest,
     GetCAPECPatternDetailsRequest,
     GetCVEDetailsRequest,
     GetCWEDetailsRequest,
     GetCWEHierarchyRequest,
     GetCWEWeaknessDetailsRequest,
+    GetDefenseDetailsRequest,
+    GetDefensesForAttackRequest,
     GetEPSSScoreRequest,
     GetExploitsRequest,
     GetGroupProfileRequest,
@@ -35,11 +39,18 @@ from cve_mcp.api.schemas import (
     SearchCAPECPatternsRequest,
     SearchCVERequest,
     SearchCWEWeaknessesRequest,
+    SearchDefensesRequest,
     SearchTechniquesRequest,
     SearchThreatActorsRequest,
 )
 from cve_mcp.config import get_settings
-from cve_mcp.services import atlas_queries, attack_queries, capec_queries, cwe_queries
+from cve_mcp.services import (
+    atlas_queries,
+    attack_queries,
+    capec_queries,
+    cwe_queries,
+    d3fend_queries,
+)
 from cve_mcp.services.cache import cache_service
 from cve_mcp.services.database import db_service
 
@@ -966,6 +977,137 @@ MCP_TOOLS: list[MCPToolDefinition] = [
             },
         },
     ),
+    # D3FEND Tools
+    MCPToolDefinition(
+        name="search_defenses",
+        description="Search MITRE D3FEND defensive techniques using traditional keyword and filter-based search. D3FEND provides a catalog of defensive countermeasures that map to ATT&CK techniques. Filter by D3FEND tactics: Model, Harden, Detect, Isolate, Deceive, Evict, Restore.",
+        inputSchema={
+            "type": "object",
+            "required": ["query"],
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Full-text search in defensive technique name/description",
+                },
+                "tactic": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Filter by D3FEND tactics (e.g., ['Harden', 'Detect'])",
+                },
+                "include_children": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": "Include child techniques of matches",
+                },
+                "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 500,
+                    "default": 50,
+                    "description": "Max results",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="find_similar_defenses",
+        description="Find MITRE D3FEND defensive techniques using AI-powered semantic similarity search. Describe a defensive need or security control in natural language and get matching D3FEND techniques with similarity scores. Uses AI embeddings for intelligent matching. Example: 'network segmentation to prevent lateral movement'",
+        inputSchema={
+            "type": "object",
+            "required": ["description"],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 5000,
+                    "description": "Natural language description of defensive need or security control",
+                },
+                "min_similarity": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "maximum": 1.0,
+                    "default": 0.7,
+                    "description": "Minimum similarity threshold (0-1)",
+                },
+                "tactic": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Filter by D3FEND tactics",
+                },
+                "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 10,
+                    "description": "Max results",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="get_defense_details",
+        description="Get complete details for a specific D3FEND defensive technique including description, tactic, ATT&CK mappings, synonyms, references, and knowledge base article URL.",
+        inputSchema={
+            "type": "object",
+            "required": ["technique_id"],
+            "properties": {
+                "technique_id": {
+                    "type": "string",
+                    "pattern": "^(D3-)?[A-Z]{2,}$",
+                    "description": "D3FEND technique ID (e.g., D3-AL for Application Lockdown)",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="get_defenses_for_attack",
+        description="Find D3FEND countermeasures for a specific ATT&CK technique. KEY FEATURE: answers 'How do I defend against this attack?' Returns defensive techniques that counter the specified attack, optionally including defenses for all subtechniques.",
+        inputSchema={
+            "type": "object",
+            "required": ["attack_technique_id"],
+            "properties": {
+                "attack_technique_id": {
+                    "type": "string",
+                    "pattern": "^T?\\d{4}(\\.\\d{3})?$",
+                    "description": "ATT&CK technique ID (e.g., T1059 or T1059.001)",
+                },
+                "include_subtechniques": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "Also find defenses for subtechniques (T1059.001, T1059.002, etc.)",
+                },
+                "relationship_type": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": ["counters", "enables", "related-to", "produces", "uses"],
+                    },
+                    "description": "Filter by relationship type (e.g., ['counters'])",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="get_attack_coverage",
+        description="Analyze ATT&CK coverage for given D3FEND techniques. Helps assess defensive posture by showing which ATT&CK techniques are covered by your defenses and identifying gaps. Returns coverage percentage, covered techniques, and uncovered gaps.",
+        inputSchema={
+            "type": "object",
+            "required": ["technique_ids"],
+            "properties": {
+                "technique_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of D3FEND technique IDs to analyze (e.g., ['D3-AL', 'D3-NI'])",
+                },
+                "show_gaps": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "Include list of uncovered ATT&CK techniques",
+                },
+            },
+        },
+    ),
 ]
 
 
@@ -1792,6 +1934,127 @@ async def handle_find_weaknesses_for_capec(params: dict[str, Any]) -> dict[str, 
     }
 
 
+# D3FEND Tool Handlers
+
+
+async def handle_search_defenses(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle search_defenses tool call."""
+    start_time = time.time()
+    request = SearchDefensesRequest(**params)
+
+    async with db_service.session() as session:
+        defenses, total_count = await d3fend_queries.search_defenses(
+            session,
+            query=request.query,
+            tactic=request.tactic,
+            include_children=request.include_children,
+            limit=request.limit,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": {
+            "defenses": defenses,
+            "total_results": total_count,
+            "returned_results": len(defenses),
+        },
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_find_similar_defenses(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle find_similar_defenses tool call (semantic search)."""
+    start_time = time.time()
+    request = FindSimilarDefensesRequest(**params)
+
+    async with db_service.session() as session:
+        defenses = await d3fend_queries.find_similar_defenses(
+            session,
+            description=request.description,
+            min_similarity=request.min_similarity,
+            tactic=request.tactic,
+            limit=request.limit,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": {
+            "defenses": defenses,
+            "returned_results": len(defenses),
+            "query_embedding_generated": True,
+            "min_similarity": request.min_similarity,
+        },
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_get_defense_details(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle get_defense_details tool call."""
+    start_time = time.time()
+    request = GetDefenseDetailsRequest(**params)
+
+    async with db_service.session() as session:
+        data = await d3fend_queries.get_defense_details(
+            session,
+            technique_id=request.technique_id,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": data,
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_get_defenses_for_attack(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle get_defenses_for_attack tool call."""
+    start_time = time.time()
+    request = GetDefensesForAttackRequest(**params)
+
+    async with db_service.session() as session:
+        defenses = await d3fend_queries.get_defenses_for_attack(
+            session,
+            attack_technique_id=request.attack_technique_id,
+            include_subtechniques=request.include_subtechniques,
+            relationship_type=request.relationship_type,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": {
+            "defenses": defenses,
+            "returned_results": len(defenses),
+            "attack_technique_id": request.attack_technique_id,
+            "include_subtechniques": request.include_subtechniques,
+        },
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_get_attack_coverage(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle get_attack_coverage tool call."""
+    start_time = time.time()
+    request = GetAttackCoverageRequest(**params)
+
+    async with db_service.session() as session:
+        data = await d3fend_queries.get_attack_coverage(
+            session,
+            technique_ids=request.technique_ids,
+            show_gaps=request.show_gaps,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": data,
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
 # Tool handler mapping
 TOOL_HANDLERS = {
     "search_cve": handle_search_cve,
@@ -1829,6 +2092,12 @@ TOOL_HANDLERS = {
     "search_by_external_mapping": handle_search_by_external_mapping,
     "get_cwe_hierarchy": handle_get_cwe_hierarchy,
     "find_weaknesses_for_capec": handle_find_weaknesses_for_capec,
+    # D3FEND handlers
+    "search_defenses": handle_search_defenses,
+    "find_similar_defenses": handle_find_similar_defenses,
+    "get_defense_details": handle_get_defense_details,
+    "get_defenses_for_attack": handle_get_defenses_for_attack,
+    "get_attack_coverage": handle_get_attack_coverage,
 }
 
 
