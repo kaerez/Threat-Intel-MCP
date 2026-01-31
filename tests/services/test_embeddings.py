@@ -1,6 +1,14 @@
 """Tests for embedding service."""
 
+import os
+
 import pytest
+
+# Skip all tests in this module if OPENAI_API_KEY is not set
+pytestmark = pytest.mark.skipif(
+    not os.getenv("OPENAI_API_KEY"),
+    reason="OPENAI_API_KEY not configured - skipping embedding tests"
+)
 
 
 @pytest.mark.asyncio
