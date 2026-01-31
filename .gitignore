@@ -83,3 +83,7 @@ Thumbs.db
 *.tmp
 .env.local
 .env.*.local
+
+# MCP/IDE tool caches
+.serena/
+.claude/

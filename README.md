@@ -60,17 +60,6 @@ This MCP server provides comprehensive threat intelligence through multiple inte
    - Coverage analysis for defensive posture assessment
    - **Key feature**: "How do I defend against this attack?" queries
 
-8. **Threat Actors** 📋 Planned
-   - APT groups
-   - Ransomware gangs
-   - Industry targeting
-   - Attribution indicators
-
-9. **Incident Intelligence** 📋 Planned
-   - Recent breaches
-   - Attack vectors
-   - Lessons learned
-
 ## Key Features
 
 - **240,000+ CVE records** — Full NVD dataset with CVSS, KEV, EPSS scoring
@@ -81,8 +70,8 @@ This MCP server provides comprehensive threat intelligence through multiple inte
 - **300+ mitigations** — Security controls mapped to attack patterns
 - **900+ CWE weaknesses** — Software weakness catalog with semantic search
 - **OWASP Top 10 mappings** — Industry standard weakness prioritization
-- **200+ D3FEND defenses** 🆕 — Defensive countermeasures with ATT&CK mappings
-- **Attack-to-defense correlation** 🆕 — "How do I defend against T1059?"
+- **200+ D3FEND defenses** — Defensive countermeasures with ATT&CK mappings
+- **Attack-to-defense correlation** — "How do I defend against T1059?"
 - **140+ threat actor groups** — Semantic attribution based on observed TTPs
 - **Dual search modes** — Traditional keyword (<50ms) + AI semantic (<100ms)
 - **Cross-domain queries** — CVE ↔ ATT&CK ↔ ATLAS ↔ Threat Actors in single query
@@ -188,7 +177,7 @@ Once connected, just ask naturally:
 - *"Find all CVEs affecting nginx version 1.20.0"*
 - *"Show me public exploits for CVE-2021-44228"*
 
-**ATT&CK Semantic Search:** 🆕
+**ATT&CK Semantic Search:**
 - *"Find techniques similar to: attacker sent phishing email with malicious PDF that executed PowerShell"*
 - *"Which threat actors target financial institutions with supply chain attacks?"*
 - *"Get detection methods for technique T1566.001 (Spearphishing Attachment)"*
@@ -217,7 +206,7 @@ Once connected, just ask naturally:
 - *"Show CWE-79 parent/child hierarchy"*
 - *"What CWE weaknesses are exploited by CAPEC-66?"*
 
-**Defensive Countermeasures (D3FEND):** 🆕
+**Defensive Countermeasures (D3FEND):**
 - *"How do I defend against T1059 (Command and Scripting Interpreter)?"*
 - *"Find defenses similar to: network segmentation to prevent lateral movement"*
 - *"What's my ATT&CK coverage with D3-AL, D3-NI, and D3-SEA?"*
@@ -259,7 +248,7 @@ Once connected, just ask naturally:
 - **External Mappings** — OWASP Top 10, SANS Top 25, CERT references
 - **Actionable Intelligence** — Mitigations, detection methods, consequences
 
-**D3FEND Intelligence (Defensive Countermeasures):** 🆕
+**D3FEND Intelligence (Defensive Countermeasures):**
 - **200+ Defensive Techniques** — Countermeasures with AI semantic search
 - **7 Defensive Tactics** — Model, Harden, Detect, Isolate, Deceive, Evict, Restore
 - **ATT&CK Mappings** — Direct correlation to offensive techniques
@@ -332,7 +321,7 @@ Once connected, just ask naturally:
 | `get_cwe_hierarchy` | Navigate parent/child weakness relationships | "Show CWE-79 hierarchy" |
 | `find_weaknesses_for_capec` | Cross-framework: CWE weaknesses for CAPEC pattern | "What weaknesses does CAPEC-66 exploit?" |
 
-### D3FEND Intelligence (5 tools) 🆕
+### D3FEND Intelligence (5 tools)
 
 | Tool | Description | Example Query |
 |------|-------------|---------------|
@@ -608,7 +597,7 @@ So we're open-sourcing it. Real-time vulnerability intelligence shouldn't requir
   - [ATLAS module](./docs/modules/atlas.md) — AI/ML security, case studies, workflows
   - [CAPEC module](./docs/modules/capec.md) — Attack patterns, mitigations, workflows
   - [CWE module](./docs/modules/cwe.md) — Software weaknesses, OWASP mappings, workflows
-  - [D3FEND module](./docs/modules/d3fend.md) — Defensive countermeasures, ATT&CK correlation 🆕
+  - [D3FEND module](./docs/modules/d3fend.md) — Defensive countermeasures, ATT&CK correlation
 - **[docs/architecture/](./docs/architecture/)** — Architecture decision records
   - [Tier 1 offline-first assessment](./docs/architecture/2026-01-30-mcp-offline-first-assessment.md)
   - [Build vs. buy analysis](./docs/architecture/2026-01-30-mcp-build-vs-buy-analysis.md)
@@ -621,11 +610,11 @@ So we're open-sourcing it. Real-time vulnerability intelligence shouldn't requir
 **Current:** Production Ready ✅
 
 **Completed:**
-1. ✅ Database schema (20 models, full-text search, vector embeddings)
-2. ✅ MCP server (31 tools, FastAPI)
-3. ✅ Sync services (NVD, KEV, EPSS, ExploitDB, ATT&CK, ATLAS, CAPEC, CWE)
+1. ✅ Database schema (31 models, full-text search, vector embeddings)
+2. ✅ MCP server (36 tools, FastAPI)
+3. ✅ Sync services (NVD, KEV, EPSS, ExploitDB, ATT&CK, ATLAS, CAPEC, CWE, D3FEND)
 4. ✅ Docker deployment (PostgreSQL, Redis, Celery)
-5. ✅ CI/CD (CodeQL, Semgrep, Trivy, 45 tests)
+5. ✅ CI/CD (CodeQL, Semgrep, Trivy, 236 tests)
 6. ✅ Security hardened (CORS, audit logs, TLS)
 7. ✅ Type-safe (strict mypy)
 8. ✅ Integration tests
