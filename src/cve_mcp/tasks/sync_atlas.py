@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+import yaml
 
 from cve_mcp.config import get_settings
 from cve_mcp.ingest.atlas_parser import (
@@ -30,22 +31,23 @@ from cve_mcp.services.embeddings import generate_embeddings_batch
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-# MITRE ATLAS data repository URL
-ATLAS_BUNDLE_URL = "https://raw.githubusercontent.com/mitre-atlas/atlas-data/main/dist/ATLAS.json"
+# MITRE ATLAS data repository URL (changed to YAML format)
+ATLAS_BUNDLE_URL = "https://raw.githubusercontent.com/mitre-atlas/atlas-data/main/dist/ATLAS.yaml"
 
 
 async def download_atlas_bundle(cache_dir: Path) -> Path:
-    """Download ATLAS STIX bundle from GitHub.
+    """Download ATLAS bundle from GitHub.
 
     Args:
         cache_dir: Directory to cache downloaded bundle
 
     Returns:
-        Path to downloaded bundle file
+        Path to downloaded bundle file (converted to JSON)
     """
     # Create cache directory if needed
     cache_dir.mkdir(parents=True, exist_ok=True)
 
+    # Download YAML but store as JSON for consistency with rest of codebase
     filename = "ATLAS.json"
     bundle_path = cache_dir / filename
 
@@ -54,16 +56,17 @@ async def download_atlas_bundle(cache_dir: Path) -> Path:
         logger.info(f"Using cached bundle: {bundle_path}")
         return bundle_path
 
-    logger.info(f"Downloading ATLAS STIX bundle from {ATLAS_BUNDLE_URL}")
+    logger.info(f"Downloading ATLAS bundle from {ATLAS_BUNDLE_URL}")
 
     async with httpx.AsyncClient(timeout=60.0) as client:
         response = await client.get(ATLAS_BUNDLE_URL)
         response.raise_for_status()
 
-        # Parse and save bundle
-        bundle = response.json()
+        # Parse YAML and convert to JSON-like structure
+        bundle = yaml.safe_load(response.text)
         with open(bundle_path, "w") as f:
-            json.dump(bundle, f, indent=2)
+            # Custom encoder to handle date objects from YAML
+            json.dump(bundle, f, indent=2, default=str)
 
         logger.info(f"Downloaded bundle to {bundle_path}")
 
@@ -89,32 +92,34 @@ async def import_atlas_bundle(
     with open(bundle_path) as f:
         bundle = json.load(f)
 
-    objects = bundle.get("objects", [])
-
-    # Separate objects by type
+    # ATLAS YAML format: matrices[0] contains tactics and techniques
+    # case-studies is at top level
     techniques_data: list[dict[str, Any]] = []
     tactics_data: list[dict[str, Any]] = []
     case_studies_data: list[dict[str, Any]] = []
 
-    # Parse all objects
-    for obj in objects:
-        obj_type = obj.get("type")
+    # Extract from new YAML format (matrices structure)
+    matrices = bundle.get("matrices", [])
+    if matrices:
+        matrix = matrices[0]  # Use first matrix
 
-        if obj_type == "attack-pattern":
-            parsed = parse_technique(obj)
+        # Parse techniques from matrix
+        for tech in matrix.get("techniques", []):
+            parsed = parse_technique(tech)
             if parsed:
                 techniques_data.append(parsed)
 
-        elif obj_type == "x-mitre-tactic":
-            parsed = parse_tactic(obj)
+        # Parse tactics from matrix
+        for tactic in matrix.get("tactics", []):
+            parsed = parse_tactic(tactic)
             if parsed:
                 tactics_data.append(parsed)
 
-        # ATLAS case studies use custom type
-        elif obj_type == "x-mitre-case-study":
-            parsed = parse_case_study(obj)
-            if parsed:
-                case_studies_data.append(parsed)
+    # Parse case studies from top level
+    for cs in bundle.get("case-studies", []):
+        parsed = parse_case_study(cs)
+        if parsed:
+            case_studies_data.append(parsed)
 
     logger.info(
         f"Parsed {len(techniques_data)} techniques, {len(tactics_data)} tactics, "

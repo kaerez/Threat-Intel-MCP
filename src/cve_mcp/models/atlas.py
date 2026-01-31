@@ -24,7 +24,8 @@ class ATLASTechnique(Base):
 
     # Primary identifier
     technique_id: Mapped[str] = mapped_column(String(20), primary_key=True)  # AML.T0001
-    stix_id: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    # Note: stix_id is nullable because ATLAS moved from STIX to YAML format in late 2024
+    stix_id: Mapped[str | None] = mapped_column(String(100), unique=True, nullable=True)
 
     # Semantic search (1536 dimensions for text-embedding-3-small)
     embedding: Mapped[list[float] | None] = mapped_column(Vector(1536))
@@ -111,7 +112,8 @@ class ATLASTactic(Base):
     __tablename__ = "atlas_tactics"
 
     tactic_id: Mapped[str] = mapped_column(String(50), primary_key=True)  # AML.TA0001
-    stix_id: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    # Note: stix_id is nullable because ATLAS moved from STIX to YAML format in late 2024
+    stix_id: Mapped[str | None] = mapped_column(String(100), nullable=True, unique=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     shortname: Mapped[str] = mapped_column(String(50), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
@@ -126,7 +128,8 @@ class ATLASCaseStudy(Base):
     __tablename__ = "atlas_case_studies"
 
     case_study_id: Mapped[str] = mapped_column(String(50), primary_key=True)  # AML.CS0001
-    stix_id: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    # Note: stix_id is nullable because ATLAS moved from STIX to YAML format in late 2024
+    stix_id: Mapped[str | None] = mapped_column(String(100), nullable=True, unique=True)
 
     # Semantic search
     embedding: Mapped[list[float] | None] = mapped_column(Vector(1536))
@@ -148,8 +151,9 @@ class ATLASCaseStudy(Base):
 
     # Metadata
     version: Mapped[str | None] = mapped_column(String(20))
-    created: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    modified: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    # Note: created/modified are nullable because some case studies don't have dates in YAML
+    created: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    modified: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # STIX extensions
     stix_extensions: Mapped[dict | None] = mapped_column(JSONB)
