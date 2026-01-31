@@ -9,7 +9,6 @@ from httpx import AsyncClient
 
 from cve_mcp.api.app import create_app
 from cve_mcp.models.base import AsyncSessionLocal
-from cve_mcp.models.cve import CVE
 from cve_mcp.services.database import DatabaseService
 
 
