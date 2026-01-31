@@ -7,6 +7,13 @@ from cve_mcp.models.cve import (
     CVEReference,
     CWEData,
 )
+from cve_mcp.models.cwe import (
+    CWECategory,
+    CWEExternalMapping,
+    CWEView,
+    CWEWeakness,
+    CWEWeaknessCategory,
+)
 from cve_mcp.models.exploit import ExploitReference
 from cve_mcp.models.intelligence import CISAKEV, EPSSScore
 from cve_mcp.models.metadata import QueryAuditLog, SyncMetadata
@@ -20,6 +27,11 @@ __all__ = [
     "EPSSScore",
     "ExploitReference",
     "CWEData",
+    "CWECategory",
+    "CWEExternalMapping",
+    "CWEView",
+    "CWEWeakness",
+    "CWEWeaknessCategory",
     "SyncMetadata",
     "QueryAuditLog",
 ]
