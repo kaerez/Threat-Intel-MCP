@@ -130,7 +130,7 @@ def parse_nvd_cve(vuln_item: dict[str, Any]) -> dict[str, Any]:
         })
 
     # Parse CPE configurations
-    cpe_mappings = []
+    cpe_mappings: list[dict[str, Any]] = []
     configurations = cve.get("configurations", [])
     for config in configurations:
         for node in config.get("nodes", []):

@@ -1,7 +1,15 @@
 """Base database model and engine setup."""
 
+from collections.abc import Callable
+
 from sqlalchemy import MetaData
-from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncAttrs,
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.orm import DeclarativeBase
 
 from cve_mcp.config import get_settings
@@ -22,7 +30,7 @@ class Base(AsyncAttrs, DeclarativeBase):
     metadata = MetaData(naming_convention=convention)
 
 
-def get_async_engine():
+def get_async_engine() -> AsyncEngine:
     """Create async database engine."""
     settings = get_settings()
     return create_async_engine(
@@ -33,7 +41,7 @@ def get_async_engine():
     )
 
 
-def get_async_session_maker():
+def get_async_session_maker() -> Callable[[], AsyncSession]:
     """Create async session maker."""
     engine = get_async_engine()
     return async_sessionmaker(engine, expire_on_commit=False)

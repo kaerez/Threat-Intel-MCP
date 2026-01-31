@@ -411,7 +411,7 @@ class DatabaseService:
             # Apply limit
             query = query.limit(limit)
             result = await session.execute(query)
-            rows = result.all()
+            rows = list(result.all())
 
         # Group by CVE
         cves_dict: dict[str, dict] = {}

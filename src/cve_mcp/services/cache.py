@@ -53,7 +53,7 @@ class CacheService:
         key = self._make_key("cve", cve_id)
         data = await self.redis.get(key)
         if data:
-            return json.loads(data)
+            return json.loads(data)  # type: ignore[no-any-return]
         return None
 
     async def set_cve(self, cve_id: str, data: dict[str, Any]) -> None:
@@ -71,7 +71,7 @@ class CacheService:
         key = self._make_key("search", param_hash)
         data = await self.redis.get(key)
         if data:
-            return json.loads(data)
+            return json.loads(data)  # type: ignore[no-any-return]
         return None
 
     async def set_search(self, params: dict[str, Any], data: dict[str, Any]) -> None:
@@ -88,7 +88,7 @@ class CacheService:
         """Get cached list of KEV CVE IDs."""
         data = await self.redis.get("kev:list")
         if data:
-            return json.loads(data)
+            return json.loads(data)  # type: ignore[no-any-return]
         return None
 
     async def set_kev_list(self, cve_ids: list[str]) -> None:

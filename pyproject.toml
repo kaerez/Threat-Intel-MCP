@@ -69,6 +69,17 @@ warn_unused_ignores = true
 disallow_untyped_defs = true
 plugins = ["pydantic.mypy"]
 
+# Allow untyped defs in Celery tasks (decorator interference)
+[[tool.mypy.overrides]]
+module = "cve_mcp.tasks.*"
+disallow_untyped_defs = false
+warn_return_any = false
+
+# Ignore missing stubs for third-party libraries
+[[tool.mypy.overrides]]
+module = ["celery.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]

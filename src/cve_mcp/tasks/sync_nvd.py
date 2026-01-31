@@ -79,7 +79,7 @@ async def _sync_nvd_recent_async() -> dict:
 
                 response = await client.get(
                     settings.nvd_api_base_url,
-                    params=params,
+                    params=params,  # type: ignore[arg-type]
                     headers=headers,
                 )
 
