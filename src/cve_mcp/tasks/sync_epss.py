@@ -58,17 +58,17 @@ async def _sync_epss_scores_async() -> dict:
 
     # Parse CSV
     # EPSS CSV format: cve,epss,percentile (with optional date column)
-    lines = csv_content.strip().split("\n")  # type: ignore[arg-type]
+    lines = csv_content.strip().split("\n")
 
     # Skip comment lines (starting with #)
-    data_lines = [line for line in lines if not line.startswith("#")]  # type: ignore[arg-type]
+    data_lines = [line for line in lines if not line.startswith("#")]
 
     if not data_lines:
         logger.warning("EPSS CSV is empty")
         return {"synced": 0}
 
     # Parse header
-    reader = csv.DictReader(data_lines)  # type: ignore[arg-type]
+    reader = csv.DictReader(data_lines)
 
     # Get existing CVE IDs for validation
     async with AsyncSessionLocal() as session:
