@@ -94,7 +94,7 @@ class CWEWeakness(Base):
 
     # Core fields
     name: Mapped[str] = mapped_column(String(500), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)  # Some CWEs have no description
     extended_description: Mapped[str | None] = mapped_column(Text)
 
     # Abstraction hierarchy: Pillar > Class > Base > Variant > Compound

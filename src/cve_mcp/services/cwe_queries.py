@@ -53,15 +53,16 @@ def _weakness_to_dict(weakness: CWEWeakness, include_full: bool = False) -> dict
             "embedding_generated": weakness.embedding is not None,
         }
 
+    # Truncate description if present and longer than 200 chars
+    desc = weakness.description
+    if desc and len(desc) > 200:
+        desc = desc[:200] + "..."
+
     return {
         "cwe_id": weakness.cwe_id,
         "weakness_id": weakness.weakness_id,
         "name": weakness.name,
-        "description": (
-            weakness.description[:200] + "..."
-            if len(weakness.description) > 200
-            else weakness.description
-        ),
+        "description": desc,
         "abstraction": weakness.abstraction,
         "status": weakness.status,
         "likelihood_of_exploit": weakness.likelihood_of_exploit,

@@ -263,24 +263,55 @@ async def sync_category_memberships(
     Returns:
         Number of category memberships synced
     """
+    from sqlalchemy import select
+    from cve_mcp.models.cwe import CWEWeakness, CWECategory, CWEView
+
     logger.info("Syncing category memberships")
+
+    # Get all valid IDs to avoid FK violations
+    result = await session.execute(select(CWEWeakness.cwe_id))
+    valid_weakness_ids = {row[0] for row in result.fetchall()}
+
+    result = await session.execute(select(CWECategory.category_id))
+    valid_category_ids = {row[0] for row in result.fetchall()}
+
+    result = await session.execute(select(CWEView.view_id))
+    valid_view_ids = {row[0] for row in result.fetchall()}
+
+    logger.info(f"Found {len(valid_weakness_ids)} weaknesses, {len(valid_category_ids)} categories, {len(valid_view_ids)} views")
 
     # Clear existing memberships
     await session.execute(CWEWeaknessCategory.__table__.delete())
 
     count = 0
+    skipped = 0
 
     # Process category memberships
     for cat_data in categories:
         category_id = cat_data["category_id"]
-        members = cat_data.get("members", [])
+        members = cat_data.get("members") or []  # Handle None values
         # Default to CWE-1000 (Research Concepts) view for categories
         view_id = "CWE-1000"
+
+        # Skip if category doesn't exist
+        if category_id not in valid_category_ids:
+            skipped += len(members) if members else 0
+            continue
+
+        # Skip if view doesn't exist
+        if view_id not in valid_view_ids:
+            skipped += len(members) if members else 0
+            continue
 
         for member_id in members:
             # Ensure CWE- prefix
             if not member_id.startswith("CWE-"):
                 member_id = f"CWE-{member_id}"
+
+            # Skip if weakness doesn't exist (deprecated/draft CWEs)
+            if member_id not in valid_weakness_ids:
+                skipped += 1
+                continue
 
             membership = CWEWeaknessCategory(
                 weakness_id=member_id,
@@ -291,25 +322,41 @@ async def sync_category_memberships(
             count += 1
 
     # Process view memberships
+    # Note: Views can contain weaknesses directly, but the schema requires a valid category_id.
+    # Only create memberships where the view is also a valid category.
     for view_data in views:
         view_id = view_data["view_id"]
-        members = view_data.get("members", [])
+        members = view_data.get("members") or []  # Handle None values
+
+        # Skip if view doesn't exist
+        if view_id not in valid_view_ids:
+            skipped += len(members) if members else 0
+            continue
+
+        # Only process if this view is also a category (some views are)
+        if view_id not in valid_category_ids:
+            # View exists but is not also a category, skip these memberships
+            skipped += len(members) if members else 0
+            continue
 
         for member_id in members:
             if not member_id.startswith("CWE-"):
                 member_id = f"CWE-{member_id}"
 
-            # For views, the category_id could be the view itself or a default
-            # Use the view_id as category_id for direct view memberships
+            # Skip if weakness doesn't exist
+            if member_id not in valid_weakness_ids:
+                skipped += 1
+                continue
+
             membership = CWEWeaknessCategory(
                 weakness_id=member_id,
-                category_id=view_id,  # View acts as its own category
+                category_id=view_id,
                 view_id=view_id,
             )
             session.add(membership)
             count += 1
 
-    logger.info(f"Synced {count} category memberships")
+    logger.info(f"Synced {count} category memberships (skipped {skipped} invalid references)")
     return count
 
 
