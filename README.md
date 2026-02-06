@@ -5,18 +5,18 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Tests](https://github.com/Ansvar-Systems/Threat-Intel-MCP/actions/workflows/test.yml/badge.svg)](https://github.com/Ansvar-Systems/Threat-Intel-MCP/actions/workflows/test.yml)
 [![Security](https://github.com/Ansvar-Systems/Threat-Intel-MCP/actions/workflows/docker-security.yml/badge.svg)](https://github.com/Ansvar-Systems/Threat-Intel-MCP/actions/workflows/docker-security.yml)
-[![Database](https://img.shields.io/badge/database-240K%2B%20CVEs-green)](docs/SETUP.md)
+[![Database](https://img.shields.io/badge/database-331K%2B%20CVEs-green)](docs/SETUP.md)
 
-Query **240,000+ CVE records**, **700+ ATT&CK techniques**, **200+ D3FEND defenses**, **200+ ATLAS AI/ML techniques**, **550+ CAPEC attack patterns**, **140+ threat actors** with semantic similarity search — directly from Claude, Cursor, or any MCP-compatible client.
+Query **331,000+ CVE records**, **700+ ATT&CK techniques**, **200+ D3FEND defenses**, **200+ ATLAS AI/ML techniques**, **550+ CAPEC attack patterns**, **960+ CWE weaknesses**, **140+ threat actors** with semantic similarity search — directly from Claude, Cursor, or any MCP-compatible client.
 
 ## Modules
 
 This MCP server provides comprehensive threat intelligence through multiple integrated modules:
 
 1. **CVE Intelligence** ✅ Production
-   - 240,000+ CVE records with CVSS scoring
-   - CISA KEV tracking (1,200+ actively exploited CVEs)
-   - EPSS exploit prediction (200,000+ scores)
+   - 331,000+ CVE records with CVSS scoring
+   - CISA KEV tracking (1,500+ actively exploited CVEs)
+   - EPSS exploit prediction (313,000+ scores)
    - Exploit references (Metasploit, ExploitDB, GitHub PoCs)
    - **Semantic search**: "Find CVEs similar to this vulnerability description"
 
@@ -62,7 +62,7 @@ This MCP server provides comprehensive threat intelligence through multiple inte
 
 ## Key Features
 
-- **240,000+ CVE records** — Full NVD dataset with CVSS, KEV, EPSS scoring
+- **331,000+ CVE records** — Full NVD dataset with CVSS, KEV, EPSS scoring
 - **700+ ATT&CK techniques** — AI-powered semantic search for incident response
 - **200+ ATLAS techniques** — AI/ML adversarial attack techniques with semantic search
 - **30+ AI/ML case studies** — Real-world AI security incidents with technique mappings
@@ -218,10 +218,10 @@ Once connected, just ask naturally:
 ## What's Included
 
 **CVE Intelligence:**
-- **240,000+ CVE Records** — Full NVD dataset with CVSS v2/v3/v4 scoring
-- **1,200+ CISA KEV Entries** — Track actively exploited vulnerabilities
-- **200,000+ EPSS Scores** — Exploit prediction likelihood (0-1 scale)
-- **15,000+ Exploit References** — Metasploit, ExploitDB, GitHub PoCs
+- **331,000+ CVE Records** — Full NVD dataset with CVSS v2/v3/v4 scoring
+- **1,500+ CISA KEV Entries** — Track actively exploited vulnerabilities
+- **313,000+ EPSS Scores** — Exploit prediction likelihood (0-1 scale)
+- **Exploit References** — Metasploit, ExploitDB, GitHub PoCs
 - **CPE Product Mappings** — Which software versions are vulnerable
 
 **ATT&CK Intelligence:**
@@ -243,7 +243,7 @@ Once connected, just ask naturally:
 - **CWE/ATT&CK Mappings** — Cross-framework relationships
 
 **CWE Intelligence (Software Weaknesses):**
-- **900+ Weaknesses** — Software and hardware weakness types with AI semantic search
+- **960+ Weaknesses** — Software and hardware weakness types with AI semantic search
 - **5 Abstraction Levels** — Pillar → Class → Base → Variant → Compound hierarchy
 - **External Mappings** — OWASP Top 10, SANS Top 25, CERT references
 - **Actionable Intelligence** — Mitigations, detection methods, consequences
@@ -331,6 +331,12 @@ Once connected, just ask naturally:
 | `get_defenses_for_attack` | **KEY:** Find defenses for ATT&CK technique | "How do I defend against T1059?" |
 | `get_attack_coverage` | Analyze defensive posture vs ATT&CK | "What's my coverage with these D3FEND techniques?" |
 
+### System (1 tool)
+
+| Tool | Description | Example Query |
+|------|-------------|---------------|
+| `get_data_freshness` | Check sync status and data age for all 9 sources | "Is the threat intelligence data up to date?" |
+
 ---
 
 ## Architecture
@@ -351,7 +357,7 @@ Once connected, just ask naturally:
               ▼
 ┌─────────────────────────────────────────┐
 │  CVE MCP Server (FastAPI)               │
-│  - 36 MCP tools                         │
+│  - 37 MCP tools                         │
 │  - Query routing & validation           │
 └─────────────┬───────────────────────────┘
               │
@@ -500,14 +506,14 @@ vulns = await mcp_client.call_tool(
 
 | Source | Type | Update Frequency | Records |
 |--------|------|------------------|---------|
-| **NVD API 2.0** | Public | Daily (delta), Monthly (full) | 240,000+ CVEs |
-| **CISA KEV** | Public | Daily | 1,200+ exploited CVEs |
-| **FIRST EPSS** | Public | Daily | 200,000+ scores |
-| **ExploitDB** | Public | Weekly | 15,000+ exploits |
+| **NVD API 2.0** | Public | Daily (delta), Monthly (full) | 331,000+ CVEs |
+| **CISA KEV** | Public | Daily | 1,500+ exploited CVEs |
+| **FIRST EPSS** | Public | Daily | 313,000+ scores |
+| **ExploitDB** | Public | Weekly | Exploit references |
 | **MITRE ATT&CK** | Public | Monthly | 700+ techniques, 140+ groups |
 | **MITRE ATLAS** | Public | Monthly | 200+ techniques, 30+ case studies |
 | **MITRE CAPEC** | Public | Monthly | 550+ patterns, 300+ mitigations |
-| **MITRE CWE** | Public | Monthly | 900+ weaknesses, OWASP/SANS mappings |
+| **MITRE CWE** | Public | Monthly | 960+ weaknesses, OWASP/SANS mappings |
 | **MITRE D3FEND** | Public | Quarterly | 200+ defenses, ATT&CK mappings |
 
 All data sources are **free and public** — no API keys required (NVD API key optional for higher rate limits).
@@ -518,8 +524,8 @@ All data sources are **free and public** — no API keys required (NVD API key o
 
 This server is part of **Ansvar's Security Intelligence Suite**:
 
-### 🛡️ CVE + Exploit Intelligence MCP (This Project)
-**Query 240,000+ CVE records with exploit intelligence**
+### 🛡️ Threat Intelligence MCP (This Project)
+**Query 331,000+ CVE records with exploit intelligence**
 - Full NVD database with CVSS scoring
 - CISA KEV tracking and EPSS prediction
 - Exploit references (Metasploit, ExploitDB)
@@ -611,10 +617,10 @@ So we're open-sourcing it. Real-time vulnerability intelligence shouldn't requir
 
 **Completed:**
 1. ✅ Database schema (31 models, full-text search, vector embeddings)
-2. ✅ MCP server (36 tools, FastAPI)
+2. ✅ MCP server (37 tools, FastAPI)
 3. ✅ Sync services (NVD, KEV, EPSS, ExploitDB, ATT&CK, ATLAS, CAPEC, CWE, D3FEND)
 4. ✅ Docker deployment (PostgreSQL, Redis, Celery)
-5. ✅ CI/CD (CodeQL, Semgrep, Trivy, 236 tests)
+5. ✅ CI/CD (CodeQL, Semgrep, Trivy, pytest)
 6. ✅ Security hardened (CORS, audit logs, TLS)
 7. ✅ Type-safe (strict mypy)
 8. ✅ Integration tests
@@ -623,6 +629,7 @@ So we're open-sourcing it. Real-time vulnerability intelligence shouldn't requir
 11. ✅ MITRE CAPEC module (attack patterns, mitigations, semantic search)
 12. ✅ MITRE CWE module (software weaknesses, OWASP/SANS mappings, semantic search)
 13. ✅ MITRE D3FEND module (defensive countermeasures, ATT&CK mappings, semantic search)
+14. ✅ v1.1.0 comprehensive bug fixes and agent usability improvements
 
 ---
 

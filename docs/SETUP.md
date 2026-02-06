@@ -29,6 +29,11 @@ Complete guide for deploying and configuring the CVE + Exploit Intelligence MCP 
   - Without key: 5 requests/30 seconds (slow sync)
   - With key: 50 requests/30 seconds (recommended)
 
+- **OpenAI API Key:** Required for AI-powered semantic similarity search (`find_similar_*` tools)
+  - All 6 `find_similar_*` tools use OpenAI embeddings for semantic matching
+  - Without key: keyword search tools still work; semantic search returns an error
+  - Set via `OPENAI_API_KEY` environment variable
+
 ---
 
 ## Server Deployment
@@ -93,7 +98,7 @@ The MCP server requires local CVE data. Choose sync strategy:
 
 ### Option A: Full Initial Sync (Recommended)
 
-Syncs entire NVD database (200,000+ CVEs). Takes 6-8 hours.
+Syncs entire NVD database (331,000+ CVEs) and all MITRE frameworks. Takes 6-8 hours for NVD, plus 5-15 minutes per MITRE module.
 
 ```bash
 # NVD CVE data (6-8 hours)
@@ -107,6 +112,21 @@ docker-compose exec celery-worker celery -A cve_mcp.tasks.celery_app call cve_mc
 
 # ExploitDB references (2-3 minutes)
 docker-compose exec celery-worker celery -A cve_mcp.tasks.celery_app call cve_mcp.tasks.sync_exploitdb.sync_exploitdb
+
+# MITRE ATT&CK (2-3 minutes)
+docker-compose exec celery-worker celery -A cve_mcp.tasks.celery_app call cve_mcp.tasks.sync_attack.sync_attack
+
+# MITRE ATLAS (1-2 minutes)
+docker-compose exec celery-worker celery -A cve_mcp.tasks.celery_app call cve_mcp.tasks.sync_atlas.sync_atlas
+
+# MITRE CAPEC (2-3 minutes)
+docker-compose exec celery-worker celery -A cve_mcp.tasks.celery_app call cve_mcp.tasks.sync_capec.sync_capec
+
+# MITRE CWE (3-5 minutes)
+docker-compose exec celery-worker celery -A cve_mcp.tasks.celery_app call cve_mcp.tasks.sync_cwe.sync_cwe
+
+# MITRE D3FEND (2-3 minutes)
+docker-compose exec celery-worker celery -A cve_mcp.tasks.celery_app call cve_mcp.tasks.sync_d3fend.sync_d3fend
 ```
 
 Monitor progress:
@@ -126,11 +146,16 @@ docker-compose exec celery-worker celery -A cve_mcp.tasks.celery_app call cve_mc
 
 ### Automatic Daily Sync
 
-Celery Beat automatically runs daily sync at 02:00-04:00 UTC:
-- NVD delta updates
+Celery Beat automatically runs syncs on schedule:
+
+**Daily (02:00-04:00 UTC):**
+- NVD delta updates (last 30 days)
 - CISA KEV updates
 - EPSS score updates
 - ExploitDB updates
+
+**Weekly (Sunday 04:00-06:00 UTC):**
+- MITRE ATT&CK, ATLAS, CAPEC, CWE, D3FEND
 
 No manual intervention needed after initial sync.
 
@@ -262,23 +287,29 @@ Expected response:
 ### 2. List Available Tools
 
 ```bash
-curl http://localhost:8307/tools
+curl http://localhost:8307/mcp/tools
 ```
 
-Should return 8 MCP tools:
-- search_cve
-- get_cve_details
-- check_kev_status
-- get_epss_score
-- search_by_product
-- get_exploits
-- get_cwe_details
-- batch_search
+Should return 37 MCP tools across 7 categories:
+
+**CVE Intelligence (8 tools):** search_cve, get_cve_details, check_kev_status, get_epss_score, search_by_product, get_exploits, get_cwe_details, batch_search
+
+**ATT&CK (7 tools):** search_techniques, find_similar_techniques, get_technique_details, get_technique_badges, search_threat_actors, find_similar_threat_actors, get_group_profile
+
+**ATLAS (5 tools):** search_atlas_techniques, find_similar_atlas_techniques, get_atlas_technique_details, search_atlas_case_studies, find_similar_atlas_case_studies
+
+**CAPEC (5 tools):** search_capec_patterns, find_similar_capec_patterns, get_capec_pattern_details, search_capec_mitigations, find_similar_capec_mitigations
+
+**CWE (6 tools):** search_cwe_weaknesses, find_similar_cwe_weaknesses, get_cwe_weakness_details, search_by_external_mapping, get_cwe_hierarchy, find_weaknesses_for_capec
+
+**D3FEND (5 tools):** search_defenses, find_similar_defenses, get_defense_details, get_defenses_for_attack, get_attack_coverage
+
+**System (1 tool):** get_data_freshness
 
 ### 3. Test Tool Call
 
 ```bash
-curl -X POST http://localhost:8307/call \
+curl -X POST http://localhost:8307/mcp/tools/call \
   -H "Content-Type: application/json" \
   -d '{
     "name": "search_cve",
@@ -291,6 +322,16 @@ curl -X POST http://localhost:8307/call \
 ```
 
 Should return CVE records with CVSS scores > 9.0.
+
+### 3b. Test Data Freshness
+
+```bash
+curl -X POST http://localhost:8307/mcp/tools/call \
+  -H "Content-Type: application/json" \
+  -d '{"name": "get_data_freshness", "arguments": {}}'
+```
+
+Should return sync status for all 9 data sources. Verify all show `"status": "current"`.
 
 ### 4. Test in Claude Desktop
 

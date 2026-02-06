@@ -1,10 +1,12 @@
-# CVE + Exploit Intelligence MCP - Complete Design Specification
+# Threat Intelligence MCP - Design Specification
 
-**Repository:** `ansvar-cve-exploit-mcp` (to be created)
+**Repository:** [Ansvar-Systems/Threat-Intel-MCP](https://github.com/Ansvar-Systems/Threat-Intel-MCP)
 **Type:** Tier 1 MCP Server (Offline-First)
-**Status:** Design Complete - Ready for Implementation
-**Date:** 2026-01-30
-**Version:** 1.0
+**Status:** Production (v1.1.0)
+**Original Date:** 2026-01-30
+**Version:** 1.0 (original CVE module design)
+
+> **Note:** This document is the original design specification for the CVE module. The actual implementation (v1.1.0) includes 37 tools across 6 modules: CVE Intelligence (8), ATT&CK (7), ATLAS (5), CAPEC (5), CWE (6), D3FEND (5), and System (1). See [README.md](./README.md) for the complete tool reference. Module-specific documentation is in [docs/modules/](./docs/modules/).
 
 ---
 
@@ -13,8 +15,8 @@
 A Model Context Protocol (MCP) server providing offline-first access to CVE vulnerability data, CISA Known Exploited Vulnerabilities (KEV), EPSS exploit prediction scores, and exploit availability tracking.
 
 **Key Features:**
-- ✅ 200,000+ CVE records with full details
-- ✅ CISA KEV integration (actively exploited vulnerabilities)
+- ✅ 331,000+ CVE records with full details
+- ✅ CISA KEV integration (1,500+ actively exploited vulnerabilities)
 - ✅ EPSS scores (exploit prediction likelihood)
 - ✅ CPE product mappings (affected software versions)
 - ✅ Exploit reference tracking (Metasploit, ExploitDB, GitHub PoCs)
@@ -188,7 +190,7 @@ CREATE TABLE cves (
 
     -- CVSS v4.0 scoring (future-proofing)
     cvss_v4_score DECIMAL(3,1),
-    cvss_v4_vector VARCHAR(150),
+    cvss_v4_vector VARCHAR(300),  -- Widened from 150: v4.0 supplemental metrics can exceed 185 chars
     cvss_v4_severity VARCHAR(10),
 
     -- CWE (weakness) associations
