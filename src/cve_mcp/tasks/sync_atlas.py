@@ -4,6 +4,7 @@ Downloads ATLAS STIX bundle, parses, generates embeddings, and populates databas
 ATLAS is the Adversarial Threat Landscape for AI Systems framework.
 """
 
+import asyncio
 import json
 import logging
 from datetime import datetime
@@ -11,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+import structlog
 import yaml
 
 from cve_mcp.config import get_settings
@@ -24,11 +26,14 @@ from cve_mcp.models.atlas import (
     ATLASTactic,
     ATLASTechnique,
 )
-from cve_mcp.models.base import AsyncSessionLocal
+from cve_mcp.models.base import get_task_session
 from cve_mcp.models.metadata import SyncMetadata
 from cve_mcp.services.embeddings import generate_embeddings_batch
 
+from cve_mcp.tasks.celery_app import celery_app
+
 logger = logging.getLogger(__name__)
+slogger = structlog.get_logger()
 settings = get_settings()
 
 # MITRE ATLAS data repository URL (changed to YAML format)
@@ -163,7 +168,7 @@ async def import_atlas_bundle(
             logger.info(f"Generated {len(case_study_embeddings)} case study embeddings")
 
     # Import into database
-    async with AsyncSessionLocal() as session:
+    async with get_task_session() as session:
         # Import techniques
         for tech_data in techniques_data:
             technique = ATLASTechnique(**tech_data)
@@ -232,7 +237,7 @@ async def sync_atlas_data(
         stats = await import_atlas_bundle(bundle_path, generate_embeddings)
 
         # Update sync metadata
-        async with AsyncSessionLocal() as session:
+        async with get_task_session() as session:
             sync_metadata = SyncMetadata(
                 source="atlas",
                 last_sync_time=datetime.utcnow(),
@@ -251,7 +256,7 @@ async def sync_atlas_data(
 
         # Update sync metadata with failure
         try:
-            async with AsyncSessionLocal() as session:
+            async with get_task_session() as session:
                 sync_metadata = SyncMetadata(
                     source="atlas",
                     last_sync_time=datetime.utcnow(),
@@ -268,3 +273,13 @@ async def sync_atlas_data(
         raise
 
     return stats
+
+
+@celery_app.task(bind=True, max_retries=2)
+def sync_atlas(self):
+    """Celery task: Sync MITRE ATLAS AI/ML security data."""
+    try:
+        return asyncio.run(sync_atlas_data(generate_embeddings=False))
+    except Exception as exc:
+        slogger.exception("ATLAS sync failed", error=str(exc))
+        raise self.retry(exc=exc, countdown=300 * (2**self.request.retries))

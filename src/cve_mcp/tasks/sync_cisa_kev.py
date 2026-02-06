@@ -5,11 +5,11 @@ from datetime import datetime
 
 import httpx
 import structlog
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 
 from cve_mcp.config import get_settings
 from cve_mcp.models import CISAKEV, CVE, SyncMetadata
-from cve_mcp.models.base import AsyncSessionLocal
+from cve_mcp.models.base import get_task_session
 from cve_mcp.tasks.celery_app import celery_app
 
 logger = structlog.get_logger()
@@ -17,7 +17,7 @@ logger = structlog.get_logger()
 
 async def _update_sync_metadata(source: str, **kwargs) -> None:
     """Update sync metadata."""
-    async with AsyncSessionLocal() as session:
+    async with get_task_session() as session:
         result = await session.execute(select(SyncMetadata).where(SyncMetadata.source == source))
         metadata = result.scalar_one_or_none()
 
@@ -34,6 +34,25 @@ async def _update_sync_metadata(source: str, **kwargs) -> None:
 async def _sync_cisa_kev_async() -> dict:
     """Async implementation of CISA KEV sync."""
     settings = get_settings()
+
+    # Check if CVE table has data (KEV sync depends on CVEs existing)
+    async with get_task_session() as session:
+        cve_count_result = await session.execute(select(func.count()).select_from(CVE))
+        cve_count = cve_count_result.scalar() or 0
+
+    if cve_count == 0:
+        logger.warning(
+            "Skipping CISA KEV sync: CVE table is empty. "
+            "Run NVD sync first to populate CVE data."
+        )
+        await _update_sync_metadata(
+            "cisa_kev",
+            last_sync_time=datetime.now(),
+            last_sync_status="skipped",
+            records_synced=0,
+            error_message="CVE table empty - NVD sync required first",
+        )
+        return {"synced": 0, "skipped": 0, "reason": "cve_table_empty"}
 
     await _update_sync_metadata(
         "cisa_kev",
@@ -53,7 +72,7 @@ async def _sync_cisa_kev_async() -> dict:
     logger.info("Downloaded CISA KEV catalog", count=len(vulnerabilities))
 
     # Process KEV entries
-    async with AsyncSessionLocal() as session:
+    async with get_task_session() as session:
         # Reset all has_kev_entry flags
         await session.execute(update(CVE).values(has_kev_entry=False))
 

@@ -4,6 +4,7 @@ Downloads CAPEC STIX bundle, parses, generates embeddings, and populates databas
 CAPEC is the Common Attack Pattern Enumeration and Classification framework.
 """
 
+import asyncio
 import json
 import logging
 from datetime import datetime
@@ -11,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+import structlog
 
 from cve_mcp.config import get_settings
 from cve_mcp.ingest.capec_parser import (
@@ -18,7 +20,7 @@ from cve_mcp.ingest.capec_parser import (
     parse_category,
     parse_mitigation,
 )
-from cve_mcp.models.base import AsyncSessionLocal
+from cve_mcp.models.base import get_task_session
 from cve_mcp.models.capec import (
     CAPECCategory,
     CAPECMitigation,
@@ -27,7 +29,10 @@ from cve_mcp.models.capec import (
 from cve_mcp.models.metadata import SyncMetadata
 from cve_mcp.services.embeddings import generate_embeddings_batch
 
+from cve_mcp.tasks.celery_app import celery_app
+
 logger = logging.getLogger(__name__)
+slogger = structlog.get_logger()
 settings = get_settings()
 
 # MITRE CAPEC STIX bundle URL
@@ -184,7 +189,7 @@ async def import_capec_bundle(
             )
 
     # Import into database
-    async with AsyncSessionLocal() as session:
+    async with get_task_session() as session:
         # Import patterns
         for pattern_data in patterns_data:
             # Map parser fields to model fields
@@ -319,7 +324,7 @@ async def sync_capec_data(
         stats = await import_capec_bundle(bundle_path, generate_embeddings)
 
         # Update sync metadata
-        async with AsyncSessionLocal() as session:
+        async with get_task_session() as session:
             sync_metadata = SyncMetadata(
                 source="capec",
                 last_sync_time=datetime.utcnow(),
@@ -340,7 +345,7 @@ async def sync_capec_data(
 
         # Update sync metadata with failure
         try:
-            async with AsyncSessionLocal() as session:
+            async with get_task_session() as session:
                 sync_metadata = SyncMetadata(
                     source="capec",
                     last_sync_time=datetime.utcnow(),
@@ -359,3 +364,13 @@ async def sync_capec_data(
         raise
 
     return stats
+
+
+@celery_app.task(bind=True, max_retries=2)
+def sync_capec(self):
+    """Celery task: Sync MITRE CAPEC attack patterns."""
+    try:
+        return asyncio.run(sync_capec_data(generate_embeddings=False))
+    except Exception as exc:
+        slogger.exception("CAPEC sync failed", error=str(exc))
+        raise self.retry(exc=exc, countdown=300 * (2**self.request.retries))

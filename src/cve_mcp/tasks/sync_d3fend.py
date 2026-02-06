@@ -2,18 +2,28 @@
 
 Downloads D3FEND data from MISP Galaxy, parses it, validates ATT&CK FKs,
 and stores in database with optional embeddings.
+
+Also downloads the D3FEND ontology to extract D3FEND→ATT&CK technique
+mappings through shared digital artifacts (the MISP Galaxy data does NOT
+contain these mappings).
 """
 
+import asyncio
 import logging
 from datetime import datetime
 from typing import Any
 
 import httpx
+import structlog
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from cve_mcp.ingest.d3fend_parser import parse_technique
+from cve_mcp.ingest.d3fend_parser import (
+    extract_ontology_attack_mappings,
+    parse_technique,
+)
+from cve_mcp.models.base import get_task_session
 from cve_mcp.models.attack import AttackTechnique
 from cve_mcp.models.d3fend import (
     D3FENDRelationshipType,
@@ -24,9 +34,13 @@ from cve_mcp.models.d3fend import (
 from cve_mcp.models.metadata import SyncMetadata
 from cve_mcp.services.embeddings import generate_embedding
 
+from cve_mcp.tasks.celery_app import celery_app
+
 logger = logging.getLogger(__name__)
+slogger = structlog.get_logger()
 
 D3FEND_DATA_URL = "https://raw.githubusercontent.com/MISP/misp-galaxy/main/clusters/mitre-d3fend.json"
+D3FEND_ONTOLOGY_URL = "https://d3fend.mitre.org/ontologies/d3fend.json"
 
 # Tactic display order (based on D3FEND kill chain)
 TACTIC_ORDER = {
@@ -74,6 +88,34 @@ async def download_d3fend_data(url: str = D3FEND_DATA_URL) -> dict[str, Any]:
     return data
 
 
+async def download_d3fend_ontology(url: str = D3FEND_ONTOLOGY_URL) -> dict[str, Any]:
+    """Download D3FEND ontology JSON for ATT&CK mapping extraction.
+
+    The ontology contains the full D3FEND knowledge graph including
+    relationships between D3FEND techniques, digital artifacts, and
+    ATT&CK offensive techniques.
+
+    Args:
+        url: URL to D3FEND ontology JSON file
+
+    Returns:
+        Parsed JSON-LD ontology data
+
+    Raises:
+        httpx.HTTPStatusError: If download fails
+    """
+    logger.info(f"Downloading D3FEND ontology from {url}")
+
+    async with httpx.AsyncClient(timeout=120.0, follow_redirects=True) as client:
+        response = await client.get(url)
+        response.raise_for_status()
+        data = response.json()
+
+    graph_count = len(data.get("@graph", []))
+    logger.info(f"Downloaded D3FEND ontology: {graph_count} graph entries")
+    return data
+
+
 def extract_tactics(techniques: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Extract unique tactics from parsed techniques.
 
@@ -111,6 +153,8 @@ def extract_tactics(techniques: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def _map_relationship_type(relationship_str: str | None) -> D3FENDRelationshipType | None:
     """Map relationship string to enum value.
 
+    Handles both MISP Galaxy relationship types and D3FEND ontology property names.
+
     Args:
         relationship_str: Relationship type string from parser
 
@@ -120,16 +164,31 @@ def _map_relationship_type(relationship_str: str | None) -> D3FENDRelationshipTy
     if not relationship_str:
         return None
 
-    # Normalize and map
-    mapping = {
-        "counters": D3FENDRelationshipType.COUNTERS,
-        "enables": D3FENDRelationshipType.ENABLES,
-        "related-to": D3FENDRelationshipType.RELATED_TO,
-        "produces": D3FENDRelationshipType.PRODUCES,
-        "uses": D3FENDRelationshipType.USES,
+    normalized = relationship_str.lower().replace("_", "-")
+
+    # Try direct enum lookup first
+    try:
+        return D3FENDRelationshipType(normalized)
+    except ValueError:
+        pass
+
+    # Fallback mapping for alternative names
+    fallback = {
+        "mitigates": D3FENDRelationshipType.COUNTERS,
+        "mitigated-by": D3FENDRelationshipType.COUNTERS,
+        "detects": D3FENDRelationshipType.MONITORS,
+        "erases": D3FENDRelationshipType.DELETES,
+        "configures": D3FENDRelationshipType.HARDENS,
+        "manages": D3FENDRelationshipType.RESTRICTS,
+        "queries": D3FENDRelationshipType.ANALYZES,
+        "may-query": D3FENDRelationshipType.ANALYZES,
+        "may-access": D3FENDRelationshipType.USES,
+        "may-contain": D3FENDRelationshipType.ISOLATES,
+        "creates": D3FENDRelationshipType.PRODUCES,
+        "use-limits": D3FENDRelationshipType.RESTRICTS,
     }
 
-    return mapping.get(relationship_str.lower())
+    return fallback.get(normalized)
 
 
 async def sync_d3fend_data(
@@ -140,12 +199,13 @@ async def sync_d3fend_data(
     """Sync D3FEND data to database.
 
     Flow:
-    1. Download MISP Galaxy JSON
-    2. Parse all techniques
-    3. Extract and sync tactics
-    4. Get valid ATT&CK technique IDs for FK validation
-    5. Sync techniques with embeddings
-    6. Sync ATT&CK mappings (skip invalid FKs)
+    1. Download MISP Galaxy JSON + D3FEND ontology
+    2. Parse all techniques from MISP Galaxy
+    3. Extract ATT&CK mappings from ontology (MISP Galaxy has none)
+    4. Extract and sync tactics
+    5. Get valid ATT&CK technique IDs for FK validation
+    6. Sync techniques with embeddings
+    7. Sync ATT&CK mappings (skip invalid FKs)
 
     Args:
         session: AsyncSession for database operations
@@ -163,11 +223,18 @@ async def sync_d3fend_data(
     stats: dict[str, int] = {}
 
     try:
-        # Step 1: Download D3FEND data
+        # Step 1: Download D3FEND data from both sources
         logger.info("Starting D3FEND data sync")
         data = await download_d3fend_data()
 
-        # Step 2: Parse all techniques
+        # Download ontology for ATT&CK mappings
+        try:
+            ontology_data = await download_d3fend_ontology()
+        except Exception as e:
+            logger.warning(f"Failed to download D3FEND ontology, continuing without ATT&CK mappings: {e}")
+            ontology_data = None
+
+        # Step 2: Parse all techniques from MISP Galaxy
         values = data.get("values", [])
         logger.info(f"Parsing {len(values)} D3FEND entries")
 
@@ -188,7 +255,13 @@ async def sync_d3fend_data(
 
         logger.info(f"Parsed {len(parsed_techniques)} techniques")
 
-        # Step 3: Extract and sync tactics
+        # Step 3: Extract ATT&CK mappings from ontology
+        ontology_mappings: list[dict[str, str]] = []
+        if ontology_data:
+            ontology_mappings = extract_ontology_attack_mappings(ontology_data)
+            logger.info(f"Extracted {len(ontology_mappings)} ATT&CK mappings from ontology")
+
+        # Step 4: Extract and sync tactics
         tactics_data = extract_tactics(parsed_techniques)
         logger.info(f"Extracted {len(tactics_data)} unique tactics")
 
@@ -215,14 +288,17 @@ async def sync_d3fend_data(
 
         logger.info(f"Synced {len(tactics_data)} tactics")
 
-        # Step 4: Get valid ATT&CK technique IDs for FK validation
+        # Step 5: Get valid ATT&CK technique IDs for FK validation
         result = await session.execute(
             select(AttackTechnique.technique_id)
         )
         valid_attack_ids = set(result.scalars().all())
         logger.info(f"Found {len(valid_attack_ids)} valid ATT&CK technique IDs")
 
-        # Step 5: Sync techniques with optional embeddings
+        # Also get valid D3FEND technique IDs (from parsed data)
+        valid_d3fend_ids = {t["technique_id"] for t in parsed_techniques}
+
+        # Step 6: Sync techniques with optional embeddings
         embedding_model = "text-embedding-3-small"
         techniques_count = 0
         failed_embeddings = 0
@@ -280,49 +356,76 @@ async def sync_d3fend_data(
 
         logger.info(f"Synced {techniques_count} techniques")
 
-        # Step 6: Sync ATT&CK mappings (skip invalid FKs)
+        # Step 7: Sync ATT&CK mappings from MISP Galaxy + ontology
         attack_mappings_count = 0
         skipped_mappings_count = 0
 
+        # Collect all mappings: MISP Galaxy (usually empty) + ontology
+        all_mappings: list[dict[str, str]] = []
+
+        # MISP Galaxy mappings (per-technique)
         for tech_data in parsed_techniques:
             technique_id = tech_data["technique_id"]
-            attack_mappings = tech_data.get("attack_mappings", [])
+            for mapping in tech_data.get("attack_mappings", []):
+                all_mappings.append({
+                    "d3fend_technique_id": technique_id,
+                    "attack_technique_id": mapping.get("attack_technique_id", ""),
+                    "relationship_type": mapping.get("relationship_type", ""),
+                })
 
-            for mapping in attack_mappings:
-                attack_technique_id = mapping.get("attack_technique_id")
-                relationship_type_str = mapping.get("relationship_type")
+        # Ontology mappings
+        all_mappings.extend(ontology_mappings)
 
-                # Validate FK
-                if attack_technique_id not in valid_attack_ids:
-                    if verbose:
-                        logger.debug(
-                            f"Skipping mapping {technique_id} -> {attack_technique_id} "
-                            f"(ATT&CK technique not found)"
-                        )
-                    skipped_mappings_count += 1
-                    continue
+        logger.info(f"Processing {len(all_mappings)} total ATT&CK mappings")
 
-                # Map relationship type
-                relationship_type = _map_relationship_type(relationship_type_str)
-                if not relationship_type:
-                    logger.warning(
-                        f"Unknown relationship type '{relationship_type_str}' for "
-                        f"{technique_id} -> {attack_technique_id}"
+        for mapping in all_mappings:
+            d3fend_technique_id = mapping["d3fend_technique_id"]
+            attack_technique_id = mapping["attack_technique_id"]
+            relationship_type_str = mapping.get("relationship_type", "")
+
+            # Validate D3FEND FK
+            if d3fend_technique_id not in valid_d3fend_ids:
+                if verbose:
+                    logger.debug(
+                        f"Skipping mapping {d3fend_technique_id} -> {attack_technique_id} "
+                        f"(D3FEND technique not in MISP Galaxy)"
                     )
-                    skipped_mappings_count += 1
-                    continue
+                skipped_mappings_count += 1
+                continue
 
-                # Insert mapping using upsert
-                stmt = insert(D3FENDTechniqueAttackMapping).values(
-                    d3fend_technique_id=technique_id,
-                    attack_technique_id=attack_technique_id,
-                    relationship_type=relationship_type,
-                )
-                stmt = stmt.on_conflict_do_nothing(
-                    constraint="uq_d3fend_attack_mapping"
-                )
-                await session.execute(stmt)
-                attack_mappings_count += 1
+            # Validate ATT&CK FK
+            if attack_technique_id not in valid_attack_ids:
+                if verbose:
+                    logger.debug(
+                        f"Skipping mapping {d3fend_technique_id} -> {attack_technique_id} "
+                        f"(ATT&CK technique not found)"
+                    )
+                skipped_mappings_count += 1
+                continue
+
+            # Map relationship type
+            relationship_type = _map_relationship_type(relationship_type_str)
+            if not relationship_type:
+                if verbose:
+                    logger.debug(
+                        f"Unknown relationship type '{relationship_type_str}' for "
+                        f"{d3fend_technique_id} -> {attack_technique_id}, using RELATED_TO"
+                    )
+                relationship_type = D3FENDRelationshipType.RELATED_TO
+
+            # Insert mapping using upsert
+            # Use .value explicitly — asyncpg sends enum .name (uppercase)
+            # instead of .value (lowercase) for native PostgreSQL enums
+            stmt = insert(D3FENDTechniqueAttackMapping).values(
+                d3fend_technique_id=d3fend_technique_id,
+                attack_technique_id=attack_technique_id,
+                relationship_type=relationship_type.value,
+            )
+            stmt = stmt.on_conflict_do_nothing(
+                constraint="uq_d3fend_attack_mapping"
+            )
+            await session.execute(stmt)
+            attack_mappings_count += 1
 
         logger.info(
             f"Synced {attack_mappings_count} ATT&CK mappings, "
@@ -345,7 +448,7 @@ async def sync_d3fend_data(
             source="d3fend",
             last_sync_time=datetime.utcnow(),
             last_sync_status="success",
-            records_synced=stats["tactics"] + stats["techniques"],
+            records_synced=stats["tactics"] + stats["techniques"] + stats["attack_mappings"],
             sync_duration_seconds=int(
                 (datetime.utcnow() - start_time).total_seconds()
             ),
@@ -379,3 +482,18 @@ async def sync_d3fend_data(
         raise
 
     return stats
+
+
+@celery_app.task(bind=True, max_retries=2)
+def sync_d3fend(self):
+    """Celery task: Sync MITRE D3FEND defensive countermeasures."""
+
+    async def _run():
+        async with get_task_session() as session:
+            return await sync_d3fend_data(session, generate_embeddings=False)
+
+    try:
+        return asyncio.run(_run())
+    except Exception as exc:
+        slogger.exception("D3FEND sync failed", error=str(exc))
+        raise self.retry(exc=exc, countdown=300 * (2**self.request.retries))

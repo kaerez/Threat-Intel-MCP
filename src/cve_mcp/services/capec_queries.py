@@ -85,15 +85,16 @@ async def search_patterns(
     # Format results
     results = []
     for pattern in patterns:
+        description = pattern.description or ""
         results.append(
             {
                 "pattern_id": pattern.pattern_id,
                 "capec_id": pattern.capec_id,
                 "name": pattern.name,
                 "description": (
-                    pattern.description[:200] + "..."
-                    if len(pattern.description) > 200
-                    else pattern.description
+                    description[:200] + "..."
+                    if len(description) > 200
+                    else description
                 ),
                 "abstraction": pattern.abstraction,
                 "attack_likelihood": pattern.attack_likelihood,
@@ -226,15 +227,16 @@ async def find_similar_patterns(
     # Format results
     results = []
     for pattern, sim_score in rows:
+        description = pattern.description or ""
         results.append(
             {
                 "pattern_id": pattern.pattern_id,
                 "capec_id": pattern.capec_id,
                 "name": pattern.name,
                 "description": (
-                    pattern.description[:200] + "..."
-                    if len(pattern.description) > 200
-                    else pattern.description
+                    description[:200] + "..."
+                    if len(description) > 200
+                    else description
                 ),
                 "abstraction": pattern.abstraction,
                 "attack_likelihood": pattern.attack_likelihood,
@@ -303,12 +305,13 @@ async def search_mitigations(
     # Format results
     results = []
     for mit in mitigations:
+        description = mit.description or ""
         results.append(
             {
                 "mitigation_id": mit.mitigation_id,
                 "name": mit.name,
                 "description": (
-                    mit.description[:200] + "..." if len(mit.description) > 200 else mit.description
+                    description[:200] + "..." if len(description) > 200 else description
                 ),
                 "effectiveness": mit.effectiveness,
                 "mitigates_patterns": mit.mitigates_patterns,
@@ -369,12 +372,13 @@ async def find_similar_mitigations(
     # Format results
     results = []
     for mit, sim_score in rows:
+        description = mit.description or ""
         results.append(
             {
                 "mitigation_id": mit.mitigation_id,
                 "name": mit.name,
                 "description": (
-                    mit.description[:200] + "..." if len(mit.description) > 200 else mit.description
+                    description[:200] + "..." if len(description) > 200 else description
                 ),
                 "effectiveness": mit.effectiveness,
                 "mitigates_patterns": mit.mitigates_patterns,

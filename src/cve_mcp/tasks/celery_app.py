@@ -17,6 +17,11 @@ celery_app = Celery(
         "cve_mcp.tasks.sync_cisa_kev",
         "cve_mcp.tasks.sync_epss",
         "cve_mcp.tasks.sync_exploitdb",
+        "cve_mcp.tasks.sync_attack",
+        "cve_mcp.tasks.sync_atlas",
+        "cve_mcp.tasks.sync_capec",
+        "cve_mcp.tasks.sync_cwe",
+        "cve_mcp.tasks.sync_d3fend",
         "cve_mcp.tasks.maintenance",
     ],
 )
@@ -57,6 +62,32 @@ celery_app.conf.beat_schedule = {
     "sync-exploitdb": {
         "task": "cve_mcp.tasks.sync_exploitdb.sync_exploitdb",
         "schedule": crontab(hour=3, minute=30, day_of_week=1),  # Monday 03:30 UTC
+        "options": {"expires": 1800},
+    },
+    # MITRE framework syncs (weekly on Sunday 04:00-06:00 UTC)
+    "sync-attack": {
+        "task": "cve_mcp.tasks.sync_attack.sync_attack",
+        "schedule": crontab(hour=4, minute=0, day_of_week=0),  # Sunday 04:00 UTC
+        "options": {"expires": 3600},
+    },
+    "sync-atlas": {
+        "task": "cve_mcp.tasks.sync_atlas.sync_atlas",
+        "schedule": crontab(hour=4, minute=30, day_of_week=0),  # Sunday 04:30 UTC
+        "options": {"expires": 1800},
+    },
+    "sync-capec": {
+        "task": "cve_mcp.tasks.sync_capec.sync_capec",
+        "schedule": crontab(hour=5, minute=0, day_of_week=0),  # Sunday 05:00 UTC
+        "options": {"expires": 1800},
+    },
+    "sync-cwe": {
+        "task": "cve_mcp.tasks.sync_cwe.sync_cwe",
+        "schedule": crontab(hour=5, minute=30, day_of_week=0),  # Sunday 05:30 UTC
+        "options": {"expires": 3600},
+    },
+    "sync-d3fend": {
+        "task": "cve_mcp.tasks.sync_d3fend.sync_d3fend",
+        "schedule": crontab(hour=6, minute=0, day_of_week=0),  # Sunday 06:00 UTC
         "options": {"expires": 1800},
     },
     # Post-sync maintenance tasks

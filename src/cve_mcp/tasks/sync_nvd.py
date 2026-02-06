@@ -9,7 +9,7 @@ from sqlalchemy import delete, select
 
 from cve_mcp.config import get_settings
 from cve_mcp.models import CVE, CVECPEMapping, CVEReference, SyncMetadata
-from cve_mcp.models.base import AsyncSessionLocal
+from cve_mcp.models.base import get_task_session
 from cve_mcp.tasks.celery_app import celery_app
 from cve_mcp.utils.nvd_parser import parse_nvd_cve
 
@@ -18,7 +18,7 @@ logger = structlog.get_logger()
 
 async def _update_sync_metadata(source: str, **kwargs) -> None:
     """Update sync metadata."""
-    async with AsyncSessionLocal() as session:
+    async with get_task_session() as session:
         result = await session.execute(select(SyncMetadata).where(SyncMetadata.source == source))
         metadata = result.scalar_one_or_none()
 
@@ -37,7 +37,7 @@ async def _sync_nvd_recent_async() -> dict:
     settings = get_settings()
 
     # Get last sync time
-    async with AsyncSessionLocal() as session:
+    async with get_task_session() as session:
         result = await session.execute(
             select(SyncMetadata).where(SyncMetadata.source == "nvd_recent")
         )
@@ -97,49 +97,62 @@ async def _sync_nvd_recent_async() -> dict:
                     break
 
                 # Process CVEs in batches
-                async with AsyncSessionLocal() as session:
+                async with get_task_session() as session:
                     for vuln_item in vulnerabilities:
                         try:
-                            cve_data = parse_nvd_cve(vuln_item)
-                            cve_id = cve_data["cve_id"]
+                            async with session.begin_nested():
+                                cve_data = parse_nvd_cve(vuln_item)
+                                cve_id = cve_data["cve_id"]
 
-                            # Check if exists
-                            existing = await session.execute(
-                                select(CVE).where(CVE.cve_id == cve_id)
-                            )
-                            existing_cve = existing.scalar_one_or_none()
-
-                            if existing_cve:
-                                # Update existing
-                                for key, value in cve_data.items():
-                                    if key not in ["references", "cpe_mappings"]:
-                                        setattr(existing_cve, key, value)
-                                stats["updated"] += 1
-                            else:
-                                # Create new
-                                cve_record = CVE(
-                                    **{k: v for k, v in cve_data.items() if k not in ["references", "cpe_mappings"]}
+                                # Check if exists
+                                existing = await session.execute(
+                                    select(CVE).where(CVE.cve_id == cve_id)
                                 )
-                                session.add(cve_record)
-                                stats["inserted"] += 1
+                                existing_cve = existing.scalar_one_or_none()
 
-                            # Update references
-                            await session.execute(
-                                delete(CVEReference).where(CVEReference.cve_id == cve_id)
-                            )
-                            if cve_data.get("references"):
-                                for ref in cve_data["references"]:
-                                    ref_record = CVEReference(cve_id=cve_id, **ref)
-                                    session.add(ref_record)
+                                if existing_cve:
+                                    # Update existing
+                                    for key, value in cve_data.items():
+                                        if key not in ["references", "cpe_mappings"]:
+                                            setattr(existing_cve, key, value)
+                                    stats["updated"] += 1
+                                else:
+                                    # Create new
+                                    cve_record = CVE(
+                                        **{k: v for k, v in cve_data.items() if k not in ["references", "cpe_mappings"]}
+                                    )
+                                    session.add(cve_record)
+                                    stats["inserted"] += 1
 
-                            # Update CPE mappings
-                            await session.execute(
-                                delete(CVECPEMapping).where(CVECPEMapping.cve_id == cve_id)
-                            )
-                            if cve_data.get("cpe_mappings"):
-                                for cpe in cve_data["cpe_mappings"]:
-                                    cpe_record = CVECPEMapping(cve_id=cve_id, **cpe)
-                                    session.add(cpe_record)
+                                # Flush to ensure CVE exists before reference operations
+                                await session.flush()
+
+                                # Update references - delete old, insert new (deduplicated)
+                                await session.execute(
+                                    delete(CVEReference).where(CVEReference.cve_id == cve_id)
+                                )
+                                if cve_data.get("references"):
+                                    seen_urls = set()
+                                    for ref in cve_data["references"]:
+                                        url = ref.get("url", "")
+                                        if url and url not in seen_urls:
+                                            seen_urls.add(url)
+                                            ref_record = CVEReference(cve_id=cve_id, **ref)
+                                            session.add(ref_record)
+
+                                # Update CPE mappings
+                                await session.execute(
+                                    delete(CVECPEMapping).where(CVECPEMapping.cve_id == cve_id)
+                                )
+                                if cve_data.get("cpe_mappings"):
+                                    seen_cpes = set()
+                                    for cpe in cve_data["cpe_mappings"]:
+                                        # Deduplicate by (cpe_uri, version_start, version_end)
+                                        dedup_key = (cpe.get("cpe_uri", ""), cpe.get("version_start"), cpe.get("version_end"))
+                                        if dedup_key not in seen_cpes:
+                                            seen_cpes.add(dedup_key)
+                                            cpe_record = CVECPEMapping(cve_id=cve_id, **cpe)
+                                            session.add(cpe_record)
 
                         except Exception as e:
                             logger.error(
@@ -259,46 +272,59 @@ async def _sync_nvd_full_async() -> dict:
                     break
 
                 # Process CVEs in batches
-                async with AsyncSessionLocal() as session:
+                async with get_task_session() as session:
                     for vuln_item in vulnerabilities:
                         try:
-                            cve_data = parse_nvd_cve(vuln_item)
-                            cve_id = cve_data["cve_id"]
+                            async with session.begin_nested():
+                                cve_data = parse_nvd_cve(vuln_item)
+                                cve_id = cve_data["cve_id"]
 
-                            existing = await session.execute(
-                                select(CVE).where(CVE.cve_id == cve_id)
-                            )
-                            existing_cve = existing.scalar_one_or_none()
-
-                            if existing_cve:
-                                for key, value in cve_data.items():
-                                    if key not in ["references", "cpe_mappings"]:
-                                        setattr(existing_cve, key, value)
-                                stats["updated"] += 1
-                            else:
-                                cve_record = CVE(
-                                    **{k: v for k, v in cve_data.items() if k not in ["references", "cpe_mappings"]}
+                                existing = await session.execute(
+                                    select(CVE).where(CVE.cve_id == cve_id)
                                 )
-                                session.add(cve_record)
-                                stats["inserted"] += 1
+                                existing_cve = existing.scalar_one_or_none()
 
-                            # Update references
-                            await session.execute(
-                                delete(CVEReference).where(CVEReference.cve_id == cve_id)
-                            )
-                            if cve_data.get("references"):
-                                for ref in cve_data["references"]:
-                                    ref_record = CVEReference(cve_id=cve_id, **ref)
-                                    session.add(ref_record)
+                                if existing_cve:
+                                    for key, value in cve_data.items():
+                                        if key not in ["references", "cpe_mappings"]:
+                                            setattr(existing_cve, key, value)
+                                    stats["updated"] += 1
+                                else:
+                                    cve_record = CVE(
+                                        **{k: v for k, v in cve_data.items() if k not in ["references", "cpe_mappings"]}
+                                    )
+                                    session.add(cve_record)
+                                    stats["inserted"] += 1
 
-                            # Update CPE mappings
-                            await session.execute(
-                                delete(CVECPEMapping).where(CVECPEMapping.cve_id == cve_id)
-                            )
-                            if cve_data.get("cpe_mappings"):
-                                for cpe in cve_data["cpe_mappings"]:
-                                    cpe_record = CVECPEMapping(cve_id=cve_id, **cpe)
-                                    session.add(cpe_record)
+                                # Flush to ensure CVE exists before reference operations
+                                await session.flush()
+
+                                # Update references - deduplicate by URL
+                                await session.execute(
+                                    delete(CVEReference).where(CVEReference.cve_id == cve_id)
+                                )
+                                if cve_data.get("references"):
+                                    seen_urls = set()
+                                    for ref in cve_data["references"]:
+                                        url = ref.get("url", "")
+                                        if url and url not in seen_urls:
+                                            seen_urls.add(url)
+                                            ref_record = CVEReference(cve_id=cve_id, **ref)
+                                            session.add(ref_record)
+
+                                # Update CPE mappings
+                                await session.execute(
+                                    delete(CVECPEMapping).where(CVECPEMapping.cve_id == cve_id)
+                                )
+                                if cve_data.get("cpe_mappings"):
+                                    seen_cpes = set()
+                                    for cpe in cve_data["cpe_mappings"]:
+                                        # Deduplicate by (cpe_uri, version_start, version_end)
+                                        dedup_key = (cpe.get("cpe_uri", ""), cpe.get("version_start"), cpe.get("version_end"))
+                                        if dedup_key not in seen_cpes:
+                                            seen_cpes.add(dedup_key)
+                                            cpe_record = CVECPEMapping(cve_id=cve_id, **cpe)
+                                            session.add(cpe_record)
 
                         except Exception as e:
                             logger.error(

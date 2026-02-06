@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any
 
 from packaging.version import InvalidVersion, Version
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cve_mcp.models import (
@@ -80,8 +80,15 @@ class DatabaseService:
 
         # Apply filters
         if keyword:
+            # Use full-text search when tsvector is populated, with ILIKE fallback
             query = query.where(
-                CVE.description_vector.op("@@")(func.plainto_tsquery("english", keyword))
+                or_(
+                    CVE.description_vector.op("@@")(func.plainto_tsquery("english", keyword)),
+                    and_(
+                        CVE.description_vector.is_(None),
+                        CVE.description.ilike(f"%{keyword}%"),
+                    ),
+                )
             )
 
         if cvss_min is not None:
@@ -131,7 +138,7 @@ class DatabaseService:
                 "published_date": row.published_date.isoformat() if row.published_date else None,
                 "cvss_v3_score": float(row.cvss_v3_score) if row.cvss_v3_score else None,
                 "cvss_v3_severity": row.cvss_v3_severity,
-                "description": row.description[:500] + "..." if len(row.description) > 500 else row.description,
+                "description": (row.description or "")[:500] + ("..." if row.description and len(row.description) > 500 else ""),
                 "has_kev_entry": row.has_kev_entry,
                 "has_exploit": row.has_exploit,
                 "kev_date_added": row.kev_date_added.isoformat() if row.kev_date_added else None,
@@ -421,7 +428,7 @@ class DatabaseService:
                     "cve_id": row.cve_id,
                     "cvss_v3_score": float(row.cvss_v3_score) if row.cvss_v3_score else None,
                     "cvss_v3_severity": row.cvss_v3_severity,
-                    "description": row.description[:300] + "..." if len(row.description) > 300 else row.description,
+                    "description": (row.description or "")[:300] + ("..." if row.description and len(row.description) > 300 else ""),
                     "has_kev_entry": row.has_kev_entry,
                     "has_exploit": row.has_exploit,
                     "cpe_matches": [],

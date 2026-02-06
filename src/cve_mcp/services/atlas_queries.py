@@ -82,13 +82,14 @@ async def search_techniques(
     # Format results
     results = []
     for tech in techniques:
+        description = tech.description or ""
         results.append({
             "technique_id": tech.technique_id,
             "name": tech.name,
             "description": (
-                tech.description[:200] + "..."
-                if len(tech.description) > 200
-                else tech.description
+                description[:200] + "..."
+                if len(description) > 200
+                else description
             ),
             "tactics": tech.tactics,
             "ml_lifecycle_stage": tech.ml_lifecycle_stage,
@@ -207,13 +208,14 @@ async def find_similar_techniques(
     # Format results
     results = []
     for tech, sim_score in rows:
+        description = tech.description or ""
         results.append({
             "technique_id": tech.technique_id,
             "name": tech.name,
             "description": (
-                tech.description[:200] + "..."
-                if len(tech.description) > 200
-                else tech.description
+                description[:200] + "..."
+                if len(description) > 200
+                else description
             ),
             "tactics": tech.tactics,
             "ml_lifecycle_stage": tech.ml_lifecycle_stage,
@@ -276,13 +278,14 @@ async def search_case_studies(
     # Format results
     results = []
     for cs in case_studies:
+        summary = cs.summary or ""
         results.append({
             "case_study_id": cs.case_study_id,
             "name": cs.name,
             "summary": (
-                cs.summary[:200] + "..."
-                if len(cs.summary) > 200
-                else cs.summary
+                summary[:200] + "..."
+                if len(summary) > 200
+                else summary
             ),
             "techniques_used": cs.techniques_used,
             "incident_date": cs.incident_date.isoformat() if cs.incident_date else None,
@@ -337,13 +340,14 @@ async def find_similar_case_studies(
     # Format results
     results = []
     for cs, sim_score in rows:
+        summary = cs.summary or ""
         results.append({
             "case_study_id": cs.case_study_id,
             "name": cs.name,
             "summary": (
-                cs.summary[:200] + "..."
-                if len(cs.summary) > 200
-                else cs.summary
+                summary[:200] + "..."
+                if len(summary) > 200
+                else summary
             ),
             "techniques_used": cs.techniques_used,
             "incident_date": cs.incident_date.isoformat() if cs.incident_date else None,

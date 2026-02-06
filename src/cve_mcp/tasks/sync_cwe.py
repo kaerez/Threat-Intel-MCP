@@ -5,6 +5,7 @@ CWE is the Common Weakness Enumeration - a catalog of software and hardware
 weakness types.
 """
 
+import asyncio
 import io
 import logging
 import zipfile
@@ -14,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+import structlog
 from lxml import etree
 
 from cve_mcp.ingest.cwe_parser import (
@@ -22,7 +24,7 @@ from cve_mcp.ingest.cwe_parser import (
     parse_view,
     parse_weakness,
 )
-from cve_mcp.models.base import AsyncSessionLocal
+from cve_mcp.models.base import get_task_session
 from cve_mcp.models.cwe import (
     CWECategory,
     CWEExternalMapping,
@@ -33,7 +35,10 @@ from cve_mcp.models.cwe import (
 from cve_mcp.models.metadata import SyncMetadata
 from cve_mcp.services.embeddings import generate_embeddings_batch
 
+from cve_mcp.tasks.celery_app import celery_app
+
 logger = logging.getLogger(__name__)
+slogger = structlog.get_logger()
 
 # MITRE CWE XML data URL
 CWE_DATA_URL = "https://cwe.mitre.org/data/xml/cwec_latest.xml.zip"
@@ -268,17 +273,17 @@ async def sync_category_memberships(
 
     logger.info("Syncing category memberships")
 
-    # Get all valid IDs to avoid FK violations
+    # Get valid IDs for FK validation
     result = await session.execute(select(CWEWeakness.cwe_id))
-    valid_weakness_ids = {row[0] for row in result.fetchall()}
-
+    valid_weakness_ids = {row[0] for row in result.all()}
     result = await session.execute(select(CWECategory.category_id))
-    valid_category_ids = {row[0] for row in result.fetchall()}
-
+    valid_category_ids = {row[0] for row in result.all()}
     result = await session.execute(select(CWEView.view_id))
-    valid_view_ids = {row[0] for row in result.fetchall()}
-
-    logger.info(f"Found {len(valid_weakness_ids)} weaknesses, {len(valid_category_ids)} categories, {len(valid_view_ids)} views")
+    valid_view_ids = {row[0] for row in result.all()}
+    logger.info(
+        f"FK validation: {len(valid_weakness_ids)} weaknesses, "
+        f"{len(valid_category_ids)} categories, {len(valid_view_ids)} views"
+    )
 
     # Clear existing memberships
     await session.execute(CWEWeaknessCategory.__table__.delete())
@@ -289,18 +294,13 @@ async def sync_category_memberships(
     # Process category memberships
     for cat_data in categories:
         category_id = cat_data["category_id"]
-        members = cat_data.get("members") or []  # Handle None values
+        members = cat_data.get("members") or []
         # Default to CWE-1000 (Research Concepts) view for categories
         view_id = "CWE-1000"
 
-        # Skip if category doesn't exist
-        if category_id not in valid_category_ids:
-            skipped += len(members) if members else 0
-            continue
-
-        # Skip if view doesn't exist
-        if view_id not in valid_view_ids:
-            skipped += len(members) if members else 0
+        # Validate category and view exist
+        if category_id not in valid_category_ids or view_id not in valid_view_ids:
+            skipped += len(members)
             continue
 
         for member_id in members:
@@ -308,7 +308,7 @@ async def sync_category_memberships(
             if not member_id.startswith("CWE-"):
                 member_id = f"CWE-{member_id}"
 
-            # Skip if weakness doesn't exist (deprecated/draft CWEs)
+            # Skip if weakness doesn't exist (e.g., deprecated)
             if member_id not in valid_weakness_ids:
                 skipped += 1
                 continue
@@ -321,42 +321,9 @@ async def sync_category_memberships(
             session.add(membership)
             count += 1
 
-    # Process view memberships
-    # Note: Views can contain weaknesses directly, but the schema requires a valid category_id.
-    # Only create memberships where the view is also a valid category.
-    for view_data in views:
-        view_id = view_data["view_id"]
-        members = view_data.get("members") or []  # Handle None values
-
-        # Skip if view doesn't exist
-        if view_id not in valid_view_ids:
-            skipped += len(members) if members else 0
-            continue
-
-        # Only process if this view is also a category (some views are)
-        if view_id not in valid_category_ids:
-            # View exists but is not also a category, skip these memberships
-            skipped += len(members) if members else 0
-            continue
-
-        for member_id in members:
-            if not member_id.startswith("CWE-"):
-                member_id = f"CWE-{member_id}"
-
-            # Skip if weakness doesn't exist
-            if member_id not in valid_weakness_ids:
-                skipped += 1
-                continue
-
-            membership = CWEWeaknessCategory(
-                weakness_id=member_id,
-                category_id=view_id,
-                view_id=view_id,
-            )
-            session.add(membership)
-            count += 1
-
-    logger.info(f"Synced {count} category memberships (skipped {skipped} invalid references)")
+    # Skip view memberships - views are not categories and can't be used as category_id FK
+    # View structure is captured in cwe_views table directly
+    logger.info(f"Synced {count} category memberships, skipped {skipped} invalid refs")
     return count
 
 
@@ -583,7 +550,7 @@ async def sync_cwe_full(
         parsed_data = parse_cwe_xml(xml_content)
 
         # Import into database
-        async with AsyncSessionLocal() as session:
+        async with get_task_session() as session:
             # Sync views first (they are referenced by categories)
             views_count = await sync_views(session, parsed_data["views"])
 
@@ -624,7 +591,7 @@ async def sync_cwe_full(
             }
 
         # Update sync metadata
-        async with AsyncSessionLocal() as session:
+        async with get_task_session() as session:
             sync_metadata = SyncMetadata(
                 source="cwe",
                 last_sync_time=datetime.utcnow(),
@@ -645,7 +612,7 @@ async def sync_cwe_full(
 
         # Update sync metadata with failure
         try:
-            async with AsyncSessionLocal() as session:
+            async with get_task_session() as session:
                 sync_metadata = SyncMetadata(
                     source="cwe",
                     last_sync_time=datetime.utcnow(),
@@ -664,3 +631,13 @@ async def sync_cwe_full(
         raise
 
     return stats
+
+
+@celery_app.task(bind=True, max_retries=2)
+def sync_cwe(self):
+    """Celery task: Sync MITRE CWE software weakness data."""
+    try:
+        return asyncio.run(sync_cwe_full(generate_embeddings=False))
+    except Exception as exc:
+        slogger.exception("CWE sync failed", error=str(exc))
+        raise self.retry(exc=exc, countdown=300 * (2**self.request.retries))

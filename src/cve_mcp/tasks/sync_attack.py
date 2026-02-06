@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+import structlog
 from sqlalchemy import select
 
 from cve_mcp.config import get_settings
@@ -29,10 +30,13 @@ from cve_mcp.models.attack import (
     AttackTactic,
     AttackTechnique,
 )
-from cve_mcp.models.base import AsyncSessionLocal
+from cve_mcp.models.base import get_task_session
 from cve_mcp.services.embeddings import generate_embeddings_batch
 
+from cve_mcp.tasks.celery_app import celery_app
+
 logger = logging.getLogger(__name__)
+slogger = structlog.get_logger()
 settings = get_settings()
 
 # MITRE ATT&CK CTI repository URLs
@@ -197,7 +201,7 @@ async def import_stix_bundle(
             logger.info(f"Generated {len(group_embeddings)} group embeddings")
 
     # Import into database
-    async with AsyncSessionLocal() as session:
+    async with get_task_session() as session:
         # Import techniques - parents first, then sub-techniques (FK constraint)
         parent_techniques = [t for t in techniques_data if not t.get("is_subtechnique")]
         sub_techniques = [t for t in techniques_data if t.get("is_subtechnique")]
@@ -302,7 +306,7 @@ async def process_relationships(
             mitigation_techniques[source_id].append(target_id)
 
     # Update database with relationships
-    async with AsyncSessionLocal() as session:
+    async with get_task_session() as session:
         # Update group.techniques_used
         for group_id, technique_ids in group_techniques.items():
             result = await session.execute(
@@ -385,3 +389,13 @@ async def sync_attack_data(
     logger.info(f"ATT&CK sync complete: {dict(total_stats)}")
 
     return dict(total_stats)
+
+
+@celery_app.task(bind=True, max_retries=2)
+def sync_attack(self):
+    """Celery task: Sync MITRE ATT&CK data (enterprise, mobile, ICS)."""
+    try:
+        return asyncio.run(sync_attack_data(generate_embeddings=False))
+    except Exception as exc:
+        slogger.exception("ATT&CK sync failed", error=str(exc))
+        raise self.retry(exc=exc, countdown=300 * (2**self.request.retries))

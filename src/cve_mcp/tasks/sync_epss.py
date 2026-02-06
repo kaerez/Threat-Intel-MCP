@@ -8,12 +8,12 @@ from io import BytesIO
 
 import httpx
 import structlog
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 
 from cve_mcp.config import get_settings
 from cve_mcp.models import CVE, EPSSScore, SyncMetadata
-from cve_mcp.models.base import AsyncSessionLocal
+from cve_mcp.models.base import get_task_session
 from cve_mcp.tasks.celery_app import celery_app
 
 logger = structlog.get_logger()
@@ -21,7 +21,7 @@ logger = structlog.get_logger()
 
 async def _update_sync_metadata(source: str, **kwargs) -> None:
     """Update sync metadata."""
-    async with AsyncSessionLocal() as session:
+    async with get_task_session() as session:
         result = await session.execute(select(SyncMetadata).where(SyncMetadata.source == source))
         metadata = result.scalar_one_or_none()
 
@@ -38,6 +38,25 @@ async def _update_sync_metadata(source: str, **kwargs) -> None:
 async def _sync_epss_scores_async() -> dict:
     """Async implementation of EPSS scores sync."""
     settings = get_settings()
+
+    # Check if CVE table has data (EPSS sync depends on CVEs existing)
+    async with get_task_session() as session:
+        cve_count_result = await session.execute(select(func.count()).select_from(CVE))
+        cve_count = cve_count_result.scalar() or 0
+
+    if cve_count == 0:
+        logger.warning(
+            "Skipping EPSS sync: CVE table is empty. "
+            "Run NVD sync first to populate CVE data."
+        )
+        await _update_sync_metadata(
+            "epss_scores",
+            last_sync_time=datetime.now(),
+            last_sync_status="skipped",
+            records_synced=0,
+            error_message="CVE table empty - NVD sync required first",
+        )
+        return {"synced": 0, "skipped": 0, "reason": "cve_table_empty"}
 
     await _update_sync_metadata(
         "epss_scores",
@@ -71,19 +90,19 @@ async def _sync_epss_scores_async() -> dict:
     reader = csv.DictReader(data_lines)
 
     # Get existing CVE IDs for validation
-    async with AsyncSessionLocal() as session:
+    async with get_task_session() as session:
         cve_result = await session.execute(select(CVE.cve_id))
         existing_cve_ids = {row[0] for row in cve_result.all()}
 
-    # Process in batches
-    batch_size = 10000
+    # Process in batches (asyncpg limit: 32767 params; 5 columns per row = max 6553)
+    batch_size = 5000
     batch = []
     total_records = 0
     skipped = 0
 
     today = datetime.now().date()
 
-    async with AsyncSessionLocal() as session:
+    async with get_task_session() as session:
         for row in reader:
             cve_id = row.get("cve", "").upper()
 

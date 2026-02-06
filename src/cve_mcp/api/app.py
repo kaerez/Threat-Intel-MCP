@@ -8,6 +8,7 @@ import structlog
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import ValidationError
 
 from cve_mcp.api.schemas import (
     HealthResponse,
@@ -41,9 +42,9 @@ def create_app() -> FastAPI:
     settings = get_settings()
 
     app = FastAPI(
-        title="CVE + Exploit Intelligence MCP Server",
-        description="Offline-first MCP server for CVE vulnerability data, CISA KEV, EPSS scores, and exploit tracking",
-        version="1.0.0",
+        title="Threat Intelligence MCP Server",
+        description="Offline-first MCP server for CVE/CISA KEV/EPSS/ExploitDB vulnerability data and MITRE ATT&CK/ATLAS/CAPEC/CWE/D3FEND threat intelligence frameworks with AI-powered semantic search",
+        version="1.1.0",
         lifespan=lifespan,
     )
 
@@ -121,6 +122,17 @@ def create_app() -> FastAPI:
                 content=[{"type": "text", "text": json.dumps(result, indent=2, default=str)}],
                 isError=False,
             )
+        except ValidationError as e:
+            # Pydantic validation errors - give agents clear field-level feedback
+            errors = e.errors()
+            messages = []
+            for err in errors:
+                loc = " -> ".join(str(l) for l in err["loc"])
+                messages.append(f"{loc}: {err['msg']}")
+            return MCPToolCallResponse(
+                content=[{"type": "text", "text": f"Validation error: {'; '.join(messages)}"}],
+                isError=True,
+            )
         except ValueError as e:
             return MCPToolCallResponse(
                 content=[{"type": "text", "text": str(e)}],
@@ -190,11 +202,11 @@ def create_app() -> FastAPI:
 
     @app.get("/api/cwe/{cwe_id}")
     async def api_get_cwe(cwe_id: str) -> JSONResponse:
-        """REST API endpoint for CWE details."""
+        """REST API endpoint for CWE details (comprehensive data)."""
         result = await TOOL_HANDLERS["get_cwe_details"]({"cwe_id": cwe_id})
         if result["data"] is None:
             raise HTTPException(status_code=404, detail=f"CWE {cwe_id} not found")
-        return JSONResponse(content=result)
+        return JSONResponse(content=json.loads(json.dumps(result, default=str)))
 
     @app.post("/api/batch")
     async def api_batch_search(request: Request) -> JSONResponse:

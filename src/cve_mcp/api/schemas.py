@@ -120,7 +120,7 @@ class GetExploitsResponse(BaseModel):
 class GetCWEDetailsRequest(BaseModel):
     """Request schema for get_cwe_details tool."""
 
-    cwe_id: str = Field(..., description="CWE identifier", pattern=r"^CWE-\d+$")
+    cwe_id: str = Field(..., description="CWE identifier (e.g., CWE-79 or 79)", pattern=r"^(CWE-)?\d+$")
 
 
 class GetCWEDetailsResponse(BaseModel):
@@ -454,6 +454,7 @@ class FindWeaknessesForCAPECRequest(BaseModel):
     pattern_id: str = Field(
         ..., description="CAPEC pattern ID (e.g., CAPEC-66)", pattern=r"^(CAPEC-)?\d+$"
     )
+    limit: int = Field(50, ge=1, le=500, description="Max results")
 
 
 # D3FEND Request Schemas
@@ -462,7 +463,7 @@ class FindWeaknessesForCAPECRequest(BaseModel):
 class SearchDefensesRequest(BaseModel):
     """Request schema for search_defenses tool."""
 
-    query: str = Field(..., min_length=1, description="Full-text search in name/description")
+    query: str | None = Field(None, description="Full-text search in name/description")
     tactic: list[str] | None = Field(
         None, description="Filter by D3FEND tactics (e.g., ['Harden', 'Detect'])"
     )

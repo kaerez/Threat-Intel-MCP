@@ -1,6 +1,7 @@
 """Base database model and engine setup."""
 
-from collections.abc import Callable
+from collections.abc import AsyncGenerator, Callable
+from contextlib import asynccontextmanager
 
 from sqlalchemy import MetaData
 from sqlalchemy.ext.asyncio import (
@@ -47,5 +48,31 @@ def get_async_session_maker() -> Callable[[], AsyncSession]:
     return async_sessionmaker(engine, expire_on_commit=False)
 
 
-# Async session maker for dependency injection
+# Async session maker for FastAPI dependency injection (persistent event loop)
 AsyncSessionLocal = get_async_session_maker()
+
+
+@asynccontextmanager
+async def get_task_session() -> AsyncGenerator[AsyncSession, None]:
+    """Create a fresh async session for use in Celery tasks.
+
+    Creates a new engine per invocation to avoid event loop mismatch
+    issues with Celery's prefork worker pool. Each asyncio.run() call
+    in a Celery task gets a new event loop, but module-level engines
+    hold connections bound to the old loop, causing InterfaceError.
+
+    The engine is disposed after use to prevent connection leaks.
+    """
+    settings = get_settings()
+    engine = create_async_engine(
+        settings.database_url,
+        echo=settings.log_level == "DEBUG",
+        pool_size=5,
+        max_overflow=10,
+    )
+    session_maker = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with session_maker() as session:
+            yield session
+    finally:
+        await engine.dispose()

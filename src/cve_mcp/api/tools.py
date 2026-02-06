@@ -58,7 +58,7 @@ from cve_mcp.services.database import db_service
 MCP_TOOLS: list[MCPToolDefinition] = [
     MCPToolDefinition(
         name="search_cve",
-        description="Search CVEs by keyword, severity, score range, and filters. Returns matching CVE records with CVSS scores, KEV status, and EPSS data.",
+        description="Search CVEs by keyword, severity, score range, and filters. Returns matching CVE records with CVSS scores, KEV status, and EPSS data. Use get_cve_details for full information on a specific CVE. Supports full-text search on descriptions.",
         inputSchema={
             "type": "object",
             "properties": {
@@ -247,15 +247,15 @@ MCP_TOOLS: list[MCPToolDefinition] = [
     ),
     MCPToolDefinition(
         name="get_cwe_details",
-        description="Get details about a CWE (Common Weakness Enumeration) including name, description, and related attack patterns.",
+        description="Get details about a CWE (Common Weakness Enumeration) including name, description, consequences, mitigations, detection methods, external mappings (OWASP, SANS), and relationships. Alias for get_cwe_weakness_details - both return the same comprehensive data.",
         inputSchema={
             "type": "object",
             "required": ["cwe_id"],
             "properties": {
                 "cwe_id": {
                     "type": "string",
-                    "pattern": "^CWE-\\d+$",
-                    "description": "CWE identifier (e.g., CWE-79)",
+                    "pattern": "^(CWE-)?\\d+$",
+                    "description": "CWE identifier (e.g., CWE-79 or 79)",
                 },
             },
         },
@@ -329,7 +329,7 @@ MCP_TOOLS: list[MCPToolDefinition] = [
     ),
     MCPToolDefinition(
         name="find_similar_techniques",
-        description="Find MITRE ATT&CK techniques using AI-powered semantic similarity search. Perfect for incident response - describe an attack scenario in natural language and get matching techniques with similarity scores. Uses AI embeddings for intelligent matching beyond keyword search. Example: 'Attacker sent phishing email with malicious PDF that executed PowerShell commands'",
+        description="Find MITRE ATT&CK techniques using AI-powered semantic similarity search. Requires OPENAI_API_KEY. Perfect for incident response - describe an attack scenario in natural language and get matching techniques with similarity scores. Uses AI embeddings for intelligent matching beyond keyword search. Example: 'Attacker sent phishing email with malicious PDF that executed PowerShell commands'. Use get_defenses_for_attack to find countermeasures for matched techniques.",
         inputSchema={
             "type": "object",
             "required": ["description"],
@@ -428,7 +428,7 @@ MCP_TOOLS: list[MCPToolDefinition] = [
     ),
     MCPToolDefinition(
         name="find_similar_threat_actors",
-        description="Find MITRE ATT&CK threat actor groups using AI-powered semantic similarity search. Perfect for threat attribution - describe observed threat actor behavior and get matching groups with similarity scores. Uses AI embeddings for intelligent matching. Example: 'Advanced persistent threat targeting financial institutions with custom malware'",
+        description="Find MITRE ATT&CK threat actor groups using AI-powered semantic similarity search. Requires OPENAI_API_KEY. Perfect for threat attribution - describe observed threat actor behavior and get matching groups with similarity scores. Example: 'Advanced persistent threat targeting financial institutions with custom malware'. Use get_group_profile for full details on a matched group.",
         inputSchema={
             "type": "object",
             "required": ["description"],
@@ -512,7 +512,7 @@ MCP_TOOLS: list[MCPToolDefinition] = [
     ),
     MCPToolDefinition(
         name="find_similar_atlas_techniques",
-        description="Find MITRE ATLAS AI/ML attack techniques using AI-powered semantic similarity search. Describe an adversarial ML attack scenario in natural language and get matching techniques with similarity scores. Uses AI embeddings for intelligent matching. Example: 'Attacker poisoned training data to create backdoor in image classifier'",
+        description="Find MITRE ATLAS AI/ML attack techniques using AI-powered semantic similarity search. Requires OPENAI_API_KEY. Describe an adversarial ML attack scenario in natural language and get matching techniques with similarity scores. Example: 'Attacker poisoned training data to create backdoor in image classifier'",
         inputSchema={
             "type": "object",
             "required": ["description"],
@@ -601,7 +601,7 @@ MCP_TOOLS: list[MCPToolDefinition] = [
     ),
     MCPToolDefinition(
         name="find_similar_atlas_case_studies",
-        description="Find similar MITRE ATLAS case studies using AI-powered semantic similarity search. Describe an AI/ML incident or attack scenario and get matching real-world case studies with similarity scores. Example: 'Autonomous vehicle fooled by adversarial road signs'",
+        description="Find similar MITRE ATLAS case studies using AI-powered semantic similarity search. Requires OPENAI_API_KEY. Describe an AI/ML incident or attack scenario and get matching real-world case studies with similarity scores. Example: 'Autonomous vehicle fooled by adversarial road signs'",
         inputSchema={
             "type": "object",
             "required": ["description"],
@@ -677,7 +677,7 @@ MCP_TOOLS: list[MCPToolDefinition] = [
     ),
     MCPToolDefinition(
         name="find_similar_capec_patterns",
-        description="Find MITRE CAPEC attack patterns using AI-powered semantic similarity search. Describe an attack scenario in natural language and get matching patterns with similarity scores. Uses AI embeddings for intelligent matching. Example: 'Attacker manipulates input fields to inject SQL commands and extract database contents'",
+        description="Find MITRE CAPEC attack patterns using AI-powered semantic similarity search. Requires OPENAI_API_KEY. Describe an attack scenario in natural language and get matching patterns with similarity scores. Example: 'Attacker manipulates input fields to inject SQL commands and extract database contents'. Use find_weaknesses_for_capec to find CWEs exploited by matched patterns.",
         inputSchema={
             "type": "object",
             "required": ["description"],
@@ -772,7 +772,7 @@ MCP_TOOLS: list[MCPToolDefinition] = [
     ),
     MCPToolDefinition(
         name="find_similar_capec_mitigations",
-        description="Find MITRE CAPEC mitigations using AI-powered semantic similarity search. Describe what kind of security control or mitigation you need and get matching mitigations with similarity scores. Example: 'Input validation to prevent injection attacks'",
+        description="Find MITRE CAPEC mitigations using AI-powered semantic similarity search. Requires OPENAI_API_KEY. Describe what kind of security control or mitigation you need and get matching mitigations with similarity scores. Example: 'Input validation to prevent injection attacks'",
         inputSchema={
             "type": "object",
             "required": ["description"],
@@ -846,7 +846,7 @@ MCP_TOOLS: list[MCPToolDefinition] = [
     ),
     MCPToolDefinition(
         name="find_similar_cwe_weaknesses",
-        description="Find MITRE CWE weaknesses using AI-powered semantic similarity search. Describe a vulnerability or coding issue in natural language and get matching weaknesses with similarity scores. Uses AI embeddings for intelligent matching. Example: 'User input is directly used in SQL queries without validation'",
+        description="Find MITRE CWE weaknesses using AI-powered semantic similarity search. Requires OPENAI_API_KEY. Describe a vulnerability or coding issue in natural language and get matching weaknesses with similarity scores. Example: 'User input is directly used in SQL queries without validation'. Use get_cwe_weakness_details for full weakness info, or get_cwe_hierarchy to explore related weaknesses.",
         inputSchema={
             "type": "object",
             "required": ["description"],
@@ -980,14 +980,12 @@ MCP_TOOLS: list[MCPToolDefinition] = [
     # D3FEND Tools
     MCPToolDefinition(
         name="search_defenses",
-        description="Search MITRE D3FEND defensive techniques using traditional keyword and filter-based search. D3FEND provides a catalog of defensive countermeasures that map to ATT&CK techniques. Filter by D3FEND tactics: Model, Harden, Detect, Isolate, Deceive, Evict, Restore.",
+        description="Search MITRE D3FEND defensive techniques using traditional keyword and filter-based search. D3FEND provides a catalog of defensive countermeasures that map to ATT&CK techniques. Filter by D3FEND tactics: Model, Harden, Detect, Isolate, Deceive, Evict, Restore. Omit query to browse by tactic.",
         inputSchema={
             "type": "object",
-            "required": ["query"],
             "properties": {
                 "query": {
                     "type": "string",
-                    "minLength": 1,
                     "description": "Full-text search in defensive technique name/description",
                 },
                 "tactic": {
@@ -1012,7 +1010,7 @@ MCP_TOOLS: list[MCPToolDefinition] = [
     ),
     MCPToolDefinition(
         name="find_similar_defenses",
-        description="Find MITRE D3FEND defensive techniques using AI-powered semantic similarity search. Describe a defensive need or security control in natural language and get matching D3FEND techniques with similarity scores. Uses AI embeddings for intelligent matching. Example: 'network segmentation to prevent lateral movement'",
+        description="Find MITRE D3FEND defensive techniques using AI-powered semantic similarity search. Requires OPENAI_API_KEY. Describe a defensive need or security control in natural language and get matching D3FEND techniques with similarity scores. Example: 'network segmentation to prevent lateral movement'. Use get_defense_details for full technique info including ATT&CK mappings.",
         inputSchema={
             "type": "object",
             "required": ["description"],
@@ -1106,6 +1104,14 @@ MCP_TOOLS: list[MCPToolDefinition] = [
                     "description": "Include list of uncovered ATT&CK techniques",
                 },
             },
+        },
+    ),
+    MCPToolDefinition(
+        name="get_data_freshness",
+        description="Check the freshness and sync status of all data sources. Returns last sync time, data age in hours, record counts, and health status (current/stale/critical) for each source: NVD, CISA KEV, EPSS, ExploitDB, ATT&CK, ATLAS, CAPEC, CWE, D3FEND. Use this to verify data is up-to-date before making security assessments.",
+        inputSchema={
+            "type": "object",
+            "properties": {},
         },
     ),
 ]
@@ -1314,12 +1320,13 @@ async def handle_get_exploits(params: dict[str, Any]) -> dict[str, Any]:
 
 
 async def handle_get_cwe_details(params: dict[str, Any]) -> dict[str, Any]:
-    """Handle get_cwe_details tool call."""
+    """Handle get_cwe_details tool call - routes to comprehensive CWE data."""
     start_time = time.time()
     request = GetCWEDetailsRequest(**params)
 
+    # Route to the comprehensive CWE query service (same as get_cwe_weakness_details)
     async with db_service.session() as session:
-        data = await db_service.get_cwe_details(session, request.cwe_id)
+        data = await cwe_queries.get_weakness_details(session, weakness_id=request.cwe_id)
 
     query_time_ms = int((time.time() - start_time) * 1000)
 
@@ -2055,6 +2062,55 @@ async def handle_get_attack_coverage(params: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+async def handle_get_data_freshness(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle get_data_freshness tool call."""
+    start_time = time.time()
+    settings = get_settings()
+
+    async with db_service.session() as session:
+        db_stats = await db_service.get_database_stats(session)
+        sync_metadata = await db_service.get_sync_metadata(session)
+
+    # Build per-source freshness info
+    data_freshness: dict[str, Any] = {}
+    for source, meta in sync_metadata.items():
+        status = "current"
+        age_hours = None
+        if meta.get("last_sync"):
+            try:
+                last_sync = datetime.fromisoformat(meta["last_sync"])
+                age_hours = int((datetime.now() - last_sync).total_seconds() / 3600)
+                if age_hours > settings.data_freshness_critical_hours:
+                    status = "critical"
+                elif age_hours > settings.data_freshness_warning_hours:
+                    status = "stale"
+            except Exception:
+                pass
+
+        data_freshness[source] = {
+            "last_sync": meta.get("last_sync"),
+            "age_hours": age_hours,
+            "status": status,
+        }
+
+    # Check cache connectivity
+    cache_healthy = await cache_service.health_check()
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": {
+            "data_freshness": data_freshness,
+            "database": db_stats,
+            "cache_connected": cache_healthy,
+        },
+        "metadata": {
+            "query_time_ms": query_time_ms,
+            "cache_hit": False,
+        },
+    }
+
+
 # Tool handler mapping
 TOOL_HANDLERS = {
     "search_cve": handle_search_cve,
@@ -2098,6 +2154,8 @@ TOOL_HANDLERS = {
     "get_defense_details": handle_get_defense_details,
     "get_defenses_for_attack": handle_get_defenses_for_attack,
     "get_attack_coverage": handle_get_attack_coverage,
+    # System tools
+    "get_data_freshness": handle_get_data_freshness,
 }
 
 

@@ -27,13 +27,39 @@ from cve_mcp.models.base import Base
 
 
 class D3FENDRelationshipType(enum.Enum):
-    """Relationship types between D3FEND techniques and ATT&CK techniques."""
+    """Relationship types between D3FEND techniques and ATT&CK techniques.
+
+    These correspond to D3FEND ontology properties linking defensive techniques
+    to digital artifacts shared with ATT&CK offensive techniques.
+    """
 
     COUNTERS = "counters"
     ENABLES = "enables"
     RELATED_TO = "related-to"
     PRODUCES = "produces"
     USES = "uses"
+    ANALYZES = "analyzes"
+    BLOCKS = "blocks"
+    FILTERS = "filters"
+    MONITORS = "monitors"
+    ISOLATES = "isolates"
+    RESTRICTS = "restricts"
+    DELETES = "deletes"
+    RESTORES = "restores"
+    HARDENS = "hardens"
+    VERIFIES = "verifies"
+    VALIDATES = "validates"
+    INVENTORIES = "inventories"
+    SPOOFS = "spoofs"
+    STRENGTHENS = "strengthens"
+    ENCRYPTS = "encrypts"
+    TERMINATES = "terminates"
+    UPDATES = "updates"
+    MODIFIES = "modifies"
+    NEUTRALIZES = "neutralizes"
+    OBFUSCATES = "obfuscates"
+    AUTHENTICATES = "authenticates"
+    QUARANTINES = "quarantines"
 
 
 class D3FENDArtifactRelationshipType(enum.Enum):
@@ -211,7 +237,11 @@ class D3FENDTechniqueAttackMapping(Base):
     )
 
     relationship_type: Mapped[D3FENDRelationshipType] = mapped_column(
-        Enum(D3FENDRelationshipType, name="d3fend_relationship_type"),
+        Enum(
+            D3FENDRelationshipType,
+            name="d3fend_relationship_type",
+            values_callable=lambda enum: [e.value for e in enum],
+        ),
         nullable=False,
     )
 
@@ -253,7 +283,11 @@ class D3FENDTechniqueArtifact(Base):
         primary_key=True,
     )
     relationship_type: Mapped[D3FENDArtifactRelationshipType] = mapped_column(
-        Enum(D3FENDArtifactRelationshipType, name="d3fend_artifact_relationship_type"),
+        Enum(
+            D3FENDArtifactRelationshipType,
+            name="d3fend_artifact_relationship_type",
+            values_callable=lambda enum: [e.value for e in enum],
+        ),
         primary_key=True,
     )
 

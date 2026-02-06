@@ -82,10 +82,11 @@ async def search_techniques(
     # Format results
     results = []
     for tech in techniques:
+        description = tech.description or ""
         results.append({
             "technique_id": tech.technique_id,
             "name": tech.name,
-            "description": tech.description[:200] + "..." if len(tech.description) > 200 else tech.description,
+            "description": description[:200] + "..." if len(description) > 200 else description,
             "tactics": tech.tactics,
             "platforms": tech.platforms,
             "is_subtechnique": tech.is_subtechnique,
@@ -214,11 +215,12 @@ async def search_threat_actors(
     # Format results
     results = []
     for group in groups:
+        description = group.description or ""
         results.append({
             "group_id": group.group_id,
             "name": group.name,
             "aliases": group.aliases,
-            "description": group.description[:200] + "..." if len(group.description) > 200 else group.description,
+            "description": description[:200] + "..." if len(description) > 200 else description,
             "techniques_count": len(group.techniques_used) if group.techniques_used else 0,
             "revoked": group.revoked,
         })
@@ -288,10 +290,11 @@ async def find_similar_techniques(
     # Format results
     results = []
     for tech, sim_score in rows:
+        description = tech.description or ""
         results.append({
             "technique_id": tech.technique_id,
             "name": tech.name,
-            "description": tech.description[:200] + "..." if len(tech.description) > 200 else tech.description,
+            "description": description[:200] + "..." if len(description) > 200 else description,
             "tactics": tech.tactics,
             "platforms": tech.platforms,
             "is_subtechnique": tech.is_subtechnique,
@@ -350,11 +353,12 @@ async def find_similar_threat_actors(
     # Format results
     results = []
     for group, sim_score in rows:
+        description = group.description or ""
         results.append({
             "group_id": group.group_id,
             "name": group.name,
             "aliases": group.aliases,
-            "description": group.description[:200] + "..." if len(group.description) > 200 else group.description,
+            "description": description[:200] + "..." if len(description) > 200 else description,
             "techniques_count": len(group.techniques_used) if group.techniques_used else 0,
             "similarity_score": float(sim_score),
         })

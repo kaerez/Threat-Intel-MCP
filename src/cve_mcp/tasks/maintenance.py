@@ -6,7 +6,7 @@ import structlog
 from sqlalchemy import select, text, update
 
 from cve_mcp.models import CVE, EPSSScore, ExploitReference
-from cve_mcp.models.base import AsyncSessionLocal
+from cve_mcp.models.base import get_task_session
 from cve_mcp.tasks.celery_app import celery_app
 
 logger = structlog.get_logger()
@@ -17,7 +17,7 @@ def refresh_materialized_views():
     """Refresh materialized views after sync completion."""
 
     async def _refresh():
-        async with AsyncSessionLocal() as session:
+        async with get_task_session() as session:
             await session.execute(
                 text("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_high_priority_cves")
             )
@@ -32,7 +32,7 @@ def update_computed_flags():
     """Update computed boolean flags on CVE table."""
 
     async def _update_flags():
-        async with AsyncSessionLocal() as session:
+        async with get_task_session() as session:
             # Update has_exploit flag
             exploit_cve_ids = await session.execute(
                 select(ExploitReference.cve_id.distinct())
@@ -78,7 +78,7 @@ def vacuum_analyze_database():
     """Run VACUUM ANALYZE on database tables."""
 
     async def _vacuum():
-        async with AsyncSessionLocal() as session:
+        async with get_task_session() as session:
             # Note: VACUUM cannot run inside a transaction block
             # This is executed via raw connection
             await session.execute(text("ANALYZE cves"))
@@ -104,7 +104,7 @@ def cleanup_old_audit_logs():
         settings = get_settings()
         retention_days = settings.audit_log_retention_days
 
-        async with AsyncSessionLocal() as session:
+        async with get_task_session() as session:
             result = await session.execute(
                 text(
                     f"DELETE FROM query_audit_log WHERE timestamp < NOW() - INTERVAL '{retention_days} days'"

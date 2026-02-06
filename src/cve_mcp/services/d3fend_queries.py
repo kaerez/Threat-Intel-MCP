@@ -53,7 +53,7 @@ def _technique_to_dict(technique: D3FENDTechnique, include_full: bool = False) -
         }
 
     # Summary format
-    description = technique.description
+    description = technique.description or ""
     if len(description) > 200:
         description = description[:200] + "..."
 
@@ -69,7 +69,7 @@ def _technique_to_dict(technique: D3FENDTechnique, include_full: bool = False) -
 
 async def search_defenses(
     session: AsyncSession,
-    query: str,
+    query: str | None = None,
     tactic: list[str] | None = None,
     include_children: bool = False,
     limit: int = 50,
@@ -100,6 +100,9 @@ async def search_defenses(
         search_filter = or_(
             D3FENDTechnique.name.ilike(f"%{query}%"),
             D3FENDTechnique.description.ilike(f"%{query}%"),
+            func.coalesce(
+                func.array_to_string(D3FENDTechnique.synonyms, ' ', ''), ''
+            ).ilike(f"%{query}%"),
         )
         filters.append(search_filter)
 

@@ -58,7 +58,7 @@ class CVE(Base):
 
     # CVSS v4.0 scoring (future-proofing)
     cvss_v4_score: Mapped[float | None] = mapped_column(Numeric(3, 1))
-    cvss_v4_vector: Mapped[str | None] = mapped_column(String(150))
+    cvss_v4_vector: Mapped[str | None] = mapped_column(String(300))
     cvss_v4_severity: Mapped[str | None] = mapped_column(String(10))
 
     # CWE associations
