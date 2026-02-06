@@ -122,7 +122,7 @@ def parse_cwe_xml(xml_content: bytes) -> dict[str, Any]:
     weaknesses_elem = root.find(f"{ns}Weaknesses")
     if weaknesses_elem is not None:
         for weakness_elem in weaknesses_elem.findall(f"{ns}Weakness"):
-            parsed = parse_weakness(weakness_elem)
+            parsed = parse_weakness(weakness_elem, ns)
             if parsed:
                 parsed["cwe_version"] = version
                 weaknesses.append(parsed)
@@ -134,7 +134,7 @@ def parse_cwe_xml(xml_content: bytes) -> dict[str, Any]:
     categories_elem = root.find(f"{ns}Categories")
     if categories_elem is not None:
         for category_elem in categories_elem.findall(f"{ns}Category"):
-            parsed = parse_category(category_elem)
+            parsed = parse_category(category_elem, ns)
             if parsed:
                 categories.append(parsed)
 
@@ -145,7 +145,7 @@ def parse_cwe_xml(xml_content: bytes) -> dict[str, Any]:
     views_elem = root.find(f"{ns}Views")
     if views_elem is not None:
         for view_elem in views_elem.findall(f"{ns}View"):
-            parsed = parse_view(view_elem)
+            parsed = parse_view(view_elem, ns)
             if parsed:
                 views.append(parsed)
 
@@ -435,7 +435,7 @@ async def sync_external_mappings(
             mapping = CWEExternalMapping(
                 weakness_id=parsed["weakness_id"],
                 external_source=parsed["taxonomy_name"],
-                external_id=parsed.get("entry_id", ""),
+                external_id=parsed.get("entry_id") or "",
                 mapping_type=parsed.get("framework_type"),
                 rationale=parsed.get("entry_name"),
             )

@@ -3,6 +3,11 @@
 Parses XML data from MITRE CWE repository into database models.
 CWE is the Common Weakness Enumeration - a list of software and
 hardware weakness types.
+
+Note: CWE XML uses a default namespace (http://cwe.mitre.org/cwe-7).
+All child element lookups must include the namespace prefix.
+The `ns` parameter (e.g., "{http://cwe.mitre.org/cwe-7}") must be
+passed to parser functions for correct element resolution.
 """
 
 from typing import Any
@@ -71,11 +76,12 @@ def _extract_cwe_id(element: etree._Element) -> tuple[str | None, int | None]:
         return None, None
 
 
-def _parse_consequence(consequence_elem: etree._Element) -> dict[str, Any] | None:
+def _parse_consequence(consequence_elem: etree._Element, ns: str = "") -> dict[str, Any] | None:
     """Parse a Consequence element.
 
     Args:
         consequence_elem: Consequence XML element
+        ns: XML namespace prefix (e.g., "{http://cwe.mitre.org/cwe-7}")
 
     Returns:
         Dictionary with scope, impact, likelihood, note fields
@@ -83,35 +89,36 @@ def _parse_consequence(consequence_elem: etree._Element) -> dict[str, Any] | Non
     result: dict[str, Any] = {}
 
     # Scope can have multiple values
-    scopes = [_get_text(s) for s in consequence_elem.findall("Scope")]
+    scopes = [_get_text(s) for s in consequence_elem.findall(f"{ns}Scope")]
     scopes = [s for s in scopes if s]
     if scopes:
         result["scope"] = scopes if len(scopes) > 1 else scopes[0]
 
     # Impact can have multiple values
-    impacts = [_get_text(i) for i in consequence_elem.findall("Impact")]
+    impacts = [_get_text(i) for i in consequence_elem.findall(f"{ns}Impact")]
     impacts = [i for i in impacts if i]
     if impacts:
         result["impact"] = impacts if len(impacts) > 1 else impacts[0]
 
     # Likelihood is optional
-    likelihood = _get_text(consequence_elem.find("Likelihood"))
+    likelihood = _get_text(consequence_elem.find(f"{ns}Likelihood"))
     if likelihood:
         result["likelihood"] = likelihood
 
     # Note is optional
-    note = _get_all_text(consequence_elem.find("Note"))
+    note = _get_all_text(consequence_elem.find(f"{ns}Note"))
     if note:
         result["note"] = note
 
     return result if result else None
 
 
-def _parse_mitigation(mitigation_elem: etree._Element) -> dict[str, Any] | None:
+def _parse_mitigation(mitigation_elem: etree._Element, ns: str = "") -> dict[str, Any] | None:
     """Parse a Mitigation element.
 
     Args:
         mitigation_elem: Mitigation XML element
+        ns: XML namespace prefix
 
     Returns:
         Dictionary with phase, strategy, effectiveness, description fields
@@ -119,34 +126,35 @@ def _parse_mitigation(mitigation_elem: etree._Element) -> dict[str, Any] | None:
     result: dict[str, Any] = {}
 
     # Phase can have multiple values
-    phases = [_get_text(p) for p in mitigation_elem.findall("Phase")]
+    phases = [_get_text(p) for p in mitigation_elem.findall(f"{ns}Phase")]
     phases = [p for p in phases if p]
     if phases:
         result["phase"] = phases if len(phases) > 1 else phases[0]
 
     # Strategy is optional
-    strategy = _get_text(mitigation_elem.find("Strategy"))
+    strategy = _get_text(mitigation_elem.find(f"{ns}Strategy"))
     if strategy:
         result["strategy"] = strategy
 
     # Effectiveness is optional
-    effectiveness = _get_text(mitigation_elem.find("Effectiveness"))
+    effectiveness = _get_text(mitigation_elem.find(f"{ns}Effectiveness"))
     if effectiveness:
         result["effectiveness"] = effectiveness
 
     # Description is optional but common
-    description = _get_all_text(mitigation_elem.find("Description"))
+    description = _get_all_text(mitigation_elem.find(f"{ns}Description"))
     if description:
         result["description"] = description
 
     return result if result else None
 
 
-def _parse_detection_method(detection_elem: etree._Element) -> dict[str, Any] | None:
+def _parse_detection_method(detection_elem: etree._Element, ns: str = "") -> dict[str, Any] | None:
     """Parse a Detection_Method element.
 
     Args:
         detection_elem: Detection_Method XML element
+        ns: XML namespace prefix
 
     Returns:
         Dictionary with method, effectiveness, description fields
@@ -154,17 +162,17 @@ def _parse_detection_method(detection_elem: etree._Element) -> dict[str, Any] | 
     result: dict[str, Any] = {}
 
     # Method is the primary field
-    method = _get_text(detection_elem.find("Method"))
+    method = _get_text(detection_elem.find(f"{ns}Method"))
     if method:
         result["method"] = method
 
     # Effectiveness is optional
-    effectiveness = _get_text(detection_elem.find("Effectiveness"))
+    effectiveness = _get_text(detection_elem.find(f"{ns}Effectiveness"))
     if effectiveness:
         result["effectiveness"] = effectiveness
 
     # Description is optional
-    description = _get_all_text(detection_elem.find("Description"))
+    description = _get_all_text(detection_elem.find(f"{ns}Description"))
     if description:
         result["description"] = description
 
@@ -173,11 +181,13 @@ def _parse_detection_method(detection_elem: etree._Element) -> dict[str, Any] | 
 
 def _parse_relationships(
     related_weaknesses_elem: etree._Element | None,
+    ns: str = "",
 ) -> dict[str, list[str]]:
     """Parse Related_Weaknesses element to extract relationships.
 
     Args:
         related_weaknesses_elem: Related_Weaknesses XML element
+        ns: XML namespace prefix
 
     Returns:
         Dictionary with relationship types as keys and lists of CWE IDs as values
@@ -205,7 +215,7 @@ def _parse_relationships(
         "Requires": "child_of",  # Map Requires to child_of (dependency)
     }
 
-    for related in related_weaknesses_elem.findall("Related_Weakness"):
+    for related in related_weaknesses_elem.findall(f"{ns}Related_Weakness"):
         nature = related.get("Nature")
         cwe_id = related.get("CWE_ID")
 
@@ -219,11 +229,13 @@ def _parse_relationships(
 
 def _parse_taxonomy_mappings(
     taxonomy_mappings_elem: etree._Element | None,
+    ns: str = "",
 ) -> list[dict[str, Any]]:
     """Parse Taxonomy_Mappings element.
 
     Args:
         taxonomy_mappings_elem: Taxonomy_Mappings XML element
+        ns: XML namespace prefix
 
     Returns:
         List of taxonomy mapping dictionaries
@@ -233,22 +245,22 @@ def _parse_taxonomy_mappings(
     if taxonomy_mappings_elem is None:
         return mappings
 
-    for mapping in taxonomy_mappings_elem.findall("Taxonomy_Mapping"):
+    for mapping in taxonomy_mappings_elem.findall(f"{ns}Taxonomy_Mapping"):
         taxonomy_name = mapping.get("Taxonomy_Name")
         if not taxonomy_name:
             continue
 
         entry: dict[str, Any] = {"taxonomy_name": taxonomy_name}
 
-        entry_id = _get_text(mapping.find("Entry_ID"))
+        entry_id = _get_text(mapping.find(f"{ns}Entry_ID"))
         if entry_id:
             entry["entry_id"] = entry_id
 
-        entry_name = _get_text(mapping.find("Entry_Name"))
+        entry_name = _get_text(mapping.find(f"{ns}Entry_Name"))
         if entry_name:
             entry["entry_name"] = entry_name
 
-        mapping_fit = _get_text(mapping.find("Mapping_Fit"))
+        mapping_fit = _get_text(mapping.find(f"{ns}Mapping_Fit"))
         if mapping_fit:
             entry["mapping_fit"] = mapping_fit
 
@@ -257,11 +269,12 @@ def _parse_taxonomy_mappings(
     return mappings
 
 
-def parse_weakness(element: etree._Element) -> dict[str, Any] | None:
+def parse_weakness(element: etree._Element, ns: str = "") -> dict[str, Any] | None:
     """Parse a Weakness XML element.
 
     Args:
         element: CWE Weakness XML element
+        ns: XML namespace prefix (e.g., "{http://cwe.mitre.org/cwe-7}")
 
     Returns:
         Dictionary with weakness data ready for CWEWeakness model,
@@ -272,52 +285,52 @@ def parse_weakness(element: etree._Element) -> dict[str, Any] | None:
     if not cwe_id or weakness_id is None:
         return None
 
-    # Basic fields
+    # Basic fields (from XML attributes - never namespaced)
     name = element.get("Name")
     abstraction = element.get("Abstraction")
     status = element.get("Status")
 
-    # Description and extended description
-    description = _get_all_text(element.find("Description"))
-    extended_description = _get_all_text(element.find("Extended_Description"))
+    # Description and extended description (child elements - need namespace)
+    description = _get_all_text(element.find(f"{ns}Description"))
+    extended_description = _get_all_text(element.find(f"{ns}Extended_Description"))
 
     # Likelihood of exploit
-    likelihood_of_exploit = _get_text(element.find("Likelihood_Of_Exploit"))
+    likelihood_of_exploit = _get_text(element.find(f"{ns}Likelihood_Of_Exploit"))
 
     # Parse consequences
     consequences: list[dict[str, Any]] = []
-    common_consequences = element.find("Common_Consequences")
+    common_consequences = element.find(f"{ns}Common_Consequences")
     if common_consequences is not None:
-        for consequence in common_consequences.findall("Consequence"):
-            parsed = _parse_consequence(consequence)
+        for consequence in common_consequences.findall(f"{ns}Consequence"):
+            parsed = _parse_consequence(consequence, ns)
             if parsed:
                 consequences.append(parsed)
 
     # Parse mitigations
     mitigations: list[dict[str, Any]] = []
-    potential_mitigations = element.find("Potential_Mitigations")
+    potential_mitigations = element.find(f"{ns}Potential_Mitigations")
     if potential_mitigations is not None:
-        for mitigation in potential_mitigations.findall("Mitigation"):
-            parsed = _parse_mitigation(mitigation)
+        for mitigation in potential_mitigations.findall(f"{ns}Mitigation"):
+            parsed = _parse_mitigation(mitigation, ns)
             if parsed:
                 mitigations.append(parsed)
 
     # Parse detection methods
     detection_methods: list[dict[str, Any]] = []
-    detection_methods_elem = element.find("Detection_Methods")
+    detection_methods_elem = element.find(f"{ns}Detection_Methods")
     if detection_methods_elem is not None:
-        for detection in detection_methods_elem.findall("Detection_Method"):
-            parsed = _parse_detection_method(detection)
+        for detection in detection_methods_elem.findall(f"{ns}Detection_Method"):
+            parsed = _parse_detection_method(detection, ns)
             if parsed:
                 detection_methods.append(parsed)
 
     # Parse relationships
-    related_weaknesses = element.find("Related_Weaknesses")
-    relationships = _parse_relationships(related_weaknesses)
+    related_weaknesses = element.find(f"{ns}Related_Weaknesses")
+    relationships = _parse_relationships(related_weaknesses, ns)
 
     # Parse taxonomy mappings
-    taxonomy_mappings_elem = element.find("Taxonomy_Mappings")
-    taxonomy_mappings = _parse_taxonomy_mappings(taxonomy_mappings_elem)
+    taxonomy_mappings_elem = element.find(f"{ns}Taxonomy_Mappings")
+    taxonomy_mappings = _parse_taxonomy_mappings(taxonomy_mappings_elem, ns)
 
     return {
         "cwe_id": cwe_id,
@@ -345,11 +358,12 @@ def parse_weakness(element: etree._Element) -> dict[str, Any] | None:
     }
 
 
-def parse_category(element: etree._Element) -> dict[str, Any] | None:
+def parse_category(element: etree._Element, ns: str = "") -> dict[str, Any] | None:
     """Parse a Category XML element.
 
     Args:
         element: CWE Category XML element
+        ns: XML namespace prefix
 
     Returns:
         Dictionary with category data ready for CWECategory model,
@@ -370,13 +384,13 @@ def parse_category(element: etree._Element) -> dict[str, Any] | None:
     status = element.get("Status")
 
     # Summary is in the Summary element
-    summary = _get_all_text(element.find("Summary"))
+    summary = _get_all_text(element.find(f"{ns}Summary"))
 
     # Get member weaknesses
-    relationships = element.find("Relationships")
+    relationships = element.find(f"{ns}Relationships")
     members: list[str] = []
     if relationships is not None:
-        for member in relationships.findall("Has_Member"):
+        for member in relationships.findall(f"{ns}Has_Member"):
             cwe_id = member.get("CWE_ID")
             if cwe_id:
                 members.append(f"CWE-{cwe_id}")
@@ -390,11 +404,12 @@ def parse_category(element: etree._Element) -> dict[str, Any] | None:
     }
 
 
-def parse_view(element: etree._Element) -> dict[str, Any] | None:
+def parse_view(element: etree._Element, ns: str = "") -> dict[str, Any] | None:
     """Parse a View XML element.
 
     Args:
         element: CWE View XML element
+        ns: XML namespace prefix
 
     Returns:
         Dictionary with view data ready for CWEView model,
@@ -416,13 +431,13 @@ def parse_view(element: etree._Element) -> dict[str, Any] | None:
     status = element.get("Status")
 
     # Objective describes the view's purpose
-    objective = _get_all_text(element.find("Objective"))
+    objective = _get_all_text(element.find(f"{ns}Objective"))
 
     # Get member weaknesses from the view
-    members_elem = element.find("Members")
+    members_elem = element.find(f"{ns}Members")
     members: list[str] = []
     if members_elem is not None:
-        for member in members_elem.findall("Has_Member"):
+        for member in members_elem.findall(f"{ns}Has_Member"):
             cwe_id = member.get("CWE_ID")
             if cwe_id:
                 members.append(f"CWE-{cwe_id}")
