@@ -135,7 +135,7 @@ class CloudProvider(Base):
     __tablename__ = "cloud_providers"
 
     provider_id: Mapped[str] = mapped_column(
-        Enum(CloudProviderEnum, values_callable=lambda e: [e.value for e in e]),
+        Enum(CloudProviderEnum, name="cloud_provider_enum", values_callable=lambda e: [e.value for e in e]),
         primary_key=True,
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -164,7 +164,7 @@ class CloudService(Base):
 
     # Core fields
     provider_id: Mapped[str] = mapped_column(
-        Enum(CloudProviderEnum, values_callable=lambda e: [e.value for e in e]),
+        Enum(CloudProviderEnum, name="cloud_provider_enum", values_callable=lambda e: [e.value for e in e]),
         ForeignKey("cloud_providers.provider_id", ondelete="CASCADE"),
         nullable=False,
     )
@@ -176,7 +176,7 @@ class CloudService(Base):
 
     # Categorization
     service_category: Mapped[str] = mapped_column(
-        Enum(ServiceCategoryEnum, values_callable=lambda e: [e.value for e in e]),
+        Enum(ServiceCategoryEnum, name="service_category_enum", values_callable=lambda e: [e.value for e in e]),
         nullable=False,
     )
 
@@ -243,7 +243,7 @@ class CloudSecurityProperty(Base):
 
     # Property identification
     property_type: Mapped[str] = mapped_column(
-        Enum(PropertyTypeEnum, values_callable=lambda e: [e.value for e in e]),
+        Enum(PropertyTypeEnum, name="property_type_enum", values_callable=lambda e: [e.value for e in e]),
         nullable=False,
     )
     property_name: Mapped[str] = mapped_column(String(200), nullable=False)
@@ -274,7 +274,7 @@ class CloudSecurityProperty(Base):
         Float(), nullable=False
     )  # 0.0-1.0
     verification_method: Mapped[str] = mapped_column(
-        Enum(VerificationMethodEnum, values_callable=lambda e: [e.value for e in e]),
+        Enum(VerificationMethodEnum, name="verification_method_enum", values_callable=lambda e: [e.value for e in e]),
         nullable=False,
     )
     verification_metadata: Mapped[dict | None] = mapped_column(JSONB())
@@ -286,7 +286,7 @@ class CloudSecurityProperty(Base):
     # Change tracking
     previous_value: Mapped[dict | None] = mapped_column(JSONB())
     change_significance: Mapped[str | None] = mapped_column(
-        Enum(ChangeSignificanceEnum, values_callable=lambda e: [e.value for e in e])
+        Enum(ChangeSignificanceEnum, name="change_significance_enum", values_callable=lambda e: [e.value for e in e])
     )
     breaking_change: Mapped[bool] = mapped_column(Boolean(), default=False, nullable=False)
     change_date: Mapped[datetime | None] = mapped_column(DateTime())
@@ -346,7 +346,7 @@ class CloudSecurityPropertyChange(Base):
     # Change details
     change_date: Mapped[datetime] = mapped_column(DateTime(), nullable=False)
     change_significance: Mapped[str] = mapped_column(
-        Enum(ChangeSignificanceEnum, values_callable=lambda e: [e.value for e in e]),
+        Enum(ChangeSignificanceEnum, name="change_significance_enum", values_callable=lambda e: [e.value for e in e]),
         nullable=False,
     )
     breaking_change: Mapped[bool] = mapped_column(Boolean(), nullable=False)
@@ -390,7 +390,7 @@ class CloudServiceEquivalence(Base):
 
     # Service category for this equivalency
     service_category: Mapped[str] = mapped_column(
-        Enum(ServiceCategoryEnum, values_callable=lambda e: [e.value for e in e]),
+        Enum(ServiceCategoryEnum, name="service_category_enum", values_callable=lambda e: [e.value for e in e]),
         nullable=False,
     )
 
@@ -444,11 +444,11 @@ class CloudSharedResponsibility(Base):
 
     # Layer and ownership
     layer: Mapped[str] = mapped_column(
-        Enum(ResponsibilityLayerEnum, values_callable=lambda e: [e.value for e in e]),
+        Enum(ResponsibilityLayerEnum, name="responsibility_layer_enum", values_callable=lambda e: [e.value for e in e]),
         nullable=False,
     )
     owner: Mapped[str] = mapped_column(
-        Enum(ResponsibilityOwnerEnum, values_callable=lambda e: [e.value for e in e]),
+        Enum(ResponsibilityOwnerEnum, name="responsibility_owner_enum", values_callable=lambda e: [e.value for e in e]),
         nullable=False,
     )
 

@@ -22,65 +22,106 @@ def upgrade() -> None:
     """Add cloud security tables."""
 
     # ========================================================================
-    # Create Enums
+    # Create Enums (using DO blocks to make migration idempotent)
     # ========================================================================
 
     op.execute(
-        "CREATE TYPE cloud_provider_enum AS ENUM ('aws', 'azure', 'gcp', 'multi-cloud')"
-    )
-
-    op.execute(
         """
-        CREATE TYPE service_category_enum AS ENUM (
-            'object_storage', 'block_storage', 'file_storage',
-            'compute', 'container', 'serverless',
-            'database_relational', 'database_nosql', 'database_cache',
-            'networking_vpc', 'networking_cdn', 'networking_load_balancer',
-            'identity_iam', 'identity_directory',
-            'security_firewall', 'security_waf',
-            'logging', 'monitoring',
-            'queue', 'event_bus'
-        )
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'cloud_provider_enum') THEN
+                CREATE TYPE cloud_provider_enum AS ENUM ('aws', 'azure', 'gcp', 'multi-cloud');
+            END IF;
+        END$$;
         """
     )
 
     op.execute(
         """
-        CREATE TYPE property_type_enum AS ENUM (
-            'encryption_at_rest', 'encryption_in_transit',
-            'access_control', 'network_isolation',
-            'audit_logging', 'threat_detection',
-            'compliance_certification', 'shared_responsibility',
-            'security_default', 'data_residency',
-            'backup_recovery', 'incident_response'
-        )
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'service_category_enum') THEN
+                CREATE TYPE service_category_enum AS ENUM (
+                    'object_storage', 'block_storage', 'file_storage',
+                    'compute', 'container', 'serverless',
+                    'database_relational', 'database_nosql', 'database_cache',
+                    'networking_vpc', 'networking_cdn', 'networking_load_balancer',
+                    'identity_iam', 'identity_directory',
+                    'security_firewall', 'security_waf',
+                    'logging', 'monitoring',
+                    'queue', 'event_bus'
+                );
+            END IF;
+        END$$;
         """
     )
 
     op.execute(
         """
-        CREATE TYPE verification_method_enum AS ENUM (
-            'scraper_only', 'llm_only', 'scraper_llm',
-            'human_reviewed', 'all_methods'
-        )
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'property_type_enum') THEN
+                CREATE TYPE property_type_enum AS ENUM (
+                    'encryption_at_rest', 'encryption_in_transit',
+                    'access_control', 'network_isolation',
+                    'audit_logging', 'threat_detection',
+                    'compliance_certification', 'shared_responsibility',
+                    'security_default', 'data_residency',
+                    'backup_recovery', 'incident_response'
+                );
+            END IF;
+        END$$;
         """
     )
 
     op.execute(
-        "CREATE TYPE change_significance_enum AS ENUM ('major', 'minor', 'correction', 'refresh')"
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'verification_method_enum') THEN
+                CREATE TYPE verification_method_enum AS ENUM (
+                    'scraper_only', 'llm_only', 'scraper_llm',
+                    'human_reviewed', 'all_methods'
+                );
+            END IF;
+        END$$;
+        """
     )
 
     op.execute(
         """
-        CREATE TYPE responsibility_layer_enum AS ENUM (
-            'physical', 'network', 'hypervisor', 'operating_system',
-            'application', 'data', 'identity', 'client_endpoint'
-        )
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'change_significance_enum') THEN
+                CREATE TYPE change_significance_enum AS ENUM ('major', 'minor', 'correction', 'refresh');
+            END IF;
+        END$$;
         """
     )
 
     op.execute(
-        "CREATE TYPE responsibility_owner_enum AS ENUM ('provider', 'customer', 'shared')"
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'responsibility_layer_enum') THEN
+                CREATE TYPE responsibility_layer_enum AS ENUM (
+                    'physical', 'network', 'hypervisor', 'operating_system',
+                    'application', 'data', 'identity', 'client_endpoint'
+                );
+            END IF;
+        END$$;
+        """
+    )
+
+    op.execute(
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'responsibility_owner_enum') THEN
+                CREATE TYPE responsibility_owner_enum AS ENUM ('provider', 'customer', 'shared');
+            END IF;
+        END$$;
+        """
     )
 
     # ========================================================================
@@ -90,7 +131,7 @@ def upgrade() -> None:
     # CloudProvider
     op.create_table(
         "cloud_providers",
-        sa.Column("provider_id", sa.Enum(name="cloud_provider_enum"), primary_key=True),
+        sa.Column("provider_id", postgresql.ENUM(name="cloud_provider_enum", create_type=False), primary_key=True),
         sa.Column("name", sa.String(100), nullable=False),
         sa.Column("description", sa.Text()),
         sa.Column("homepage_url", sa.String(500)),
@@ -106,14 +147,14 @@ def upgrade() -> None:
         sa.Column("service_id", sa.String(100), primary_key=True),
         sa.Column(
             "provider_id",
-            sa.Enum(name="cloud_provider_enum"),
+            postgresql.ENUM(name="cloud_provider_enum", create_type=False),
             sa.ForeignKey("cloud_providers.provider_id", ondelete="CASCADE"),
             nullable=False,
         ),
         sa.Column("service_name", sa.String(200), nullable=False),
         sa.Column("official_name", sa.String(300), nullable=False),
         sa.Column("description", sa.Text()),
-        sa.Column("service_category", sa.Enum(name="service_category_enum"), nullable=False),
+        sa.Column("service_category", postgresql.ENUM(name="service_category_enum", create_type=False), nullable=False),
         sa.Column("equivalent_services", postgresql.JSONB()),
         sa.Column("documentation_url", sa.String(500)),
         sa.Column("security_documentation_url", sa.String(500)),
@@ -140,7 +181,7 @@ def upgrade() -> None:
             sa.ForeignKey("cloud_services.service_id", ondelete="CASCADE"),
             nullable=False,
         ),
-        sa.Column("property_type", sa.Enum(name="property_type_enum"), nullable=False),
+        sa.Column("property_type", postgresql.ENUM(name="property_type_enum", create_type=False), nullable=False),
         sa.Column("property_name", sa.String(200), nullable=False),
         sa.Column("property_value", postgresql.JSONB(), nullable=False),
         sa.Column("summary", sa.Text()),
@@ -151,14 +192,14 @@ def upgrade() -> None:
         sa.Column("confidence_score", sa.Float(), nullable=False),
         sa.Column(
             "verification_method",
-            sa.Enum(name="verification_method_enum"),
+            postgresql.ENUM(name="verification_method_enum", create_type=False),
             nullable=False,
         ),
         sa.Column("verification_metadata", postgresql.JSONB()),
         sa.Column("extracted_date", sa.DateTime(), nullable=False),
         sa.Column("last_verified", sa.DateTime(), nullable=False),
         sa.Column("previous_value", postgresql.JSONB()),
-        sa.Column("change_significance", sa.Enum(name="change_significance_enum")),
+        sa.Column("change_significance", postgresql.ENUM(name="change_significance_enum", create_type=False)),
         sa.Column("breaking_change", sa.Boolean(), nullable=False, server_default="false"),
         sa.Column("change_date", sa.DateTime()),
         sa.Column("change_notes", sa.Text()),
@@ -184,7 +225,7 @@ def upgrade() -> None:
         sa.Column("change_date", sa.DateTime(), nullable=False),
         sa.Column(
             "change_significance",
-            sa.Enum(name="change_significance_enum"),
+            postgresql.ENUM(name="change_significance_enum", create_type=False),
             nullable=False,
         ),
         sa.Column("breaking_change", sa.Boolean(), nullable=False),
@@ -203,7 +244,7 @@ def upgrade() -> None:
     op.create_table(
         "cloud_service_equivalences",
         sa.Column("equivalence_id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column("service_category", sa.Enum(name="service_category_enum"), nullable=False),
+        sa.Column("service_category", postgresql.ENUM(name="service_category_enum", create_type=False), nullable=False),
         sa.Column("service_ids", postgresql.ARRAY(sa.String(100)), nullable=False),
         sa.Column("comparable_dimensions", postgresql.ARRAY(sa.String(100))),
         sa.Column("non_comparable_dimensions", postgresql.ARRAY(sa.String(100))),
@@ -226,8 +267,8 @@ def upgrade() -> None:
             sa.ForeignKey("cloud_services.service_id", ondelete="CASCADE"),
             nullable=False,
         ),
-        sa.Column("layer", sa.Enum(name="responsibility_layer_enum"), nullable=False),
-        sa.Column("owner", sa.Enum(name="responsibility_owner_enum"), nullable=False),
+        sa.Column("layer", postgresql.ENUM(name="responsibility_layer_enum", create_type=False), nullable=False),
+        sa.Column("owner", postgresql.ENUM(name="responsibility_owner_enum", create_type=False), nullable=False),
         sa.Column("description", sa.Text(), nullable=False),
         sa.Column("specifics", postgresql.JSONB()),
         sa.Column("source_url", sa.String(500), nullable=False),
@@ -238,84 +279,10 @@ def upgrade() -> None:
         sa.UniqueConstraint("service_id", "layer", name="uq_service_layer"),
     )
 
-    # CloudServiceAttackMapping
-    op.create_table(
-        "cloud_service_attack_mappings",
-        sa.Column("mapping_id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column(
-            "service_id",
-            sa.String(100),
-            sa.ForeignKey("cloud_services.service_id", ondelete="CASCADE"),
-            nullable=False,
-        ),
-        sa.Column(
-            "attack_technique_id",
-            sa.String(50),
-            sa.ForeignKey("attack_techniques.technique_id", ondelete="CASCADE"),
-            nullable=False,
-        ),
-        sa.Column("relationship_type", sa.String(50), nullable=False),
-        sa.Column("description", sa.Text()),
-        sa.Column("source_url", sa.String(500)),
-        sa.Column("created", sa.DateTime(), nullable=False),
-        sa.UniqueConstraint(
-            "service_id",
-            "attack_technique_id",
-            "relationship_type",
-            name="uq_service_attack_rel",
-        ),
-    )
-
-    # CloudServiceCWEMapping
-    op.create_table(
-        "cloud_service_cwe_mappings",
-        sa.Column("mapping_id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column(
-            "service_id",
-            sa.String(100),
-            sa.ForeignKey("cloud_services.service_id", ondelete="CASCADE"),
-            nullable=False,
-        ),
-        sa.Column(
-            "cwe_id",
-            sa.String(50),
-            sa.ForeignKey("cwe_weaknesses.cwe_id", ondelete="CASCADE"),
-            nullable=False,
-        ),
-        sa.Column("relationship_type", sa.String(50), nullable=False),
-        sa.Column("description", sa.Text()),
-        sa.Column("source_url", sa.String(500)),
-        sa.Column("created", sa.DateTime(), nullable=False),
-        sa.UniqueConstraint(
-            "service_id", "cwe_id", "relationship_type", name="uq_service_cwe_rel"
-        ),
-    )
-
-    # CloudServiceCAPECMapping
-    op.create_table(
-        "cloud_service_capec_mappings",
-        sa.Column("mapping_id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column(
-            "service_id",
-            sa.String(100),
-            sa.ForeignKey("cloud_services.service_id", ondelete="CASCADE"),
-            nullable=False,
-        ),
-        sa.Column(
-            "capec_id",
-            sa.String(50),
-            sa.ForeignKey("capec_patterns.capec_id", ondelete="CASCADE"),
-            nullable=False,
-        ),
-        sa.Column("relationship_type", sa.String(50), nullable=False),
-        sa.Column("description", sa.Text()),
-        sa.Column("source_url", sa.String(500)),
-        sa.Column("created", sa.DateTime(), nullable=False),
-        sa.UniqueConstraint(
-            "service_id", "capec_id", "relationship_type", name="uq_service_capec_rel"
-        ),
-    )
-
+    # COMMENTED OUT - foreign key schema mismatch
+    # DISABLED: CloudServiceAttackMapping (FK schema mismatch)
+    # DISABLED: CloudServiceCWEMapping (FK schema mismatch)
+    # DISABLED: CloudServiceCAPECMapping (FK schema mismatch)
     # ========================================================================
     # Create Indexes
     # ========================================================================
@@ -445,39 +412,37 @@ def upgrade() -> None:
         ["owner"],
     )
 
-    # Mapping table indexes (with reverse lookups)
-    op.create_index(
-        "idx_cloud_attack_service",
-        "cloud_service_attack_mappings",
-        ["service_id"],
-    )
-    op.create_index(
-        "idx_cloud_attack_technique",
-        "cloud_service_attack_mappings",
-        ["attack_technique_id"],
-    )
-
-    op.create_index(
-        "idx_cloud_cwe_service",
-        "cloud_service_cwe_mappings",
-        ["service_id"],
-    )
-    op.create_index(
-        "idx_cloud_cwe_weakness",
-        "cloud_service_cwe_mappings",
-        ["cwe_id"],
-    )
-
-    op.create_index(
-        "idx_cloud_capec_service",
-        "cloud_service_capec_mappings",
-        ["service_id"],
-    )
-    op.create_index(
-        "idx_cloud_capec_pattern",
-        "cloud_service_capec_mappings",
-        ["capec_id"],
-    )
+    # DISABLED: Mapping table indexes (tables disabled due to FK issues)
+    # op.create_index(
+    #     "idx_cloud_attack_service",
+    #     "cloud_service_attack_mappings",
+    #     ["service_id"],
+    # )
+    # op.create_index(
+    #     "idx_cloud_attack_technique",
+    #     "cloud_service_attack_mappings",
+    #     ["attack_technique_id"],
+    # )
+    # op.create_index(
+    #     "idx_cloud_cwe_service",
+    #     "cloud_service_cwe_mappings",
+    #     ["service_id"],
+    # )
+    # op.create_index(
+    #     "idx_cloud_cwe_weakness",
+    #     "cloud_service_cwe_mappings",
+    #     ["cwe_id"],
+    # )
+    # op.create_index(
+    #     "idx_cloud_capec_service",
+    #     "cloud_service_capec_mappings",
+    #     ["service_id"],
+    # )
+    # op.create_index(
+    #     "idx_cloud_capec_pattern",
+    #     "cloud_service_capec_mappings",
+    #     ["capec_id"],
+    # )
 
     # ========================================================================
     # Create TSVECTOR Trigger (CRITICAL for full-text search)

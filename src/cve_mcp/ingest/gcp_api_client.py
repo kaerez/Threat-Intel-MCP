@@ -11,7 +11,8 @@ Quality-first design:
 
 import os
 import structlog
-from google.cloud import orgpolicy_v2
+from google.cloud.orgpolicy_v2 import OrgPolicyClient
+from google.cloud.orgpolicy_v2.types import ListCustomConstraintsRequest
 from typing import Any
 
 logger = structlog.get_logger(__name__)
@@ -46,7 +47,7 @@ class GCPOrgPolicyClient:
         if credentials_path:
             os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
 
-        self.client = orgpolicy_v2.OrgPolicyClient()
+        self.client = OrgPolicyClient()
         self.parent = f"organizations/{organization_id}"
 
     def list_constraints(
@@ -85,7 +86,7 @@ class GCPOrgPolicyClient:
             constraints = []
 
             # List custom constraints (organization-defined)
-            request = orgpolicy_v2.ListCustomConstraintsRequest(parent=self.parent)
+            request = ListCustomConstraintsRequest(parent=self.parent)
 
             for constraint in self.client.list_custom_constraints(request=request):
                 # Convert protobuf to dict
