@@ -62,6 +62,27 @@ class Settings(BaseSettings):
     # Audit
     audit_log_retention_days: int = 2555  # 7 years
 
+    # Cloud Provider Credentials (for Cloud Security module production data)
+    # AWS Security Hub
+    aws_access_key_id: str | None = None
+    aws_secret_access_key: str | None = None
+    aws_region: str = "us-east-1"
+    aws_security_hub_enabled: bool = False
+
+    # Azure Policy
+    azure_client_id: str | None = None
+    azure_client_secret: str | None = None
+    azure_tenant_id: str | None = None
+    azure_subscription_id: str | None = None
+    azure_policy_source: str = "github"  # "github" or "api"
+    azure_policy_repo_url: str = "https://github.com/Azure/azure-policy"
+    azure_policy_branch: str = "master"
+
+    # GCP Organization Policy
+    google_application_credentials: str | None = None  # Path to service account JSON
+    gcp_organization_id: str | None = None
+    gcp_org_policy_enabled: bool = False
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 

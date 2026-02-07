@@ -41,6 +41,13 @@ dependencies = [
     "numpy>=1.24.0",
     "lxml>=5.0.0",  # For CWE XML parsing
     "pyyaml>=6.0.0",  # For ATLAS YAML parsing
+    # Cloud provider APIs (for Cloud Security module production data)
+    "boto3>=1.34.0",  # AWS Security Hub API
+    "botocore>=1.34.0",
+    "azure-identity>=1.15.0",  # Azure Policy API
+    "azure-mgmt-resource>=23.0.0",
+    "google-cloud-orgpolicy>=1.10.0",  # GCP Organization Policy API
+    "google-auth>=2.27.0",
 ]
 
 [project.optional-dependencies]
@@ -90,3 +97,9 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+    "integration: marks tests as integration tests (may require external services)",
+    "aws: marks tests as AWS-specific integration tests (requires AWS credentials)",
+    "azure: marks tests as Azure-specific integration tests (some require Azure credentials)",
+    "gcp: marks tests as GCP-specific integration tests (requires GCP credentials)",
+]

@@ -28,6 +28,10 @@ from cve_mcp.models.cloud_security import (
 )
 from cve_mcp.models.metadata import SyncMetadata
 from cve_mcp.tasks.celery_app import celery_app
+from cve_mcp.config import get_settings
+from cve_mcp.ingest.aws_api_client import get_aws_client
+from cve_mcp.ingest.azure_api_client import get_azure_client
+from cve_mcp.ingest.gcp_api_client import get_gcp_client
 
 logger = structlog.get_logger(__name__)
 slogger = structlog.stdlib.get_logger(__name__)
@@ -106,14 +110,10 @@ async def sync_aws_s3_security(
     verbose: bool = False,
 ) -> dict[str, int]:
     """
-    Sync AWS S3 security properties from authoritative sources.
+    Sync AWS S3 security properties from AWS Security Hub API.
 
-    This would typically fetch from:
-    - AWS Security Hub ListSecurityControlDefinitions API
-    - AWS Config DescribeConfigRules API
-    - AWS Config conformance pack templates
-
-    For now, this is a placeholder that initializes the service.
+    This fetches real-time security control definitions from AWS Security Hub.
+    Requires AWS credentials configured via environment variables or IAM role.
 
     Args:
         session: Database session
@@ -135,6 +135,29 @@ async def sync_aws_s3_security(
     try:
         logger.info("sync_aws_s3_security.started")
 
+        # Check if AWS credentials are configured
+        settings = get_settings()
+        if not settings.aws_access_key_id or not settings.aws_security_hub_enabled:
+            logger.info(
+                "sync_aws_s3_security.skipped",
+                reason="AWS credentials not configured or Security Hub not enabled",
+            )
+            await _update_sync_metadata(
+                session,
+                source="cloud_security_aws_s3",
+                status="skipped",
+                records=0,
+                duration=0.0,
+                error_message="AWS credentials not configured",
+            )
+            return {
+                "services_synced": 0,
+                "properties_synced": 0,
+                "properties_updated": 0,
+                "properties_failed_quality": 0,
+                "changes_detected": 0,
+            }
+
         # Step 1: Ensure provider exists
         await _ensure_provider_exists(session, "aws")
 
@@ -151,12 +174,30 @@ async def sync_aws_s3_security(
         await _upsert_service(session, s3_service)
         stats["services_synced"] += 1
 
-        # Step 3: Fetch Security Hub controls for S3
-        # NOTE: In production, this would call AWS API:
-        # controls = await fetch_aws_security_hub_controls("s3")
-        # For now, we'll use sample data structure
-
-        sample_controls = await _get_aws_s3_sample_controls()
+        # Step 3: Fetch Security Hub controls for S3 from real AWS API
+        try:
+            aws_client = get_aws_client(
+                access_key_id=settings.aws_access_key_id,
+                secret_access_key=settings.aws_secret_access_key,
+                region=settings.aws_region,
+            )
+            sample_controls = aws_client.list_security_controls(
+                service_name="s3", max_results=100
+            )
+            logger.info(
+                "fetched_aws_security_hub_controls",
+                service="s3",
+                count=len(sample_controls),
+            )
+        except Exception as e:
+            logger.error(
+                "failed_to_fetch_aws_controls",
+                service="s3",
+                error=str(e),
+                exc_info=True,
+            )
+            # Fall back to empty list - don't fail the entire sync
+            sample_controls = []
 
         for control_data in sample_controls:
             parsed = parse_aws_security_hub_control(control_data)
@@ -217,68 +258,7 @@ async def sync_aws_s3_security(
         raise
 
 
-async def _get_aws_s3_sample_controls() -> list[dict[str, Any]]:
-    """
-    Get sample AWS Security Hub controls for S3.
 
-    In production, this would fetch from AWS API.
-    """
-    return [
-        {
-            "SecurityControlId": "S3.1",
-            "Title": "S3 Block Public Access setting should be enabled",
-            "Description": "This control checks whether S3 Block Public Access settings are enabled at the account level. The control fails if Block Public Access settings are not enabled.",
-            "SeverityRating": "MEDIUM",
-            "ControlStatus": "ENABLED",
-            "RemediationUrl": "https://docs.aws.amazon.com/console/securityhub/S3.1/remediation",
-            "SecurityControlStandardsDefinitions": [
-                {
-                    "StandardsArn": "arn:aws:securityhub:::standards/aws-foundational-security-best-practices/v/1.0.0",
-                    "ControlId": "S3.1",
-                },
-                {
-                    "StandardsArn": "arn:aws:securityhub:::standards/cis-aws-foundations-benchmark/v/1.4.0",
-                    "ControlId": "2.1.4",
-                },
-            ],
-        },
-        {
-            "SecurityControlId": "S3.5",
-            "Title": "S3 buckets should require requests to use SSL",
-            "Description": "This control checks whether S3 buckets have policies that require requests to use SSL (HTTPS). The control fails if the bucket policy does not require SSL.",
-            "SeverityRating": "MEDIUM",
-            "ControlStatus": "ENABLED",
-            "RemediationUrl": "https://docs.aws.amazon.com/console/securityhub/S3.5/remediation",
-            "SecurityControlStandardsDefinitions": [
-                {
-                    "StandardsArn": "arn:aws:securityhub:::standards/aws-foundational-security-best-practices/v/1.0.0",
-                    "ControlId": "S3.5",
-                },
-                {
-                    "StandardsArn": "arn:aws:securityhub:::standards/nist-800-53/v/5.0.0",
-                    "ControlId": "SC-8",
-                },
-            ],
-        },
-        {
-            "SecurityControlId": "S3.17",
-            "Title": "S3 buckets should be encrypted at rest with AWS KMS keys",
-            "Description": "This control checks whether S3 buckets are encrypted at rest with AWS KMS keys. The control fails if the bucket is not encrypted with KMS.",
-            "SeverityRating": "MEDIUM",
-            "ControlStatus": "ENABLED",
-            "RemediationUrl": "https://docs.aws.amazon.com/console/securityhub/S3.17/remediation",
-            "SecurityControlStandardsDefinitions": [
-                {
-                    "StandardsArn": "arn:aws:securityhub:::standards/aws-foundational-security-best-practices/v/1.0.0",
-                    "ControlId": "S3.17",
-                },
-                {
-                    "StandardsArn": "arn:aws:securityhub:::standards/nist-800-53/v/5.0.0",
-                    "ControlId": "SC-13",
-                },
-            ],
-        },
-    ]
 
 
 # ============================================================================
@@ -292,12 +272,11 @@ async def sync_azure_blob_security(
     verbose: bool = False,
 ) -> dict[str, int]:
     """
-    Sync Azure Blob Storage security properties.
+    Sync Azure Blob Storage security properties from Azure Policy API or GitHub.
 
-    This would fetch from:
-    - Azure ARM API schema
-    - Azure Policy built-in definitions
-    - Azure Security Baseline
+    This fetches real policy definitions from either:
+    - GitHub: azure-policy public repo (no auth required, recommended)
+    - Azure API: Resource Manager API (requires service principal)
 
     Args:
         session: Database session
@@ -319,6 +298,31 @@ async def sync_azure_blob_security(
     try:
         logger.info("sync_azure_blob_security.started")
 
+        # Check if Azure credentials are configured (only needed for API source)
+        settings = get_settings()
+        use_api = settings.azure_policy_source == "api"
+        
+        if use_api and not settings.azure_client_id:
+            logger.info(
+                "sync_azure_blob_security.skipped",
+                reason="Azure API credentials not configured, use github source instead",
+            )
+            await _update_sync_metadata(
+                session,
+                source="cloud_security_azure_blob",
+                status="skipped",
+                records=0,
+                duration=0.0,
+                error_message="Azure credentials not configured",
+            )
+            return {
+                "services_synced": 0,
+                "properties_synced": 0,
+                "properties_updated": 0,
+                "properties_failed_quality": 0,
+                "changes_detected": 0,
+            }
+
         # Ensure provider exists
         await _ensure_provider_exists(session, "azure")
 
@@ -335,9 +339,35 @@ async def sync_azure_blob_security(
         await _upsert_service(session, blob_service)
         stats["services_synced"] += 1
 
-        # Fetch Azure Policy definitions
-        # In production: fetch from GitHub or Azure API
-        sample_policies = await _get_azure_blob_sample_policies()
+        # Fetch Azure Policy definitions from GitHub or API
+        try:
+            azure_client = get_azure_client(
+                source=settings.azure_policy_source,
+                repo_url=settings.azure_policy_repo_url,
+                branch=settings.azure_policy_branch,
+                client_id=settings.azure_client_id,
+                client_secret=settings.azure_client_secret,
+                tenant_id=settings.azure_tenant_id,
+                subscription_id=settings.azure_subscription_id,
+            )
+            sample_policies = await azure_client.fetch_policy_definitions(
+                category="Storage"
+            )
+            logger.info(
+                "fetched_azure_policies",
+                category="Storage",
+                count=len(sample_policies),
+                source=settings.azure_policy_source,
+            )
+        except Exception as e:
+            logger.error(
+                "failed_to_fetch_azure_policies",
+                category="Storage",
+                error=str(e),
+                exc_info=True,
+            )
+            # Fall back to empty list
+            sample_policies = []
 
         for policy_data in sample_policies:
             parsed = parse_azure_policy_definition(policy_data)
@@ -394,68 +424,7 @@ async def sync_azure_blob_security(
         raise
 
 
-async def _get_azure_blob_sample_policies() -> list[dict[str, Any]]:
-    """Get sample Azure Policy definitions for Blob Storage."""
-    return [
-        {
-            "id": "/providers/Microsoft.Authorization/policyDefinitions/secure-transfer",
-            "properties": {
-                "name": "secure-transfer-required",
-                "displayName": "Secure transfer to storage accounts should be enabled",
-                "description": "Audit requirement of Secure transfer in your storage account. Secure transfer is an option that forces your storage account to accept requests only from secure connections (HTTPS). Use of HTTPS ensures authentication between the server and the service and protects data in transit from network layer attacks.",
-                "policyType": "BuiltIn",
-                "mode": "All",
-                "metadata": {
-                    "category": "Storage",
-                    "ASC": "true",
-                },
-                "policyRule": {
-                    "if": {
-                        "allOf": [
-                            {
-                                "field": "type",
-                                "equals": "Microsoft.Storage/storageAccounts",
-                            },
-                            {
-                                "field": "Microsoft.Storage/storageAccounts/supportsHttpsTrafficOnly",
-                                "notEquals": "true",
-                            },
-                        ]
-                    },
-                    "then": {"effect": "Audit"},
-                },
-            },
-        },
-        {
-            "id": "/providers/Microsoft.Authorization/policyDefinitions/infrastructure-encryption",
-            "properties": {
-                "name": "infrastructure-encryption-required",
-                "displayName": "Storage accounts should have infrastructure encryption",
-                "description": "Enable infrastructure encryption for higher level of assurance that the data is secure. When infrastructure encryption is enabled, data in a storage account is encrypted twice.",
-                "policyType": "BuiltIn",
-                "mode": "All",
-                "metadata": {
-                    "category": "Storage",
-                    "CIS": "true",
-                },
-                "policyRule": {
-                    "if": {
-                        "allOf": [
-                            {
-                                "field": "type",
-                                "equals": "Microsoft.Storage/storageAccounts",
-                            },
-                            {
-                                "field": "Microsoft.Storage/storageAccounts/encryption.requireInfrastructureEncryption",
-                                "notEquals": "true",
-                            },
-                        ]
-                    },
-                    "then": {"effect": "Audit"},
-                },
-            },
-        },
-    ]
+
 
 
 # ============================================================================
@@ -469,12 +438,10 @@ async def sync_gcp_storage_security(
     verbose: bool = False,
 ) -> dict[str, int]:
     """
-    Sync GCP Cloud Storage security properties.
+    Sync GCP Cloud Storage security properties from Organization Policy API.
 
-    This would fetch from:
-    - GCP Organization Policy constraints
-    - Security Command Center recommendations
-    - Cloud Asset Inventory
+    This fetches real organization policy constraints from GCP Organization Policy API.
+    Requires service account with orgpolicy.constraints.list permission.
 
     Args:
         session: Database session
@@ -496,6 +463,29 @@ async def sync_gcp_storage_security(
     try:
         logger.info("sync_gcp_storage_security.started")
 
+        # Check if GCP credentials are configured
+        settings = get_settings()
+        if not settings.gcp_organization_id or not settings.gcp_org_policy_enabled:
+            logger.info(
+                "sync_gcp_storage_security.skipped",
+                reason="GCP credentials not configured or Organization Policy not enabled",
+            )
+            await _update_sync_metadata(
+                session,
+                source="cloud_security_gcp_storage",
+                status="skipped",
+                records=0,
+                duration=0.0,
+                error_message="GCP credentials not configured",
+            )
+            return {
+                "services_synced": 0,
+                "properties_synced": 0,
+                "properties_updated": 0,
+                "properties_failed_quality": 0,
+                "changes_detected": 0,
+            }
+
         # Ensure provider exists
         await _ensure_provider_exists(session, "gcp")
 
@@ -512,9 +502,29 @@ async def sync_gcp_storage_security(
         await _upsert_service(session, storage_service)
         stats["services_synced"] += 1
 
-        # Fetch Org Policy constraints
-        # In production: fetch from GCP API
-        sample_constraints = await _get_gcp_storage_sample_constraints()
+        # Fetch Org Policy constraints from real GCP API
+        try:
+            gcp_client = get_gcp_client(
+                organization_id=settings.gcp_organization_id,
+                credentials_path=settings.google_application_credentials,
+            )
+            sample_constraints = gcp_client.list_constraints(
+                service_prefix="storage.googleapis.com"
+            )
+            logger.info(
+                "fetched_gcp_org_policy_constraints",
+                service="storage.googleapis.com",
+                count=len(sample_constraints),
+            )
+        except Exception as e:
+            logger.error(
+                "failed_to_fetch_gcp_constraints",
+                service="storage.googleapis.com",
+                error=str(e),
+                exc_info=True,
+            )
+            # Fall back to empty list
+            sample_constraints = []
 
         for constraint_data in sample_constraints:
             parsed = parse_gcp_org_policy_constraint(constraint_data)
@@ -571,36 +581,7 @@ async def sync_gcp_storage_security(
         raise
 
 
-async def _get_gcp_storage_sample_constraints() -> list[dict[str, Any]]:
-    """Get sample GCP Organization Policy constraints for Cloud Storage."""
-    return [
-        {
-            "name": "constraints/storage.publicAccessPrevention",
-            "displayName": "Enforce public access prevention",
-            "description": "This organization policy constraint enforces public access prevention on Cloud Storage buckets. When enforced, buckets cannot be made publicly accessible.",
-            "constraintType": "BOOLEAN",
-            "booleanConstraint": {},
-            "enforcement": "ENFORCEMENT_ENFORCED",
-        },
-        {
-            "name": "constraints/storage.uniformBucketLevelAccess",
-            "displayName": "Enforce uniform bucket-level access",
-            "description": "This constraint requires uniform bucket-level access to be enabled on Cloud Storage buckets. This disables ACLs for the bucket.",
-            "constraintType": "BOOLEAN",
-            "booleanConstraint": {},
-            "enforcement": "ENFORCEMENT_ENFORCED",
-        },
-        {
-            "name": "constraints/gcp.restrictNonCmekServices",
-            "displayName": "Restrict which services may create resources without CMEK",
-            "description": "This list constraint defines the set of Google Cloud services that can be used without customer-managed encryption keys (CMEK).",
-            "constraintType": "LIST",
-            "listConstraint": {
-                "supportsIn": True,
-                "supportsUnder": False,
-            },
-        },
-    ]
+
 
 
 # ============================================================================
