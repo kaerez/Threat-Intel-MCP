@@ -1,4 +1,9 @@
-"""FastAPI application for CVE MCP server."""
+"""FastAPI application for CVE MCP server.
+
+This is the HTTP wrapper layer that exposes the MCP server via REST endpoints
+for Ansvar platform integration. It calls into the MCP server internally,
+ensuring that both stdio (MCP protocol) and HTTP modes use identical business logic.
+"""
 
 import json
 from collections.abc import AsyncGenerator
@@ -8,15 +13,17 @@ import structlog
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from mcp.types import TextContent
 from pydantic import ValidationError
 
+from cve_mcp.api.middleware import RequestLoggingMiddleware
 from cve_mcp.api.schemas import (
     HealthResponse,
     MCPToolCallRequest,
     MCPToolCallResponse,
     MCPToolsListResponse,
 )
-from cve_mcp.api.tools import TOOL_HANDLERS, call_tool, get_mcp_tools
+from cve_mcp.api.tools import TOOL_HANDLERS, get_mcp_tools
 from cve_mcp.config import get_settings
 from cve_mcp.services.cache import cache_service
 from cve_mcp.services.database import db_service
@@ -28,7 +35,13 @@ logger = structlog.get_logger()
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan manager."""
     # Startup
-    logger.info("Starting CVE MCP server")
+    logger.info("Starting CVE MCP server (HTTP mode)")
+
+    # Create MCP server instance (lazy import to avoid circular dependency)
+    from cve_mcp.mcp.server import create_mcp_server
+    app.state.mcp_server = create_mcp_server()
+    logger.info("MCP server instance created")
+
     await cache_service.connect()
     logger.info("Connected to Redis")
     yield
@@ -38,13 +51,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 def create_app() -> FastAPI:
-    """Create and configure FastAPI application."""
+    """Create and configure FastAPI application.
+
+    This creates the HTTP wrapper around the MCP server. The wrapper:
+    - Exposes MCP tools via REST endpoints for Ansvar platform
+    - Calls into MCP server internally (same business logic as stdio mode)
+    - Provides CORS and request logging middleware
+    - Maintains 100% backward compatibility with existing clients
+    """
     settings = get_settings()
 
     app = FastAPI(
         title="Threat Intelligence MCP Server",
         description="Offline-first MCP server for CVE/CISA KEV/EPSS/ExploitDB vulnerability data and MITRE ATT&CK/ATLAS/CAPEC/CWE/D3FEND threat intelligence frameworks with AI-powered semantic search",
-        version="1.1.0",
+        version="1.3.0",
         lifespan=lifespan,
     )
 
@@ -58,6 +78,9 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Request logging middleware
+    app.add_middleware(RequestLoggingMiddleware)
 
     @app.get("/health", response_model=HealthResponse)
     async def health_check() -> HealthResponse:
@@ -114,14 +137,37 @@ def create_app() -> FastAPI:
         return MCPToolsListResponse(tools=get_mcp_tools())
 
     @app.post("/mcp/tools/call", response_model=MCPToolCallResponse)
-    async def call_mcp_tool(request: MCPToolCallRequest) -> MCPToolCallResponse:
-        """Call an MCP tool."""
+    async def call_mcp_tool(
+        request: MCPToolCallRequest, req: Request
+    ) -> MCPToolCallResponse:
+        """Call an MCP tool via HTTP wrapper.
+
+        This endpoint calls into the MCP server's call_tool handler,
+        ensuring identical behavior between stdio and HTTP modes.
+        """
         try:
-            result = await call_tool(request.name, request.arguments)
-            return MCPToolCallResponse(
-                content=[{"type": "text", "text": json.dumps(result, indent=2, default=str)}],
-                isError=False,
+            # Get MCP server wrapper from app state
+            mcp_server = req.app.state.mcp_server
+
+            # Call the MCP server's call_tool handler directly
+            # This returns list[TextContent] in MCP protocol format
+            result_contents = await mcp_server.call_tool(
+                request.name, request.arguments
             )
+
+            # Convert MCP TextContent response to HTTP response format
+            # MCP returns list[TextContent], we need list[dict] for HTTP
+            content = [{"type": item.type, "text": item.text} for item in result_contents]
+
+            # Check if the result indicates an error
+            # MCP server returns error messages as text starting with "Error calling tool"
+            is_error = any(
+                isinstance(item, TextContent) and item.text.startswith("Error calling tool")
+                for item in result_contents
+            )
+
+            return MCPToolCallResponse(content=content, isError=is_error)
+
         except ValidationError as e:
             # Pydantic validation errors - give agents clear field-level feedback
             errors = e.errors()

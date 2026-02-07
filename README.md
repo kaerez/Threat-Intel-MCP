@@ -153,6 +153,52 @@ Or use Docker exec method:
 
 Restart Claude Desktop. You should see "cve-exploit" in the 🔌 menu.
 
+**Step 3: Choose Your Transport Mode**
+
+The server supports three deployment modes:
+
+**Option A: stdio mode (Official MCP Protocol - Recommended)**
+
+Uses JSON-RPC 2.0 over stdio transport per the official MCP specification:
+
+```json
+{
+  "mcpServers": {
+    "threat-intel": {
+      "command": "docker",
+      "args": ["exec", "-i", "cve-mcp-server", "python", "-m", "cve_mcp", "--mode", "stdio"],
+      "env": {}
+    }
+  }
+}
+```
+
+**Option B: HTTP mode (Custom wrapper)**
+
+Uses HTTP REST endpoints wrapping the same MCP tools:
+
+```json
+{
+  "mcpServers": {
+    "threat-intel": {
+      "url": "http://localhost:8307",
+      "transport": "http"
+    }
+  }
+}
+```
+
+**Option C: Both modes (Development/Testing)**
+
+Run both transports simultaneously (useful for debugging):
+
+```bash
+# Start server in dual mode
+docker-compose exec cve-mcp-server python -m cve_mcp --mode both
+```
+
+All modes provide access to the same 41 tools with identical business logic.
+
 **Step 3: Verify It Works**
 
 ```bash
@@ -160,7 +206,7 @@ Restart Claude Desktop. You should see "cve-exploit" in the 🔌 menu.
 curl http://localhost:8307/health | jq
 
 # Search for CVEs
-curl -X POST http://localhost:8307/call \
+curl -X POST http://localhost:8307/mcp/tools/call \
   -H "Content-Type: application/json" \
   -d '{
     "name": "search_cve",
@@ -381,42 +427,55 @@ Once connected, just ask naturally:
 **Pattern:** Based on [Ansvar Sanctions MCP](https://github.com/Ansvar-Systems/Sanctions-MCP) architecture
 
 ```
-┌─────────────────────────────────────────┐
-│  MCP Client (Claude / Cursor)           │
-└─────────────┬───────────────────────────┘
-              │ JSON-RPC 2.0
-              ▼
-┌─────────────────────────────────────────┐
-│  HTTP/SSE Transport (Port 8307)         │
-└─────────────┬───────────────────────────┘
+┌─────────────────────────────────────────────────────┐
+│  MCP Clients (Claude Desktop, Cursor, etc.)         │
+│  via stdio transport (JSON-RPC 2.0)                 │
+└─────────────┬───────────────────────────────────────┘
               │
               ▼
-┌─────────────────────────────────────────┐
-│  CVE MCP Server (FastAPI)               │
-│  - 41 MCP tools                         │
-│  - Query routing & validation           │
-└─────────────┬───────────────────────────┘
+┌─────────────────────────────────────────────────────┐
+│  MCP Protocol Layer (official Python SDK)           │
+│  - Tool registration & discovery                    │
+│  - JSON-RPC 2.0 message handling                    │
+│  - stdio transport implementation                   │
+└─────────────┬───────────────────────────────────────┘
               │
               ▼
-┌─────────────────────────────────────────┐
-│  PostgreSQL 15 (~6 GB)                  │
-│  + Redis Cache                          │
-└─────────────┬───────────────────────────┘
+┌─────────────────────────────────────────────────────┐
+│  Core Business Logic Layer (shared)                 │
+│  - 41 tool handlers (unchanged)                     │
+│  - Query services (CVE, ATT&CK, Cloud, etc.)        │
+│  - Database & cache services                        │
+└─────────────┬───────────────────────────────────────┘
               │
               ▼
-┌─────────────────────────────────────────┐
-│  Daily Sync (02:00-04:00 UTC)           │
-│  - NVD API 2.0                          │
-│  - CISA KEV                             │
-│  - FIRST EPSS                           │
-│  - ExploitDB                            │
-│  - MITRE ATT&CK                         │
-│  - MITRE ATLAS                          │
-│  - MITRE CAPEC                          │
-│  - MITRE CWE                            │
-│  - MITRE D3FEND                         │
-│  - AWS Security Hub / Azure / GCP       │
-└─────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────┐
+│  HTTP Wrapper (for Ansvar platform)                 │
+│  - FastAPI endpoints (/mcp/tools, /mcp/tools/call)  │
+│  - CORS & health checks                             │
+│  - Calls into Core Business Logic                   │
+└─────────────────────────────────────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────────────────────────┐
+│  PostgreSQL 15 + pgvector (~6 GB)                   │
+│  + Redis Cache                                      │
+└─────────────┬───────────────────────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────────────────────────┐
+│  Daily Sync (02:00-04:00 UTC)                       │
+│  - NVD API 2.0                                      │
+│  - CISA KEV                                         │
+│  - FIRST EPSS                                       │
+│  - ExploitDB                                        │
+│  - MITRE ATT&CK                                     │
+│  - MITRE ATLAS                                      │
+│  - MITRE CAPEC                                      │
+│  - MITRE CWE                                        │
+│  - MITRE D3FEND                                     │
+│  - AWS/Azure/GCP Cloud Security APIs                │
+└─────────────────────────────────────────────────────┘
 ```
 
 ### Why Offline-First?
@@ -598,7 +657,7 @@ This server is part of **Ansvar's Security Intelligence Suite**:
 - ✅ **Air-gap deployment** — Sync can run on separate network
 - ✅ **TLS 1.3** — Encrypted sync operations
 - ✅ **PostgreSQL SSL** — Encrypted database connections
-- ✅ **Rate limiting** — 100 req/min per client
+- ✅ **Internal-only deployment** — No public internet exposure required
 
 **Security setup guide:** [.github/SECURITY-SETUP.md](.github/SECURITY-SETUP.md)
 

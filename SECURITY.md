@@ -72,9 +72,9 @@ This project implements several security measures:
 - **Minimal base images**: Alpine-based where possible
 
 ### Runtime Security
-- **Input validation**: All API inputs are validated
+- **Input validation**: All API inputs are validated via Pydantic schemas
 - **SQL injection prevention**: Parameterized queries via SQLAlchemy ORM
-- **Rate limiting**: API rate limits to prevent abuse
+- **Internal-only deployment**: Designed for private network use, not public internet
 - **No secrets in code**: Environment variables for all credentials
 
 ## Security Best Practices for Users
@@ -92,10 +92,13 @@ This project implements several security measures:
 This server fetches data from external sources:
 - NVD (NIST) - US government vulnerability database
 - MITRE ATT&CK - Threat intelligence framework
-- MITRE D3FEND - Defensive techniques
 - MITRE ATLAS - AI/ML attack techniques
+- MITRE CAPEC - Common attack patterns
+- MITRE CWE - Software weaknesses
+- MITRE D3FEND - Defensive techniques
 - CISA KEV - Known exploited vulnerabilities
 - FIRST EPSS - Exploit prediction scores
+- AWS/Azure/GCP - Cloud security properties
 
 These are trusted sources, but network requests should be validated.
 

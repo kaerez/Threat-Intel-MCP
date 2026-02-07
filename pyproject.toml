@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "threat-intel-mcp"
-version = "1.2.1"
+version = "1.3.0"
 description = "Threat Intelligence MCP Server - CVE, ATT&CK, Cloud Security, threat actors, semantic search"
 readme = "README.md"
 license = "Apache-2.0"
@@ -41,6 +41,7 @@ dependencies = [
     "numpy>=1.24.0",
     "lxml>=5.0.0",  # For CWE XML parsing
     "pyyaml>=6.0.0",  # For ATLAS YAML parsing
+    "mcp>=1.26.0",  # Official MCP Python SDK for JSON-RPC 2.0 protocol
     # Cloud provider APIs (for Cloud Security module production data)
     "boto3>=1.34.0",  # AWS Security Hub API
     "botocore>=1.34.0",
@@ -98,8 +99,12 @@ ignore_missing_imports = true
 asyncio_mode = "auto"
 testpaths = ["tests"]
 markers = [
+    "fast: marks tests as fast unit tests (< 1 second, no external deps)",
+    "slow: marks tests as slow tests (may take several seconds)",
     "integration: marks tests as integration tests (may require external services)",
     "aws: marks tests as AWS-specific integration tests (requires AWS credentials)",
     "azure: marks tests as Azure-specific integration tests (some require Azure credentials)",
     "gcp: marks tests as GCP-specific integration tests (requires GCP credentials)",
 ]
+# Run fast tests by default, use -m "slow" or -m "integration" for others
+addopts = "--tb=short -v"

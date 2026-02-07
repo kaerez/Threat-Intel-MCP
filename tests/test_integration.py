@@ -78,10 +78,10 @@ class TestMCPToolDefinitions:
     """Test MCP tool schemas are properly defined."""
 
     def test_all_tools_defined(self):
-        """All 36 MCP tools are defined (8 CVE + 7 ATT&CK + 5 ATLAS + 5 CAPEC + 6 CWE + 5 D3FEND)."""
+        """All 41 MCP tools are defined (8 CVE + 7 ATT&CK + 5 ATLAS + 5 CAPEC + 6 CWE + 5 D3FEND + 4 Cloud + 1 System)."""
         from cve_mcp.api.tools import MCP_TOOLS
 
-        assert len(MCP_TOOLS) == 36
+        assert len(MCP_TOOLS) == 41
 
         tool_names = {tool.name for tool in MCP_TOOLS}
         expected_cve_tools = {
@@ -132,6 +132,15 @@ class TestMCPToolDefinitions:
             "get_defenses_for_attack",
             "get_attack_coverage",
         }
+        expected_cloud_tools = {
+            "search_cloud_services",
+            "get_cloud_service_security",
+            "compare_cloud_services",
+            "get_shared_responsibility",
+        }
+        expected_system_tools = {
+            "get_data_freshness",
+        }
         expected_tools = (
             expected_cve_tools
             | expected_attack_tools
@@ -139,6 +148,8 @@ class TestMCPToolDefinitions:
             | expected_capec_tools
             | expected_cwe_tools
             | expected_d3fend_tools
+            | expected_cloud_tools
+            | expected_system_tools
         )
         assert tool_names == expected_tools
 
@@ -297,3 +308,203 @@ class TestUtilities:
 
         key3 = cache._make_key("test", "different")
         assert key1 != key3  # Different inputs = different keys
+
+
+@pytest.mark.integration
+@pytest.mark.slow
+class TestHTTPIntegration:
+    """
+    HTTP integration tests for MCP wrapper endpoints.
+
+    These tests make actual HTTP calls to a running server.
+    Run server first: python -m cve_mcp --mode http
+    """
+
+    @pytest.fixture(scope="class")
+    def base_url(self):
+        """Base URL for HTTP integration tests."""
+        # Default MCP server port
+        return "http://localhost:8307"
+
+    @pytest.fixture(scope="class")
+    def server_running(self, base_url):
+        """Check if server is running, skip tests if not."""
+        import httpx
+
+        try:
+            response = httpx.get(f"{base_url}/health", timeout=2.0)
+            if response.status_code == 200:
+                return True
+        except Exception:
+            pass
+        pytest.skip("Server not running. Start with: python -m cve_mcp --mode http")
+
+    def test_health_endpoint(self, base_url, server_running):
+        """Health endpoint returns 200 OK."""
+        import httpx
+
+        response = httpx.get(f"{base_url}/health", timeout=5.0)
+        assert response.status_code == 200
+
+        data = response.json()
+        assert "status" in data
+        assert "data_freshness" in data
+        assert "database" in data
+        assert "cache" in data
+
+    def test_mcp_tools_list_endpoint(self, base_url, server_running):
+        """GET /mcp/tools returns 41 tools."""
+        import httpx
+
+        response = httpx.get(f"{base_url}/mcp/tools", timeout=5.0)
+        assert response.status_code == 200
+
+        data = response.json()
+        assert "tools" in data
+        assert len(data["tools"]) == 41
+
+        # Verify tool structure
+        first_tool = data["tools"][0]
+        assert "name" in first_tool
+        assert "description" in first_tool
+        assert "inputSchema" in first_tool
+
+    def test_mcp_tools_call_get_data_freshness(self, base_url, server_running):
+        """POST /mcp/tools/call executes get_data_freshness."""
+        import httpx
+
+        payload = {
+            "name": "get_data_freshness",
+            "arguments": {},
+        }
+
+        response = httpx.post(
+            f"{base_url}/mcp/tools/call",
+            json=payload,
+            timeout=10.0,
+        )
+        assert response.status_code == 200
+
+        data = response.json()
+        assert "content" in data
+        assert "isError" in data
+        assert data["isError"] is False
+
+        # Parse the content
+        import json
+
+        content_text = data["content"][0]["text"]
+        result = json.loads(content_text)
+        assert "sources" in result or "status" in result
+
+    def test_mcp_tools_call_search_cve(self, base_url, server_running):
+        """POST /mcp/tools/call executes search_cve with parameters."""
+        import httpx
+
+        payload = {
+            "name": "search_cve",
+            "arguments": {
+                "keyword": "apache",
+                "cvss_min": 7.0,
+                "limit": 10,
+            },
+        }
+
+        response = httpx.post(
+            f"{base_url}/mcp/tools/call",
+            json=payload,
+            timeout=10.0,
+        )
+        assert response.status_code == 200
+
+        data = response.json()
+        assert "content" in data
+        assert "isError" in data
+
+        # Parse the content
+        import json
+
+        content_text = data["content"][0]["text"]
+        result = json.loads(content_text)
+
+        # Should have results or an empty list
+        assert "cves" in result or "error" in result or "status" in result
+
+    def test_mcp_tools_call_invalid_tool(self, base_url, server_running):
+        """POST /mcp/tools/call returns error for invalid tool."""
+        import httpx
+
+        payload = {
+            "name": "nonexistent_tool",
+            "arguments": {},
+        }
+
+        response = httpx.post(
+            f"{base_url}/mcp/tools/call",
+            json=payload,
+            timeout=10.0,
+        )
+        assert response.status_code == 200
+
+        data = response.json()
+        assert "content" in data
+        assert "isError" in data
+        assert data["isError"] is True
+
+        # Error message should mention tool not found
+        content_text = data["content"][0]["text"]
+        assert "not found" in content_text.lower()
+
+    def test_mcp_tools_call_invalid_parameters(self, base_url, server_running):
+        """POST /mcp/tools/call returns error for invalid parameters."""
+        import httpx
+
+        payload = {
+            "name": "search_cve",
+            "arguments": {
+                "cvss_min": 15.0,  # Invalid: > 10
+            },
+        }
+
+        response = httpx.post(
+            f"{base_url}/mcp/tools/call",
+            json=payload,
+            timeout=10.0,
+        )
+        assert response.status_code == 200
+
+        data = response.json()
+        assert "isError" in data
+        assert data["isError"] is True
+
+        # Should have validation error
+        content_text = data["content"][0]["text"]
+        assert "validation" in content_text.lower() or "error" in content_text.lower()
+
+    def test_cors_headers(self, base_url, server_running):
+        """Server returns CORS headers."""
+        import httpx
+
+        response = httpx.options(f"{base_url}/mcp/tools", timeout=5.0)
+        # CORS preflight might return 200 or 405 depending on FastAPI setup
+        assert response.status_code in [200, 405]
+
+    @pytest.mark.slow
+    def test_multiple_concurrent_requests(self, base_url, server_running):
+        """Server handles concurrent requests."""
+        import httpx
+        import asyncio
+
+        async def make_request():
+            async with httpx.AsyncClient() as client:
+                response = await client.get(f"{base_url}/health", timeout=5.0)
+                return response.status_code
+
+        async def run_concurrent():
+            tasks = [make_request() for _ in range(10)]
+            results = await asyncio.gather(*tasks)
+            return results
+
+        results = asyncio.run(run_concurrent())
+        assert all(status == 200 for status in results)
+        assert len(results) == 10

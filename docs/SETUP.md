@@ -108,7 +108,7 @@ docker-compose exec celery-worker celery -A cve_mcp.tasks.celery_app call cve_mc
 docker-compose exec celery-worker celery -A cve_mcp.tasks.celery_app call cve_mcp.tasks.sync_cisa_kev.sync_cisa_kev
 
 # EPSS scores (5-10 minutes)
-docker-compose exec celery-worker celery -A cve_mcp.tasks.celery_app call cve_mcp.tasks.sync_epss.sync_epss
+docker-compose exec celery-worker celery -A cve_mcp.tasks.celery_app call cve_mcp.tasks.sync_epss.sync_epss_scores
 
 # ExploitDB references (2-3 minutes)
 docker-compose exec celery-worker celery -A cve_mcp.tasks.celery_app call cve_mcp.tasks.sync_exploitdb.sync_exploitdb
@@ -127,6 +127,9 @@ docker-compose exec celery-worker celery -A cve_mcp.tasks.celery_app call cve_mc
 
 # MITRE D3FEND (2-3 minutes)
 docker-compose exec celery-worker celery -A cve_mcp.tasks.celery_app call cve_mcp.tasks.sync_d3fend.sync_d3fend
+
+# Cloud Security (AWS/Azure/GCP) (3-5 minutes)
+docker-compose exec celery-worker celery -A cve_mcp.tasks.celery_app call cve_mcp.tasks.sync_cloud_security.sync_cloud_security
 ```
 
 Monitor progress:
@@ -139,7 +142,7 @@ docker-compose logs -f celery-worker
 Syncs CVEs from last 30 days. Takes 10-15 minutes.
 
 ```bash
-docker-compose exec celery-worker celery -A cve_mcp.tasks.celery_app call cve_mcp.tasks.sync_nvd.sync_nvd_delta
+docker-compose exec celery-worker celery -A cve_mcp.tasks.celery_app call cve_mcp.tasks.sync_nvd.sync_nvd_recent
 ```
 
 **Note:** Delta sync is suitable for testing. Production deployments should use full sync.
@@ -179,28 +182,51 @@ No manual intervention needed after initial sync.
 
 #### 2. Add MCP Server Configuration
 
-**Option A: Docker Exec (Recommended)**
+**Option A: stdio mode (Official MCP Protocol - Recommended)**
+
+Uses JSON-RPC 2.0 over stdio transport per the official MCP specification:
 
 ```json
 {
   "mcpServers": {
-    "cve-exploit": {
+    "threat-intel": {
       "command": "docker",
-      "args": ["exec", "-i", "cve-mcp-server", "python", "-m", "cve_mcp.main"],
+      "args": ["exec", "-i", "cve-mcp-server", "python", "-m", "cve_mcp", "--mode", "stdio"],
       "env": {}
     }
   }
 }
 ```
 
-**Option B: HTTP Transport**
+**Option B: HTTP mode (Custom wrapper)**
+
+Uses HTTP REST endpoints wrapping the same MCP tools. Useful for web-based clients:
 
 ```json
 {
   "mcpServers": {
-    "cve-exploit": {
+    "threat-intel": {
       "url": "http://localhost:8307",
       "transport": "http"
+    }
+  }
+}
+```
+
+**Option C: Direct execution (if not using Docker)**
+
+If running the server locally without Docker:
+
+```json
+{
+  "mcpServers": {
+    "threat-intel": {
+      "command": "python",
+      "args": ["-m", "cve_mcp", "--mode", "stdio"],
+      "env": {
+        "POSTGRES_HOST": "localhost",
+        "REDIS_HOST": "localhost"
+      }
     }
   }
 }
@@ -290,7 +316,7 @@ Expected response:
 curl http://localhost:8307/mcp/tools
 ```
 
-Should return 37 MCP tools across 7 categories:
+Should return 41 MCP tools across 8 categories:
 
 **CVE Intelligence (8 tools):** search_cve, get_cve_details, check_kev_status, get_epss_score, search_by_product, get_exploits, get_cwe_details, batch_search
 
@@ -303,6 +329,8 @@ Should return 37 MCP tools across 7 categories:
 **CWE (6 tools):** search_cwe_weaknesses, find_similar_cwe_weaknesses, get_cwe_weakness_details, search_by_external_mapping, get_cwe_hierarchy, find_weaknesses_for_capec
 
 **D3FEND (5 tools):** search_defenses, find_similar_defenses, get_defense_details, get_defenses_for_attack, get_attack_coverage
+
+**Cloud Security (4 tools):** search_cloud_services, get_cloud_service_security, compare_cloud_services, get_shared_responsibility
 
 **System (1 tool):** get_data_freshness
 
@@ -449,6 +477,42 @@ Restart server:
 ```bash
 docker-compose restart cve-mcp-server
 ```
+
+### MCP Mode Issues
+
+**stdio mode not working in Claude Desktop:**
+
+Check Docker exec permissions:
+```bash
+# Test manually
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | \
+  docker exec -i cve-mcp-server python -m cve_mcp --mode stdio
+```
+
+Expected: JSON-RPC 2.0 response with tools list
+
+**HTTP mode connection refused:**
+
+Check server is running in HTTP mode:
+```bash
+docker-compose logs cve-mcp-server | grep "mode"
+```
+
+Should show `mode=http`. If not, update docker-compose.yml:
+```yaml
+services:
+  cve-mcp-server:
+    command: python -m cve_mcp --mode http
+```
+
+**Both modes needed (development):**
+
+Run server in dual mode:
+```bash
+docker-compose exec cve-mcp-server python -m cve_mcp --mode both
+```
+
+This runs stdio and HTTP simultaneously on different threads.
 
 ---
 

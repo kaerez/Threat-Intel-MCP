@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     mcp_port: int = 8307
     mcp_host: str = "0.0.0.0"
     mcp_transport: str = "http"  # 'http' or 'stdio'
+    mcp_mode: str = "http"  # 'stdio' (MCP clients), 'http' (Ansvar platform), or 'both' (dev/test)
     log_level: str = "INFO"
     cors_origins: str = "http://localhost,http://localhost:*,http://127.0.0.1,http://127.0.0.1:*"
 
