@@ -1,0 +1,783 @@
+{
+  "research_metadata": {
+    "research_date": "2026-02-07",
+    "focus": "Azure Blob Storage Security Properties",
+    "source_priority": "Machine-readable (APIs, JSON schemas) over HTML documentation"
+  },
+  "tier_0_sources": {
+    "description": "Structured, machine-readable sources (APIs, JSON schemas, GitHub repos)",
+    "sources": [
+      {
+        "name": "Azure Resource Manager (ARM) API - Storage Accounts",
+        "type": "API_SCHEMA",
+        "url": "https://learn.microsoft.com/en-us/azure/templates/microsoft.storage/storageaccounts",
+        "api_version": "2025-06-01",
+        "format": "JSON",
+        "description": "Complete ARM template schema for Microsoft.Storage/storageAccounts with all security properties",
+        "security_dimensions_covered": [
+          "Encryption at rest (keySource, requireInfrastructureEncryption, services)",
+          "Encryption in transit (supportsHttpsTrafficOnly, minimumTlsVersion)",
+          "Network isolation (networkAcls, publicNetworkAccess, privateEndpoint)",
+          "Access control (allowSharedKeyAccess, azureFilesIdentityBasedAuthentication)",
+          "SAS/Key policies (sasPolicy, keyPolicy)",
+          "Cross-tenant controls (allowCrossTenantReplication, allowedCopyScope)",
+          "Blob public access (allowBlobPublicAccess)"
+        ],
+        "key_properties": {
+          "encryption": "properties.encryption",
+          "network_acls": "properties.networkAcls",
+          "https_only": "properties.supportsHttpsTrafficOnly",
+          "min_tls": "properties.minimumTlsVersion",
+          "allow_blob_public_access": "properties.allowBlobPublicAccess",
+          "allow_shared_key": "properties.allowSharedKeyAccess",
+          "public_network_access": "properties.publicNetworkAccess",
+          "sas_policy": "properties.sasPolicy",
+          "key_policy": "properties.keyPolicy"
+        }
+      },
+      {
+        "name": "Azure Storage REST API - Storage Accounts",
+        "type": "REST_API",
+        "url": "https://learn.microsoft.com/en-us/rest/api/storagerp/storage-accounts/create",
+        "api_version": "2024-01-01",
+        "format": "JSON",
+        "description": "REST API for creating/managing storage accounts with complete request/response schemas",
+        "security_dimensions_covered": [
+          "All ARM properties plus API operations",
+          "Authentication requirements",
+          "API versioning and backward compatibility"
+        ],
+        "endpoints": [
+          "https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Storage/storageAccounts/{accountName}"
+        ]
+      },
+      {
+        "name": "Azure Policy Built-in Definitions - Storage",
+        "type": "JSON_REPOSITORY",
+        "url": "https://github.com/Azure/azure-policy/tree/master/built-in-policies/policyDefinitions/Storage",
+        "format": "JSON",
+        "description": "63+ JSON policy definitions covering all storage security controls",
+        "security_dimensions_covered": [
+          "Encryption (8 policies for CMK, infrastructure encryption, encryption scopes)",
+          "Network access (6 policies for VNet, private endpoints, public access)",
+          "Private DNS (11 policies for blob, file, queue, table, DFS endpoints)",
+          "Authentication (4 policies for shared key, cross-tenant, SAS, key expiration)",
+          "Compliance/logging (5 policies for diagnostics, threat protection)",
+          "Transport security (3 policies for TLS, HTTPS)",
+          "Data protection (3 policies for versioning, geo-redundancy, public blob)"
+        ],
+        "policy_count": 63,
+        "example_policies": [
+          "StorageAccountAllowSharedKeyAccess_Audit.json",
+          "StoragePublicNetworkAccess_AuditDeny.json",
+          "StorageAccountMinimumTLSVersion_Audit.json",
+          "StorageAccountInfrastructureEncryptionEnabled_Audit.json",
+          "StorageAccountSasPolicy_Restrict.json"
+        ]
+      },
+      {
+        "name": "Azure Resource Graph Query Samples",
+        "type": "KUSTO_QUERIES",
+        "url": "https://learn.microsoft.com/en-us/azure/storage/common/resource-graph-samples",
+        "format": "KQL",
+        "description": "Sample queries for extracting storage account properties via Resource Graph API",
+        "security_dimensions_covered": [
+          "Resource discovery and filtering",
+          "Tag-based compliance queries",
+          "Property extraction (requires knowledge of ARM schema)"
+        ],
+        "note": "Security properties must be queried using ARM schema paths (e.g., properties.networkAcls.defaultAction)"
+      },
+      {
+        "name": "Microsoft Defender for Storage REST API",
+        "type": "REST_API",
+        "url": "https://learn.microsoft.com/en-us/azure/defender-for-cloud/defender-for-storage-rest-api-enablement",
+        "api_version_subscription": "2024-01-01",
+        "api_version_account": "2025-07-01-preview",
+        "format": "JSON",
+        "description": "API for configuring malware scanning and sensitive data discovery",
+        "security_dimensions_covered": [
+          "Malware scanning (on-upload, on-demand)",
+          "Sensitive data threat detection",
+          "Scan filtering (prefix, suffix, size exclusions)",
+          "Automated response (blob soft delete)",
+          "Event Grid integration"
+        ],
+        "endpoints": [
+          "https://management.azure.com/subscriptions/{subscriptionId}/providers/Microsoft.Security/pricings/StorageAccounts",
+          "https://management.azure.com/{resourceId}/providers/Microsoft.Security/defenderForStorageSettings/current"
+        ]
+      },
+      {
+        "name": "Azure Security Benchmark v3 - Storage Baseline",
+        "type": "STRUCTURED_DOCUMENTATION",
+        "url": "https://learn.microsoft.com/en-us/security/benchmark/azure/baselines/storage-security-baseline",
+        "format": "HTML_WITH_STRUCTURED_MAPPINGS",
+        "description": "Maps Microsoft Cloud Security Benchmark v1.0 controls to Storage security features",
+        "security_dimensions_covered": [
+          "Network security (NS-1, NS-2)",
+          "Identity management (IM-1, IM-3, IM-7, IM-8)",
+          "Privileged access (PA-7, PA-8)",
+          "Data protection (DP-1 through DP-6)",
+          "Asset management (AM-2)",
+          "Logging/threat detection (LT-1, LT-4)",
+          "Backup/recovery (BR-1)"
+        ],
+        "control_count": 18,
+        "policy_mappings": true,
+        "nist_references": false
+      },
+      {
+        "name": "CIS Microsoft Azure Foundations Benchmark v2.0.0 - Storage Controls",
+        "type": "AZURE_POLICY_INITIATIVE",
+        "url": "https://learn.microsoft.com/en-us/azure/governance/policy/samples/cis-azure-2-0-0",
+        "format": "HTML_WITH_POLICY_LINKS",
+        "description": "9 CIS controls specific to storage accounts with Azure Policy definitions",
+        "security_dimensions_covered": [
+          "Transport security (3.1 - secure transfer)",
+          "Encryption (3.2 - infrastructure encryption, 3.12 - CMK)",
+          "Network access (3.8 - default deny, 3.9 - trusted services, 3.10 - private endpoints)",
+          "Public access (3.7 - blob public access)",
+          "TLS version (3.15 - minimum TLS 1.2)"
+        ],
+        "control_ids": [
+          "3.1", "3.2", "3.7", "3.8", "3.9", "3.10", "3.12", "3.15"
+        ],
+        "azure_policy_count": 9
+      },
+      {
+        "name": "NIST SP 800-53 Rev. 5 Azure Policy Mapping",
+        "type": "JSON_POLICY_INITIATIVE",
+        "url": "https://github.com/Azure/azure-policy/blob/master/built-in-policies/policySetDefinitions/Regulatory%20Compliance/NIST_SP_800-53_R5.json",
+        "format": "JSON",
+        "description": "Policy initiative mapping NIST 800-53 R5 controls to Azure Policy definitions",
+        "security_dimensions_covered": [
+          "Access control (AC family)",
+          "Audit and accountability (AU family)",
+          "Security assessment (CA family)",
+          "System and communications protection (SC family)",
+          "Identification and authentication (IA family)"
+        ],
+        "policy_set_id": "179d1daa-458f-4e47-8086-2a68d0d6c38f",
+        "note": "Storage-specific controls included in broader initiative"
+      },
+      {
+        "name": "Azure Security Benchmark v3 Excel Spreadsheet",
+        "type": "SPREADSHEET",
+        "url": "https://github.com/MicrosoftDocs/SecurityBenchmarks/blob/master/Azure%20Security%20Benchmark/3.0/azure-security-benchmark-v3.0.xlsx",
+        "format": "XLSX",
+        "description": "Complete ASB v3 with control IDs, domains, CIS/NIST mappings, and implementation guidance",
+        "security_dimensions_covered": [
+          "All Azure Security Benchmark v3 controls",
+          "CIS control mappings",
+          "NIST control mappings",
+          "Implementation context"
+        ],
+        "total_controls": "420+"
+      }
+    ]
+  },
+  "security_dimensions": {
+    "encryption_at_rest": {
+      "default_behavior": {
+        "enabled": "Always enabled, cannot be disabled",
+        "algorithm": "256-bit AES (FIPS 140-2 compliant)",
+        "scope": "All storage resources (blobs, files, queues, tables, disks), all redundancy options, all tiers",
+        "metadata": "Also encrypted",
+        "cost": "No additional cost",
+        "source": "https://learn.microsoft.com/en-us/azure/storage/common/storage-service-encryption"
+      },
+      "key_options": [
+        {
+          "type": "Microsoft-managed keys (MMK)",
+          "default": true,
+          "description": "Microsoft handles key rotation per compliance requirements",
+          "property": "properties.encryption.keySource = 'Microsoft.Storage'"
+        },
+        {
+          "type": "Customer-managed keys (CMK)",
+          "default": false,
+          "description": "Stored in Azure Key Vault or Key Vault HSM, customer controls rotation",
+          "property": "properties.encryption.keySource = 'Microsoft.Keyvault'",
+          "requires": "properties.encryption.keyvaultproperties"
+        },
+        {
+          "type": "Customer-provided keys (CPK)",
+          "default": false,
+          "description": "Blob Storage only, key provided per request",
+          "scope": "Request-level only, not storage account property"
+        }
+      ],
+      "infrastructure_encryption": {
+        "property": "properties.encryption.requireInfrastructureEncryption",
+        "description": "Double encryption with separate algorithm/keys at infrastructure layer",
+        "default": false,
+        "algorithm": "256-bit AES (separate from service-level)"
+      },
+      "related_policies": [
+        "StorageAccountCustomerManagedKeyEnabled_Audit.json",
+        "StorageAccountInfrastructureEncryptionEnabled_Audit.json",
+        "Storage_EncryptionScopesShouldUseCMK_Audit.json"
+      ],
+      "cis_controls": ["3.2", "3.12"],
+      "asb_controls": ["DP-4", "DP-5", "DP-6"]
+    },
+    "encryption_in_transit": {
+      "https_enforcement": {
+        "property": "properties.supportsHttpsTrafficOnly",
+        "default": true,
+        "description": "Enforces HTTPS-only traffic to storage endpoints",
+        "default_since": "API version 2019-04-01"
+      },
+      "minimum_tls_version": {
+        "property": "properties.minimumTlsVersion",
+        "default": "TLS1_0",
+        "allowed_values": ["TLS1_0", "TLS1_1", "TLS1_2", "TLS1_3"],
+        "recommended": "TLS1_2",
+        "description": "Minimum TLS version permitted on requests"
+      },
+      "related_policies": [
+        "StorageAccountMinimumTLSVersion_Audit.json",
+        "Storage_AuditForHTTPSEnabled_Audit.json",
+        "StorageAccountSecureTransfer_Modify.json"
+      ],
+      "cis_controls": ["3.1", "3.15"],
+      "asb_controls": ["DP-3"]
+    },
+    "access_control": {
+      "authentication_methods": [
+        {
+          "type": "Azure AD (Entra ID)",
+          "recommended": true,
+          "property": "N/A (always available)",
+          "description": "OAuth 2.0 token-based authentication, supports RBAC and conditional access",
+          "default": "Enabled for data plane operations"
+        },
+        {
+          "type": "Shared Key (account keys)",
+          "recommended": false,
+          "property": "properties.allowSharedKeyAccess",
+          "default": true,
+          "description": "Account access key authorization; can be disabled to enforce Azure AD only"
+        },
+        {
+          "type": "Shared Access Signatures (SAS)",
+          "recommended": "With expiration policy",
+          "property": "properties.sasPolicy",
+          "description": "Delegated access with time-limited tokens"
+        }
+      ],
+      "azure_rbac": {
+        "scope": "Data plane operations",
+        "description": "Fine-grained role assignments (e.g., Storage Blob Data Reader)",
+        "conditional_access": "Supported when Shared Key disabled"
+      },
+      "managed_identities": {
+        "supported": true,
+        "description": "System-assigned and user-assigned managed identities for Azure AD authentication",
+        "eliminates": "Need for stored credentials"
+      },
+      "sas_policy": {
+        "property": "properties.sasPolicy",
+        "subproperties": {
+          "expirationAction": ["Log", "Block"],
+          "sasExpirationPeriod": "Format: DD.HH:MM:SS (e.g., 01.00:00:00 for 1 day)"
+        }
+      },
+      "key_policy": {
+        "property": "properties.keyPolicy",
+        "subproperties": {
+          "keyExpirationPeriodInDays": "Integer, required"
+        }
+      },
+      "cross_tenant_replication": {
+        "property": "properties.allowCrossTenantReplication",
+        "default": false,
+        "description": "Allow object replication across Azure AD tenants"
+      },
+      "allowed_copy_scope": {
+        "property": "properties.allowedCopyScope",
+        "values": ["AAD", "PrivateLink"],
+        "description": "Restrict copy operations to same AAD tenant or same VNet"
+      },
+      "related_policies": [
+        "StorageAccountAllowSharedKeyAccess_Audit.json",
+        "StorageAccountSasPolicy_Restrict.json",
+        "StorageAccountKeysExpired_Restrict.json",
+        "StorageAccountAllowCrossTenantReplication_Audit.json"
+      ],
+      "cis_controls": ["3.9"],
+      "asb_controls": ["IM-1", "IM-3", "IM-7", "IM-8", "PA-7"]
+    },
+    "network_isolation": {
+      "public_network_access": {
+        "property": "properties.publicNetworkAccess",
+        "values": ["Enabled", "Disabled", "SecuredByPerimeter"],
+        "default": "Enabled",
+        "description": "Allow/disallow public internet access"
+      },
+      "network_acls": {
+        "property": "properties.networkAcls",
+        "subproperties": {
+          "defaultAction": {
+            "values": ["Allow", "Deny"],
+            "required": true,
+            "description": "Default action when no rules match"
+          },
+          "bypass": {
+            "values": ["AzureServices", "Logging", "Metrics", "None"],
+            "description": "Services that bypass firewall"
+          },
+          "ipRules": "Array of allowed IP/CIDR ranges",
+          "ipv6Rules": "Array of allowed IPv6/CIDR ranges",
+          "virtualNetworkRules": "Array of subnet resource IDs"
+        },
+        "recommendation": "defaultAction: Deny with explicit allow rules"
+      },
+      "private_endpoints": {
+        "supported": true,
+        "endpoint_types": [
+          "blob", "blob_secondary", "dfs", "dfs_secondary",
+          "file", "queue", "queue_secondary", "table",
+          "table_secondary", "web", "web_secondary"
+        ],
+        "description": "VNet-injected endpoints for private access",
+        "related_property": "properties.privateEndpointConnections (read-only)"
+      },
+      "service_endpoints": {
+        "supported": true,
+        "description": "VNet service endpoints for subnet-level access",
+        "configuration": "properties.networkAcls.virtualNetworkRules"
+      },
+      "firewall_rules": {
+        "ip_based": "properties.networkAcls.ipRules",
+        "vnet_based": "properties.networkAcls.virtualNetworkRules"
+      },
+      "blob_public_access": {
+        "property": "properties.allowBlobPublicAccess",
+        "default": false,
+        "description": "Allow/disallow anonymous public access to blobs or containers"
+      },
+      "related_policies": [
+        "StoragePublicNetworkAccess_AuditDeny.json",
+        "StorageAccountPrivateEndpointEnabled_Audit.json",
+        "StorageAccountOnlyVnetRulesEnabled_Audit.json",
+        "ASC_Storage_DisallowPublicBlobAccess_Audit.json",
+        "Storage_NetworkAcls_Audit.json"
+      ],
+      "cis_controls": ["3.7", "3.8", "3.10"],
+      "asb_controls": ["NS-1", "NS-2"]
+    },
+    "audit_logging": {
+      "storage_analytics_logs": {
+        "services": ["Blob", "Queue", "Table"],
+        "description": "Classic logging (deprecated in favor of Azure Monitor)",
+        "properties": "Read, write, delete operations with detailed request info"
+      },
+      "azure_monitor_logs": {
+        "resource_logs": true,
+        "log_categories": [
+          "StorageRead",
+          "StorageWrite",
+          "StorageDelete"
+        ],
+        "destinations": [
+          "Log Analytics workspace",
+          "Storage account",
+          "Event Hub",
+          "Azure Monitor partner integrations"
+        ]
+      },
+      "diagnostic_settings": {
+        "configuration": "Azure Monitor Diagnostic Settings API",
+        "granularity": "Per-service (blob, file, queue, table)"
+      },
+      "activity_logs": {
+        "scope": "Control plane operations only",
+        "description": "Storage account creation, updates, role assignments",
+        "automatic": true
+      },
+      "related_policies": [
+        "AccountStorageLogsToWorkspace_DINE.json",
+        "BlobServicesLogsToWorkspace_DINE.json",
+        "FileServicesLogsToWorkspace_DINE.json",
+        "QueueServicesLogsToWorkspace_DINE.json",
+        "TableServicesLogsToWorkspace_DINE.json"
+      ],
+      "asb_controls": ["LT-4"]
+    },
+    "threat_detection": {
+      "microsoft_defender_for_storage": {
+        "description": "Advanced threat detection via control/data plane telemetry analysis",
+        "features": [
+          "Activity monitoring (unusual access patterns)",
+          "Sensitive data threat detection",
+          "Malware scanning (on-upload and on-demand)"
+        ],
+        "api_configuration": {
+          "subscription_level": {
+            "endpoint": "https://management.azure.com/subscriptions/{subscriptionId}/providers/Microsoft.Security/pricings/StorageAccounts",
+            "api_version": "2024-01-01"
+          },
+          "account_level": {
+            "endpoint": "https://management.azure.com/{resourceId}/providers/Microsoft.Security/defenderForStorageSettings/current",
+            "api_version": "2025-07-01-preview"
+          }
+        },
+        "malware_scanning": {
+          "on_upload": {
+            "property": "properties.malwareScanning.onUpload.isEnabled",
+            "default_cap": "10,000 GB/month",
+            "filters": ["excludeBlobsWithPrefix", "excludeBlobsWithSuffix", "excludeBlobsLargerThan"]
+          },
+          "automated_response": {
+            "property": "properties.malwareScanning.automatedResponse",
+            "values": ["BlobSoftDelete", "None"]
+          },
+          "event_grid": {
+            "property": "properties.malwareScanning.scanResultsEventGridTopicResourceId",
+            "description": "Near-real-time scan result notifications"
+          }
+        },
+        "sensitive_data_discovery": {
+          "property": "properties.sensitiveDataDiscovery.isEnabled",
+          "description": "Detect suspicious activities involving sensitive data"
+        }
+      },
+      "related_policies": [
+        "StorageAdvancedThreatProtection_DINE.json"
+      ],
+      "asb_controls": ["LT-1", "DP-2"]
+    },
+    "compliance_certifications": {
+      "description": "Third-party audited compliance frameworks",
+      "source": "https://learn.microsoft.com/en-us/azure/storage/common/storage-compliance-offerings",
+      "certifications": [
+        {
+          "name": "CSA STAR",
+          "description": "Cloud Security Alliance Security, Trust & Assurance Registry"
+        },
+        {
+          "name": "ISO 27001/27017/27018",
+          "description": "International Organization for Standardization security standards"
+        },
+        {
+          "name": "SOC 2 Type II / SOC 3",
+          "description": "Service Organization Control reports for data security"
+        },
+        {
+          "name": "PCI DSS",
+          "description": "Payment Card Industry Data Security Standard"
+        },
+        {
+          "name": "HITRUST",
+          "description": "Health Information Trust Alliance certification"
+        },
+        {
+          "name": "FedRAMP High",
+          "description": "Federal Risk and Authorization Management Program (JAB P-ATO)"
+        },
+        {
+          "name": "DoD IL2/IL4/IL5",
+          "description": "Department of Defense Impact Levels"
+        },
+        {
+          "name": "HIPAA/HITECH",
+          "description": "Health Insurance Portability and Accountability Act (requires BAA)"
+        }
+      ],
+      "services_in_scope": [
+        "Blobs (including Azure Data Lake Storage)",
+        "Files",
+        "Queues",
+        "Tables",
+        "Disks",
+        "Cool storage",
+        "Premium Storage"
+      ],
+      "reference": "https://learn.microsoft.com/en-us/azure/compliance/offerings/cloud-services-in-audit-scope"
+    },
+    "shared_responsibility": {
+      "description": "Security boundary between Microsoft and customer for PaaS services",
+      "source": "https://learn.microsoft.com/en-us/azure/security/fundamentals/shared-responsibility",
+      "microsoft_responsibilities": [
+        "Physical datacenter security",
+        "Physical network infrastructure",
+        "Hypervisor",
+        "Operating system",
+        "Platform services (runtime, middleware)",
+        "Service availability and geo-replication",
+        "Default encryption implementation",
+        "Security access key generation"
+      ],
+      "customer_responsibilities": [
+        "Data classification and protection",
+        "Encryption key management (if using CMK/CPK)",
+        "Storage account configuration (network ACLs, access policies)",
+        "Identity and access management (Azure RBAC, Azure AD)",
+        "Application security (code, configuration)",
+        "Network controls (firewall rules, private endpoints)",
+        "Compliance and governance",
+        "Monitoring and incident response"
+      ],
+      "shared_responsibilities": [
+        "Network security (Microsoft provides baseline, customer configures application-level)",
+        "Application configuration and access controls"
+      ]
+    },
+    "security_defaults": {
+      "description": "Default security posture out-of-the-box",
+      "defaults": {
+        "encryption_at_rest": "Always enabled with Microsoft-managed keys",
+        "encryption_in_transit": "HTTPS enforced by default (API >= 2019-04-01)",
+        "minimum_tls_version": "TLS 1.0 (should be changed to TLS 1.2)",
+        "allow_blob_public_access": "false (secure by default as of 2024)",
+        "allow_shared_key_access": "true (legacy compatibility, should be disabled)",
+        "public_network_access": "Enabled (requires explicit configuration for isolation)",
+        "network_acls_default_action": "Not set (must be explicitly configured)",
+        "azure_ad_authentication": "Always available for data plane",
+        "infrastructure_encryption": "false (opt-in)",
+        "customer_managed_keys": "false (opt-in)",
+        "defender_for_storage": "false (opt-in, paid feature)"
+      },
+      "recommended_hardening": [
+        "Set minimumTlsVersion to TLS1_2",
+        "Set allowSharedKeyAccess to false (use Azure AD)",
+        "Set publicNetworkAccess to Disabled (use private endpoints)",
+        "Set networkAcls.defaultAction to Deny with explicit allow rules",
+        "Enable requireInfrastructureEncryption for compliance",
+        "Configure sasPolicy with short expiration periods",
+        "Enable Microsoft Defender for Storage",
+        "Configure diagnostic settings to Log Analytics"
+      ]
+    }
+  },
+  "cross_references": {
+    "cis_to_properties": {
+      "3.1_secure_transfer": "properties.supportsHttpsTrafficOnly",
+      "3.2_infrastructure_encryption": "properties.encryption.requireInfrastructureEncryption",
+      "3.7_disallow_blob_public": "properties.allowBlobPublicAccess",
+      "3.8_default_deny": "properties.networkAcls.defaultAction",
+      "3.9_trusted_services": "properties.networkAcls.bypass",
+      "3.10_private_endpoints": "Azure Private Link configuration",
+      "3.12_customer_managed_keys": "properties.encryption.keySource = 'Microsoft.Keyvault'",
+      "3.15_minimum_tls": "properties.minimumTlsVersion"
+    },
+    "asb_to_properties": {
+      "NS-2_network_controls": [
+        "properties.networkAcls",
+        "properties.publicNetworkAccess",
+        "Azure Private Link"
+      ],
+      "IM-1_azure_ad": "Azure AD authentication (always enabled)",
+      "IM-3_managed_identities": "Managed identity support for data plane",
+      "IM-7_conditional_access": "Requires allowSharedKeyAccess = false",
+      "IM-8_key_vault": "properties.encryption.keyvaultproperties",
+      "PA-7_rbac": "Azure RBAC for data plane",
+      "PA-8_customer_lockbox": "Customer Lockbox for Azure (opt-in)",
+      "DP-3_encryption_transit": [
+        "properties.supportsHttpsTrafficOnly",
+        "properties.minimumTlsVersion"
+      ],
+      "DP-4_encryption_rest": "properties.encryption (always enabled)",
+      "DP-5_cmk": "properties.encryption.keySource = 'Microsoft.Keyvault'",
+      "DP-6_key_management": "Azure Key Vault integration",
+      "LT-1_threat_detection": "Microsoft Defender for Storage",
+      "LT-4_logging": "Azure Monitor diagnostic settings",
+      "BR-1_backup": "Azure Backup for Blobs (operational backup)"
+    },
+    "nist_800_53_families": {
+      "AC_access_control": [
+        "properties.allowSharedKeyAccess",
+        "Azure RBAC",
+        "properties.networkAcls",
+        "properties.allowBlobPublicAccess"
+      ],
+      "AU_audit_accountability": [
+        "Azure Monitor resource logs",
+        "Activity logs"
+      ],
+      "IA_identification_authentication": [
+        "Azure AD authentication",
+        "Managed identities",
+        "Conditional access"
+      ],
+      "SC_system_communications_protection": [
+        "properties.supportsHttpsTrafficOnly",
+        "properties.minimumTlsVersion",
+        "properties.encryption"
+      ],
+      "reference": "https://github.com/Azure/azure-policy/blob/master/built-in-policies/policySetDefinitions/Regulatory%20Compliance/NIST_SP_800-53_R5.json"
+    }
+  },
+  "api_property_reference": {
+    "description": "Complete mapping of security properties from ARM schema",
+    "api_version": "2025-06-01",
+    "properties": [
+      {
+        "path": "properties.encryption.keySource",
+        "type": "string",
+        "values": ["Microsoft.Storage", "Microsoft.Keyvault"],
+        "security_dimension": "Encryption at rest - key management"
+      },
+      {
+        "path": "properties.encryption.requireInfrastructureEncryption",
+        "type": "boolean",
+        "security_dimension": "Encryption at rest - double encryption"
+      },
+      {
+        "path": "properties.encryption.services.blob.enabled",
+        "type": "boolean",
+        "security_dimension": "Encryption at rest - blob service"
+      },
+      {
+        "path": "properties.encryption.services.blob.keyType",
+        "type": "string",
+        "values": ["Account", "Service"],
+        "security_dimension": "Encryption at rest - key scope"
+      },
+      {
+        "path": "properties.supportsHttpsTrafficOnly",
+        "type": "boolean",
+        "default": true,
+        "security_dimension": "Encryption in transit - HTTPS enforcement"
+      },
+      {
+        "path": "properties.minimumTlsVersion",
+        "type": "string",
+        "values": ["TLS1_0", "TLS1_1", "TLS1_2", "TLS1_3"],
+        "default": "TLS1_0",
+        "security_dimension": "Encryption in transit - TLS version"
+      },
+      {
+        "path": "properties.allowBlobPublicAccess",
+        "type": "boolean",
+        "default": false,
+        "security_dimension": "Access control - anonymous access"
+      },
+      {
+        "path": "properties.allowSharedKeyAccess",
+        "type": "boolean",
+        "default": true,
+        "security_dimension": "Access control - authentication method"
+      },
+      {
+        "path": "properties.defaultToOAuthAuthentication",
+        "type": "boolean",
+        "default": false,
+        "security_dimension": "Access control - default authentication"
+      },
+      {
+        "path": "properties.publicNetworkAccess",
+        "type": "string",
+        "values": ["Enabled", "Disabled", "SecuredByPerimeter"],
+        "security_dimension": "Network isolation - public access"
+      },
+      {
+        "path": "properties.networkAcls.defaultAction",
+        "type": "string",
+        "values": ["Allow", "Deny"],
+        "required": true,
+        "security_dimension": "Network isolation - firewall default"
+      },
+      {
+        "path": "properties.networkAcls.bypass",
+        "type": "string",
+        "values": ["AzureServices", "Logging", "Metrics", "None"],
+        "security_dimension": "Network isolation - trusted services"
+      },
+      {
+        "path": "properties.networkAcls.ipRules",
+        "type": "array",
+        "security_dimension": "Network isolation - IP allowlist"
+      },
+      {
+        "path": "properties.networkAcls.virtualNetworkRules",
+        "type": "array",
+        "security_dimension": "Network isolation - VNet allowlist"
+      },
+      {
+        "path": "properties.sasPolicy.expirationAction",
+        "type": "string",
+        "values": ["Log", "Block"],
+        "security_dimension": "Access control - SAS policy"
+      },
+      {
+        "path": "properties.sasPolicy.sasExpirationPeriod",
+        "type": "string",
+        "format": "DD.HH:MM:SS",
+        "security_dimension": "Access control - SAS expiration"
+      },
+      {
+        "path": "properties.keyPolicy.keyExpirationPeriodInDays",
+        "type": "integer",
+        "security_dimension": "Access control - key rotation"
+      },
+      {
+        "path": "properties.allowCrossTenantReplication",
+        "type": "boolean",
+        "default": false,
+        "security_dimension": "Access control - cross-tenant"
+      },
+      {
+        "path": "properties.allowedCopyScope",
+        "type": "string",
+        "values": ["AAD", "PrivateLink"],
+        "security_dimension": "Access control - copy restrictions"
+      },
+      {
+        "path": "properties.azureFilesIdentityBasedAuthentication.directoryServiceOptions",
+        "type": "string",
+        "values": ["None", "AD", "AADDS", "AADKERB"],
+        "security_dimension": "Access control - identity provider"
+      }
+    ]
+  },
+  "recommended_queries": {
+    "resource_graph": {
+      "description": "Sample KQL queries for extracting security properties via Azure Resource Graph",
+      "queries": [
+        {
+          "name": "Storage accounts without TLS 1.2",
+          "kql": "Resources | where type =~ 'Microsoft.Storage/storageAccounts' | where properties.minimumTlsVersion != 'TLS1_2'"
+        },
+        {
+          "name": "Storage accounts with public access enabled",
+          "kql": "Resources | where type =~ 'Microsoft.Storage/storageAccounts' | where properties.publicNetworkAccess == 'Enabled'"
+        },
+        {
+          "name": "Storage accounts without CMK",
+          "kql": "Resources | where type =~ 'Microsoft.Storage/storageAccounts' | where properties.encryption.keySource != 'Microsoft.Keyvault'"
+        },
+        {
+          "name": "Storage accounts allowing shared key access",
+          "kql": "Resources | where type =~ 'Microsoft.Storage/storageAccounts' | where properties.allowSharedKeyAccess != false"
+        },
+        {
+          "name": "Storage accounts with default network action Allow",
+          "kql": "Resources | where type =~ 'Microsoft.Storage/storageAccounts' | where properties.networkAcls.defaultAction == 'Allow'"
+        }
+      ]
+    }
+  },
+  "documentation_provenance": {
+    "tier_0_api_schemas": [
+      "https://learn.microsoft.com/en-us/azure/templates/microsoft.storage/storageaccounts",
+      "https://learn.microsoft.com/en-us/rest/api/storagerp/storage-accounts/create",
+      "https://github.com/Azure/azure-policy/tree/master/built-in-policies/policyDefinitions/Storage",
+      "https://learn.microsoft.com/en-us/azure/defender-for-cloud/defender-for-storage-rest-api-enablement"
+    ],
+    "tier_1_structured_docs": [
+      "https://learn.microsoft.com/en-us/security/benchmark/azure/baselines/storage-security-baseline",
+      "https://learn.microsoft.com/en-us/azure/governance/policy/samples/cis-azure-2-0-0",
+      "https://github.com/Azure/azure-policy/blob/master/built-in-policies/policySetDefinitions/Regulatory%20Compliance/NIST_SP_800-53_R5.json",
+      "https://github.com/MicrosoftDocs/SecurityBenchmarks/blob/master/Azure%20Security%20Benchmark/3.0/azure-security-benchmark-v3.0.xlsx"
+    ],
+    "tier_2_reference_docs": [
+      "https://learn.microsoft.com/en-us/azure/storage/common/storage-service-encryption",
+      "https://learn.microsoft.com/en-us/azure/security/fundamentals/shared-responsibility",
+      "https://learn.microsoft.com/en-us/azure/storage/common/storage-compliance-offerings",
+      "https://learn.microsoft.com/en-us/azure/storage/common/resource-graph-samples"
+    ]
+  }
+}

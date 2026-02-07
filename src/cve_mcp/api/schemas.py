@@ -518,3 +518,57 @@ class GetAttackCoverageRequest(BaseModel):
         ..., description="List of D3FEND technique IDs to analyze coverage"
     )
     show_gaps: bool = Field(True, description="Include list of uncovered ATT&CK techniques")
+
+
+# ============================================================================
+# Cloud Security Schemas
+# ============================================================================
+
+
+class SearchCloudServicesRequest(BaseModel):
+    """Request schema for search_cloud_services tool."""
+
+    query: str | None = Field(None, description="Text search in service name and description")
+    provider: str | None = Field(
+        None, description="Filter by provider: aws, azure, gcp"
+    )
+    category: str | None = Field(
+        None,
+        description="Filter by category: object_storage, compute, database_relational, etc.",
+    )
+    limit: int = Field(50, ge=1, le=500, description="Max results")
+
+
+class GetCloudServiceSecurityRequest(BaseModel):
+    """Request schema for get_cloud_service_security tool."""
+
+    provider: str = Field(..., description="Provider: aws, azure, gcp")
+    service: str = Field(
+        ...,
+        description="Service short name (e.g., s3, blob-storage, cloud-storage)",
+    )
+
+
+class CompareCloudServicesRequest(BaseModel):
+    """Request schema for compare_cloud_services tool."""
+
+    service_category: str = Field(
+        ...,
+        description="Service category to compare (e.g., object_storage, compute)",
+    )
+    providers: list[str] | None = Field(
+        None, description="Optional list of providers to compare (default: all)"
+    )
+
+
+class GetSharedResponsibilityRequest(BaseModel):
+    """Request schema for get_shared_responsibility tool."""
+
+    provider: str = Field(..., description="Provider: aws, azure, gcp")
+    service: str = Field(
+        ..., description="Service short name (e.g., s3, blob-storage, cloud-storage)"
+    )
+    layer: str | None = Field(
+        None,
+        description="Optional specific layer: physical, network, application, data, identity, etc.",
+    )

@@ -7,6 +7,7 @@ from typing import Any
 from cve_mcp.api.schemas import (
     BatchSearchRequest,
     CheckKEVStatusRequest,
+    CompareCloudServicesRequest,
     FindSimilarATLASCaseStudiesRequest,
     FindSimilarATLASTechniquesRequest,
     FindSimilarCAPECMitigationsRequest,
@@ -19,6 +20,7 @@ from cve_mcp.api.schemas import (
     GetATLASTechniqueDetailsRequest,
     GetAttackCoverageRequest,
     GetCAPECPatternDetailsRequest,
+    GetCloudServiceSecurityRequest,
     GetCVEDetailsRequest,
     GetCWEDetailsRequest,
     GetCWEHierarchyRequest,
@@ -28,6 +30,7 @@ from cve_mcp.api.schemas import (
     GetEPSSScoreRequest,
     GetExploitsRequest,
     GetGroupProfileRequest,
+    GetSharedResponsibilityRequest,
     GetTechniqueBadgesRequest,
     GetTechniqueDetailsRequest,
     MCPToolDefinition,
@@ -37,6 +40,7 @@ from cve_mcp.api.schemas import (
     SearchByProductRequest,
     SearchCAPECMitigationsRequest,
     SearchCAPECPatternsRequest,
+    SearchCloudServicesRequest,
     SearchCVERequest,
     SearchCWEWeaknessesRequest,
     SearchDefensesRequest,
@@ -48,6 +52,7 @@ from cve_mcp.services import (
     atlas_queries,
     attack_queries,
     capec_queries,
+    cloud_security_queries,
     cwe_queries,
     d3fend_queries,
 )
@@ -1114,6 +1119,109 @@ MCP_TOOLS: list[MCPToolDefinition] = [
             "properties": {},
         },
     ),
+    MCPToolDefinition(
+        name="search_cloud_services",
+        description="Search cloud services across AWS, Azure, and GCP. Filter by provider, category, or search text. Returns service names, descriptions, and categories. Use get_cloud_service_security for detailed security properties.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Text search in service name and description",
+                },
+                "provider": {
+                    "type": "string",
+                    "enum": ["aws", "azure", "gcp"],
+                    "description": "Filter by cloud provider",
+                },
+                "category": {
+                    "type": "string",
+                    "description": "Filter by service category (e.g., object_storage, compute, database_relational)",
+                },
+                "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 500,
+                    "default": 50,
+                    "description": "Max results to return",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="get_cloud_service_security",
+        description="Get comprehensive security properties for a specific cloud service. Returns all security dimensions: encryption (at rest/in transit), access control, network isolation, audit logging, threat detection, compliance certifications, shared responsibility boundaries, and security defaults. Each property includes source documentation URL, confidence score, and verification metadata.",
+        inputSchema={
+            "type": "object",
+            "required": ["provider", "service"],
+            "properties": {
+                "provider": {
+                    "type": "string",
+                    "enum": ["aws", "azure", "gcp"],
+                    "description": "Cloud provider",
+                },
+                "service": {
+                    "type": "string",
+                    "description": "Service short name (e.g., s3, blob-storage, cloud-storage)",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="compare_cloud_services",
+        description="Compare equivalent services across cloud providers. Returns side-by-side comparison with comparable security dimensions, non-comparable aspects, and nuanced differences that matter for security (e.g., S3 Object Lock vs Azure Immutable Storage). Includes confidence scores and last verification dates.",
+        inputSchema={
+            "type": "object",
+            "required": ["service_category"],
+            "properties": {
+                "service_category": {
+                    "type": "string",
+                    "description": "Service category to compare (e.g., object_storage, compute, database_relational)",
+                },
+                "providers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": ["aws", "azure", "gcp"],
+                    },
+                    "description": "Optional list of providers to compare (default: all)",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="get_shared_responsibility",
+        description="Get shared responsibility model breakdown for a cloud service. Returns responsibilities by layer (physical, network, hypervisor, OS, application, data, identity, client endpoint) with owner (provider/customer/shared) and detailed descriptions. Includes official documentation links.",
+        inputSchema={
+            "type": "object",
+            "required": ["provider", "service"],
+            "properties": {
+                "provider": {
+                    "type": "string",
+                    "enum": ["aws", "azure", "gcp"],
+                    "description": "Cloud provider",
+                },
+                "service": {
+                    "type": "string",
+                    "description": "Service short name (e.g., s3, blob-storage, cloud-storage)",
+                },
+                "layer": {
+                    "type": "string",
+                    "enum": [
+                        "physical",
+                        "network",
+                        "hypervisor",
+                        "operating_system",
+                        "application",
+                        "data",
+                        "identity",
+                        "client_endpoint",
+                    ],
+                    "description": "Optional specific layer to query",
+                },
+            },
+        },
+    ),
 ]
 
 
@@ -2111,6 +2219,119 @@ async def handle_get_data_freshness(params: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# ============================================================================
+# Cloud Security Handlers
+# ============================================================================
+
+
+async def handle_search_cloud_services(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle search_cloud_services tool call."""
+    start_time = time.time()
+    request = SearchCloudServicesRequest(**params)
+
+    async with db_service.session() as session:
+        services, total_count = await cloud_security_queries.search_services(
+            session,
+            query=request.query,
+            provider=request.provider,
+            category=request.category,
+            limit=request.limit,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": {
+            "services": services,
+            "total_results": total_count,
+            "returned_results": len(services),
+        },
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_get_cloud_service_security(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle get_cloud_service_security tool call."""
+    start_time = time.time()
+    request = GetCloudServiceSecurityRequest(**params)
+
+    async with db_service.session() as session:
+        data = await cloud_security_queries.get_service_security(
+            session,
+            provider=request.provider,
+            service=request.service,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    if not data:
+        return {
+            "data": None,
+            "error": f"Service not found: {request.provider}-{request.service}",
+            "metadata": await _get_metadata(query_time_ms),
+        }
+
+    return {
+        "data": data,
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_compare_cloud_services(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle compare_cloud_services tool call."""
+    start_time = time.time()
+    request = CompareCloudServicesRequest(**params)
+
+    async with db_service.session() as session:
+        data = await cloud_security_queries.compare_services(
+            session,
+            service_category=request.service_category,
+            providers=request.providers,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    if not data:
+        return {
+            "data": None,
+            "error": f"Service category not found or no equivalence defined: {request.service_category}",
+            "metadata": await _get_metadata(query_time_ms),
+        }
+
+    return {
+        "data": data,
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_get_shared_responsibility(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle get_shared_responsibility tool call."""
+    start_time = time.time()
+    request = GetSharedResponsibilityRequest(**params)
+
+    async with db_service.session() as session:
+        data = await cloud_security_queries.get_shared_responsibility(
+            session,
+            provider=request.provider,
+            service=request.service,
+            layer=request.layer,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    if not data:
+        return {
+            "data": None,
+            "error": f"Service not found: {request.provider}-{request.service}",
+            "metadata": await _get_metadata(query_time_ms),
+        }
+
+    return {
+        "data": data,
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
 # Tool handler mapping
 TOOL_HANDLERS = {
     "search_cve": handle_search_cve,
@@ -2156,6 +2377,11 @@ TOOL_HANDLERS = {
     "get_attack_coverage": handle_get_attack_coverage,
     # System tools
     "get_data_freshness": handle_get_data_freshness,
+    # Cloud security handlers
+    "search_cloud_services": handle_search_cloud_services,
+    "get_cloud_service_security": handle_get_cloud_service_security,
+    "compare_cloud_services": handle_compare_cloud_services,
+    "get_shared_responsibility": handle_get_shared_responsibility,
 }
 
 

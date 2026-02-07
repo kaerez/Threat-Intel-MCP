@@ -22,6 +22,7 @@ celery_app = Celery(
         "cve_mcp.tasks.sync_capec",
         "cve_mcp.tasks.sync_cwe",
         "cve_mcp.tasks.sync_d3fend",
+        "cve_mcp.tasks.sync_cloud_security",
         "cve_mcp.tasks.maintenance",
     ],
 )
@@ -89,6 +90,27 @@ celery_app.conf.beat_schedule = {
         "task": "cve_mcp.tasks.sync_d3fend.sync_d3fend",
         "schedule": crontab(hour=6, minute=0, day_of_week=0),  # Sunday 06:00 UTC
         "options": {"expires": 1800},
+    },
+    # Cloud security syncs (weekly on Sunday 06:30-07:15 UTC)
+    "sync-aws-s3-security": {
+        "task": "cve_mcp.tasks.sync_cloud_security.sync_aws_s3_task",
+        "schedule": crontab(hour=6, minute=30, day_of_week=0),  # Sunday 06:30 UTC
+        "options": {"expires": 1800},
+    },
+    "sync-azure-blob-security": {
+        "task": "cve_mcp.tasks.sync_cloud_security.sync_azure_blob_task",
+        "schedule": crontab(hour=6, minute=45, day_of_week=0),  # Sunday 06:45 UTC
+        "options": {"expires": 1800},
+    },
+    "sync-gcp-storage-security": {
+        "task": "cve_mcp.tasks.sync_cloud_security.sync_gcp_storage_task",
+        "schedule": crontab(hour=7, minute=0, day_of_week=0),  # Sunday 07:00 UTC
+        "options": {"expires": 1800},
+    },
+    "sync-cloud-service-equivalences": {
+        "task": "cve_mcp.tasks.sync_cloud_security.sync_cloud_service_equivalences_task",
+        "schedule": crontab(hour=7, minute=15, day_of_week=0),  # Sunday 07:15 UTC
+        "options": {"expires": 900},
     },
     # Post-sync maintenance tasks
     "refresh-materialized-views": {

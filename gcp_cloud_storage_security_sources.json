@@ -1,0 +1,843 @@
+{
+  "metadata": {
+    "research_date": "2026-02-07",
+    "focus": "GCP Cloud Storage Security Properties - Authoritative Data Sources",
+    "prioritization": "Machine-readable (API/JSON) sources prioritized over HTML documentation"
+  },
+  "tier_0_sources": {
+    "description": "Machine-readable APIs and JSON schemas",
+    "sources": [
+      {
+        "name": "Cloud Storage JSON API v1",
+        "type": "REST API with JSON Discovery Document",
+        "access_method": "API",
+        "discovery_endpoint": "https://storage.googleapis.com/$discovery/rest?version=v1",
+        "documentation_url": "https://docs.cloud.google.com/storage/docs/json_api/v1",
+        "schema_format": "JSON Schema draft-03",
+        "security_dimensions_covered": [
+          {
+            "dimension": "Access Control - IAM",
+            "resources": [
+              "Buckets.getIamPolicy",
+              "Buckets.setIamPolicy",
+              "Buckets.testIamPermissions",
+              "ManagedFolders.getIamPolicy",
+              "ManagedFolders.setIamPolicy"
+            ],
+            "machine_readable": true
+          },
+          {
+            "dimension": "Access Control - ACLs",
+            "resources": [
+              "BucketAccessControls (delete, get, insert, list, patch, update)",
+              "DefaultObjectAccessControls (delete, get, insert, list, patch, update)",
+              "ObjectAccessControls (delete, get, insert, list, patch, update)"
+            ],
+            "machine_readable": true
+          },
+          {
+            "dimension": "Retention & Compliance",
+            "resources": [
+              "Buckets.lockRetentionPolicy",
+              "Buckets.restore"
+            ],
+            "machine_readable": true
+          }
+        ],
+        "notes": "Complete REST API with full JSON request/response schemas for all security operations"
+      },
+      {
+        "name": "Security Command Center API v2",
+        "type": "REST API",
+        "access_method": "API",
+        "documentation_url": "https://docs.cloud.google.com/security-command-center/docs/reference/rest",
+        "security_dimensions_covered": [
+          {
+            "dimension": "Security Findings",
+            "api_methods": [
+              "organizations.sources.findings.list",
+              "projects.sources.findings.list",
+              "folders.sources.findings.list",
+              "organizations.sources.locations.findings.list",
+              "organizations.sources.locations.findings.export",
+              "organizations.sources.findings.group"
+            ],
+            "response_fields": [
+              "severity (Critical, High, Medium, Low, Unspecified)",
+              "state (ACTIVE, INACTIVE, UNSPECIFIED)",
+              "muteState",
+              "category",
+              "resourceId",
+              "securityMarks",
+              "externalSystems"
+            ],
+            "machine_readable": true,
+            "finding_categories_storage": [
+              "PUBLIC_BUCKET_ACL",
+              "VulnerabilitySnapshot",
+              "VulnerabilityCountBySeverity"
+            ]
+          },
+          {
+            "dimension": "Security Health Analytics",
+            "detectors": [
+              {
+                "name": "PUBLIC_BUCKET_ACL",
+                "description": "Detects Cloud Storage buckets that are publicly accessible",
+                "remediation_supported": true,
+                "automation": "Remove public access playbook"
+              }
+            ],
+            "machine_readable": true
+          }
+        ],
+        "notes": "JSON responses for all findings queries. Export to Cloud Storage in JSON/JSONL format supported."
+      },
+      {
+        "name": "Organization Policy Constraints API",
+        "type": "REST API",
+        "access_method": "API",
+        "documentation_url": "https://docs.cloud.google.com/storage/docs/org-policy-constraints",
+        "last_updated": "2026-02-05",
+        "security_dimensions_covered": [
+          {
+            "dimension": "Public Access Control",
+            "constraints": [
+              {
+                "id": "constraints/storage.publicAccessPrevention",
+                "type": "Boolean",
+                "description": "Public access is restricted for all buckets and objects",
+                "enforcement": "Hierarchical with inheritFromParent",
+                "effect_time": "Up to 10 minutes"
+              }
+            ],
+            "machine_readable": true
+          },
+          {
+            "dimension": "Encryption at Rest",
+            "constraints": [
+              {
+                "id": "constraints/gcp.restrictNonCmekServices",
+                "type": "List",
+                "description": "Requires customer-managed encryption keys (CMEK) for new and rewritten objects",
+                "enforcement": "Project-level key requirement"
+              },
+              {
+                "id": "constraints/gcp.restrictCmekCryptoKeyProjects",
+                "type": "List",
+                "description": "Rejects requests if CMEK key does not belong to specified project",
+                "enforcement": "Key project validation"
+              }
+            ],
+            "machine_readable": true
+          },
+          {
+            "dimension": "Access Control - IAM",
+            "constraints": [
+              {
+                "id": "constraints/storage.uniformBucketLevelAccess",
+                "type": "Boolean",
+                "description": "New buckets must enable uniform bucket-level access feature (disables ACLs)",
+                "enforcement": "Bucket creation time"
+              }
+            ],
+            "machine_readable": true
+          },
+          {
+            "dimension": "Audit Logging",
+            "constraints": [
+              {
+                "id": "constraints/gcp.detailedAuditLoggingMode",
+                "type": "Boolean",
+                "description": "Cloud Audit Logs include detailed request and response information",
+                "enforcement": "Logging configuration"
+              }
+            ],
+            "machine_readable": true
+          },
+          {
+            "dimension": "Authentication & Authorization",
+            "constraints": [
+              {
+                "id": "constraints/storage.restrictAuthTypes",
+                "type": "List",
+                "description": "Restricts requests using specific authentication types",
+                "allowed_values": [
+                  "SERVICE_ACCOUNT_HMAC_SIGNED_REQUESTS",
+                  "USER_ACCOUNT_HMAC_SIGNED_REQUESTS",
+                  "RSA_SIGNED_REQUESTS",
+                  "in:ALL_HMAC_SIGNED_REQUESTS",
+                  "in:ALL_SIGNED_REQUESTS"
+                ],
+                "enforcement": "Request-time validation"
+              }
+            ],
+            "machine_readable": true
+          },
+          {
+            "dimension": "Encryption in Transit",
+            "constraints": [
+              {
+                "id": "constraints/storage.secureHttpTransport",
+                "type": "Boolean",
+                "description": "All unencrypted HTTP access to Cloud Storage resources is denied (requires HTTPS)",
+                "enforcement": "Request-time validation"
+              },
+              {
+                "id": "constraints/gcp.restrictTLSVersion",
+                "type": "List",
+                "description": "Prevents TLS 1.0/1.1 access",
+                "enforcement": "Connection-time validation"
+              }
+            ],
+            "machine_readable": true
+          },
+          {
+            "dimension": "Data Lifecycle & Retention",
+            "constraints": [
+              {
+                "id": "constraints/storage.softDeletePolicySeconds",
+                "type": "List",
+                "description": "Specifies permitted soft delete durations; required for new buckets",
+                "enforcement": "Bucket policy configuration"
+              },
+              {
+                "id": "constraints/storage.retentionPolicySeconds",
+                "type": "List",
+                "description": "Enforces specific retention durations for bucket retention policies",
+                "enforcement": "Bucket policy configuration"
+              }
+            ],
+            "machine_readable": true
+          }
+        ],
+        "notes": "Constraints are defined and retrieved via REST API in JSON format. Supports hierarchical enforcement with inheritFromParent field."
+      },
+      {
+        "name": "Cloud Audit Logs API",
+        "type": "Structured Log Schema (JSON)",
+        "access_method": "Cloud Logging API",
+        "documentation_url": "https://docs.cloud.google.com/storage/docs/audit-logging",
+        "log_entry_schema": "https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry",
+        "audit_log_schema": "https://cloud.google.com/logging/docs/reference/audit/auditlog/rest/Shared.Types/AuditLog",
+        "security_dimensions_covered": [
+          {
+            "dimension": "Audit Logging - All Operations",
+            "log_types": [
+              {
+                "type": "Admin Activity (ADMIN_WRITE)",
+                "description": "Configuration modifications including IAM policies, bucket creation, deletion, HMAC key management",
+                "enabled_by_default": true
+              },
+              {
+                "type": "Data Access - ADMIN_READ",
+                "description": "Metadata reads: Getting bucket/folder IAM policies, listing buckets",
+                "enabled_by_default": false,
+                "requires_explicit_enable": true
+              },
+              {
+                "type": "Data Access - DATA_READ",
+                "description": "Getting object data, getting object metadata, listing objects",
+                "enabled_by_default": false,
+                "requires_explicit_enable": true
+              },
+              {
+                "type": "Data Access - DATA_WRITE",
+                "description": "Creating objects, deleting objects, multipart upload operations",
+                "enabled_by_default": false,
+                "requires_explicit_enable": true
+              },
+              {
+                "type": "System Event",
+                "description": "Bucket relocation process start/end events generated by Google systems",
+                "enabled_by_default": true
+              }
+            ],
+            "json_structure": {
+              "LogEntry": {
+                "logName": "Resource ID and audit log type identifier",
+                "resource": "Target of the audited operation",
+                "timestamp": "Operation time (RFC 3339)",
+                "protoPayload": "AuditLog object"
+              },
+              "AuditLog": {
+                "@type": "type.googleapis.com/google.cloud.audit.AuditLog",
+                "serviceName": "storage.googleapis.com",
+                "principalEmail": "User identity (may be redacted)",
+                "callerIp": "Source IP address",
+                "authenticationInfo": "Authentication details",
+                "metadata": "Cloud Storage-specific information (e.g., destination bucket for rewrites)",
+                "request": "Additional audit details when detailed logging enabled",
+                "response": "Additional audit details when detailed logging enabled",
+                "audit_info": "Custom metadata from x-goog-custom-audit-KEY headers (64 char key, 1200 char value max)"
+              }
+            },
+            "machine_readable": true
+          }
+        ],
+        "notes": "Complete JSON schema available. Detailed request/response fields populated when gcp.detailedAuditLoggingMode constraint is enabled."
+      },
+      {
+        "name": "Policy Intelligence Recommender API",
+        "type": "REST API",
+        "access_method": "API",
+        "documentation_url": "https://docs.cloud.google.com/policy-intelligence/docs/review-apply-role-recommendations-buckets",
+        "api_endpoint": "recommender.googleapis.com",
+        "security_dimensions_covered": [
+          {
+            "dimension": "IAM Role Optimization",
+            "recommendation_types": [
+              {
+                "recommenderSubtype": "REMOVE_ROLE_STORAGE_BUCKET",
+                "description": "Role has not been used during the 90-day observation window",
+                "priority": "P1",
+                "security_improvement": "Reduces attack surface by revoking unused permissions"
+              },
+              {
+                "recommenderSubtype": "REPLACE_ROLE_STORAGE_BUCKET",
+                "description": "Proposes substituting current roles with more restrictive predefined or custom roles aligned with usage patterns",
+                "priority": "P1",
+                "security_improvement": "Enforces least-privilege access through narrower role scopes"
+              }
+            ],
+            "json_response_schema": {
+              "name": "projects/{PROJECT_ID}/locations/{LOCATION}/recommenders/google.iam.policy.Recommender/recommendations/{RECOMMENDATION_ID}",
+              "description": "string",
+              "lastRefreshTime": "timestamp",
+              "primaryImpact": {
+                "category": "SECURITY",
+                "securityProjection": {
+                  "details": {
+                    "revokedIamPermissionsCount": "number"
+                  }
+                }
+              },
+              "content": {
+                "operationGroups": [
+                  {
+                    "operations": [
+                      {
+                        "action": "remove|replace",
+                        "resourceType": "storage.googleapis.com/Bucket",
+                        "resource": "//storage.googleapis.com/{BUCKET_NAME}",
+                        "path": "/iamPolicy/bindings/*/members/*",
+                        "pathFilters": {}
+                      }
+                    ]
+                  }
+                ]
+              },
+              "stateInfo": {
+                "state": "ACTIVE|CLAIMED|SUCCEEDED|FAILED"
+              },
+              "etag": "string",
+              "recommenderSubtype": "REMOVE_ROLE_STORAGE_BUCKET|REPLACE_ROLE_STORAGE_BUCKET",
+              "associatedInsights": [],
+              "priority": "P1"
+            },
+            "machine_readable": true,
+            "observation_window": "90 days"
+          }
+        ],
+        "notes": "ML-generated recommendations in JSON format. Supports state transitions via API. Uses json or yaml format for API operations."
+      },
+      {
+        "name": "Cloud Asset Inventory API",
+        "type": "REST API with JSON/JSONL Export",
+        "access_method": "API",
+        "documentation_url": "https://docs.cloud.google.com/asset-inventory/docs/export-cloud-storage",
+        "last_updated": "2026-02-02, 2026-02-05",
+        "security_dimensions_covered": [
+          {
+            "dimension": "Asset Metadata Export",
+            "export_format": "Newline-delimited JSON (JSONL)",
+            "content_types": [
+              "RESOURCE - Asset metadata including security properties"
+            ],
+            "json_structure": {
+              "per_line_fields": [
+                "name - Resource identifier",
+                "assetType - Cloud Storage bucket type",
+                "ancestors - Project/folder/organization hierarchy"
+              ]
+            },
+            "security_properties_included": [
+              "IAM policies",
+              "Encryption settings",
+              "Public access configuration",
+              "Lifecycle policies",
+              "Versioning",
+              "Retention policies",
+              "Other bucket metadata"
+            ],
+            "export_constraints": [
+              "Buckets with custom Cloud KMS keys not supported as export destination",
+              "Buckets with retention policies not supported as export destination"
+            ],
+            "machine_readable": true
+          }
+        ],
+        "notes": "Exports to Cloud Storage in JSONL format. Each line is a complete JSON object. Does not provide detailed field schema in export documentation - refer to Asset Types Reference."
+      },
+      {
+        "name": "VPC Service Controls API (Access Context Manager)",
+        "type": "REST API",
+        "access_method": "API",
+        "documentation_url": "https://docs.cloud.google.com/vpc-service-controls/docs/service-perimeters",
+        "security_dimensions_covered": [
+          {
+            "dimension": "Network Isolation",
+            "configuration_elements": [
+              {
+                "element": "Service Perimeter",
+                "json_fields": [
+                  "name",
+                  "title",
+                  "perimeterType",
+                  "status.resources (project list)",
+                  "status.restrictedServices (e.g., storage.googleapis.com)",
+                  "status.vpcAccessibleServices",
+                  "status.ingressPolicies",
+                  "status.egressPolicies",
+                  "spec (dry run configuration)",
+                  "useExplicitDryRunSpec",
+                  "etag"
+                ]
+              },
+              {
+                "element": "Ingress Rules",
+                "json_fields": [
+                  "sources (identityType, identity, project)",
+                  "services (attributes)"
+                ]
+              },
+              {
+                "element": "Egress Rules",
+                "json_fields": [
+                  "identity",
+                  "project",
+                  "service (attributes)"
+                ]
+              }
+            ],
+            "modes": [
+              "Enforced mode - Requests violating policy are denied",
+              "Dry run mode - Requests violating policy are logged but not denied"
+            ],
+            "machine_readable": true
+          }
+        ],
+        "notes": "JSON/YAML configuration for perimeters. Restricts storage.googleapis.com via restrictedServices array. Ingress/egress rules support context-aware access."
+      }
+    ]
+  },
+  "tier_1_sources": {
+    "description": "Structured compliance frameworks with machine-readable implementations",
+    "sources": [
+      {
+        "name": "CIS Google Cloud Platform Foundation Benchmark",
+        "version": "4.0.0",
+        "published_date": "2025-05-02",
+        "type": "PDF Benchmark + InSpec JSON Implementation",
+        "download_url": "https://workbench.cisecurity.org/cis/api/v1/file/5941/download",
+        "implementation_repo": "https://github.com/GoogleCloudPlatform/inspec-gcp-cis-benchmark",
+        "security_dimensions_covered": [
+          {
+            "dimension": "Access Control",
+            "section": "Section 5 - Storage",
+            "controls": [
+              {
+                "control_id": "5.x",
+                "title": "Ensure that Cloud Storage bucket is not anonymously or publicly accessible",
+                "machine_readable_implementation": "InSpec profile generates JSON reports"
+              },
+              {
+                "control_id": "5.x",
+                "title": "Ensure that Cloud Storage buckets have uniform bucket-level access enabled",
+                "machine_readable_implementation": "InSpec profile generates JSON reports"
+              }
+            ]
+          }
+        ],
+        "machine_readable": "Partial - PDF benchmark with InSpec JSON scan results",
+        "notes": "Benchmark PDF is human-readable. InSpec implementation produces JSON reports during GCP environment scans. Free for non-commercial use."
+      }
+    ]
+  },
+  "tier_2_sources": {
+    "description": "Official HTML documentation with structured information (not machine-readable but authoritative)",
+    "sources": [
+      {
+        "name": "Cloud Storage Encryption Documentation",
+        "type": "HTML Documentation",
+        "documentation_url": "https://docs.cloud.google.com/storage/docs/encryption/default-keys",
+        "security_dimensions_covered": [
+          {
+            "dimension": "Encryption at Rest - Default",
+            "properties": [
+              {
+                "property": "Default Encryption Algorithm",
+                "value": "AES-256",
+                "mode": "Galois/Counter Mode (GCM) in most cases",
+                "setup_required": false,
+                "performance_impact": "None visible"
+              },
+              {
+                "property": "Key Hierarchy",
+                "value": "DEKs (AES-256) wrapped by KEKs (AES-256 or AES-128) wrapped by keystore master key (AES-256)"
+              }
+            ]
+          },
+          {
+            "dimension": "Encryption at Rest - CMEK",
+            "documentation_url": "https://docs.cloud.google.com/storage/docs/encryption/customer-managed-keys",
+            "properties": [
+              "Customer-managed encryption keys in Cloud KMS",
+              "Control over key protection level, location, rotation schedule, access permissions"
+            ]
+          },
+          {
+            "dimension": "Encryption at Rest - CSEK",
+            "documentation_url": "https://docs.cloud.google.com/storage/docs/encryption/using-customer-supplied-keys",
+            "properties": [
+              {
+                "property": "Customer-supplied encryption keys",
+                "key_format": "AES-256, Base64-encoded",
+                "json_api_requirements": "Provide AES-256 key + SHA256 hash",
+                "key_management": "Customer-managed outside GCP"
+              }
+            ]
+          }
+        ],
+        "machine_readable": false,
+        "notes": "Authoritative specification of encryption properties. Not available as JSON schema."
+      },
+      {
+        "name": "VPC Service Controls Supported Products",
+        "type": "HTML Documentation",
+        "documentation_url": "https://docs.cloud.google.com/vpc-service-controls/docs/supported-products",
+        "security_dimensions_covered": [
+          {
+            "dimension": "Network Isolation",
+            "properties": [
+              "Cloud Storage API (storage.googleapis.com) is supported service",
+              "Can be added to restrictedServices in perimeter configuration",
+              "Supports ingress/egress rules for context-aware access"
+            ]
+          }
+        ],
+        "machine_readable": false
+      },
+      {
+        "name": "GCP Compliance Offerings",
+        "type": "HTML Documentation",
+        "documentation_url": "https://cloud.google.com/security/compliance/offerings",
+        "security_dimensions_covered": [
+          {
+            "dimension": "Compliance Certifications",
+            "certifications": [
+              {
+                "standard": "ISO/IEC 27001",
+                "scope": "Cloud Storage included"
+              },
+              {
+                "standard": "ISO/IEC 27017",
+                "scope": "Cloud services"
+              },
+              {
+                "standard": "ISO/IEC 27018",
+                "scope": "Privacy in cloud"
+              },
+              {
+                "standard": "ISO/IEC 27701",
+                "scope": "Privacy information management"
+              },
+              {
+                "standard": "SOC 1",
+                "scope": "Core services including Cloud Storage"
+              },
+              {
+                "standard": "SOC 2",
+                "scope": "Core services including Cloud Storage",
+                "frequency": "Semi-annual reports"
+              },
+              {
+                "standard": "SOC 3",
+                "scope": "Core services including Cloud Storage"
+              },
+              {
+                "standard": "PCI DSS 4.0.1",
+                "scope": "Cloud Storage supports customer-managed encryption"
+              },
+              {
+                "standard": "FedRAMP",
+                "scope": "Authorized services"
+              },
+              {
+                "standard": "HIPAA",
+                "scope": "HIPAA-eligible services"
+              }
+            ]
+          }
+        ],
+        "machine_readable": false,
+        "notes": "Regular independent audits. Compliance maintained through structured internal process."
+      },
+      {
+        "name": "GCP Shared Responsibility Model",
+        "type": "HTML Documentation",
+        "documentation_url": "https://docs.cloud.google.com/architecture/framework/security/shared-responsibility-shared-fate",
+        "security_dimensions_covered": [
+          {
+            "dimension": "Shared Responsibility Boundaries",
+            "google_responsibilities": [
+              "Physical data center security",
+              "Network security",
+              "Underlying virtualization technology security",
+              "Default encryption at rest (AES-256)",
+              "Infrastructure security (security OF the cloud)"
+            ],
+            "customer_responsibilities": [
+              "Data security and classification",
+              "Application security",
+              "IAM configuration",
+              "Access control (IAM, ACLs, bucket policies)",
+              "Compliance adherence",
+              "Configuration best practices (security IN the cloud)",
+              "Audit logging enablement (Data Access logs)",
+              "Encryption key management (CMEK/CSEK if used)",
+              "Organization policy enforcement",
+              "VPC Service Controls configuration"
+            ],
+            "shared_fate_concept": "Customer can purchase services to pass certain responsibilities to GCP"
+          }
+        ],
+        "machine_readable": false
+      },
+      {
+        "name": "GCP NIST 800-53 Compliance",
+        "type": "HTML Documentation",
+        "documentation_url": "https://cloud.google.com/security/compliance/nist800-53",
+        "security_dimensions_covered": [
+          {
+            "dimension": "NIST 800-53 Control Mappings",
+            "properties": [
+              "Services including Cloud Storage undergo independent third-party assessment",
+              "Operating in compliance with NIST 800-53 controls",
+              "Policy Controller supports NIST SP 800-53 Rev. 5 constraint bundle for Kubernetes"
+            ]
+          }
+        ],
+        "machine_readable": false,
+        "notes": "Specific Cloud Storage control mappings not available in machine-readable format as of 2026-02-07."
+      }
+    ]
+  },
+  "security_dimension_summary": {
+    "encryption_at_rest": {
+      "tier_0_sources": [
+        "Organization Policy Constraints API (constraints/gcp.restrictNonCmekServices, constraints/gcp.restrictCmekCryptoKeyProjects)"
+      ],
+      "tier_2_sources": [
+        "Cloud Storage Encryption Documentation (AES-256 GCM, CMEK, CSEK specifications)"
+      ],
+      "default_behavior": "AES-256 in GCM mode, no configuration required",
+      "customer_options": ["Google-managed keys (default)", "Customer-managed keys (CMEK)", "Customer-supplied keys (CSEK)"]
+    },
+    "encryption_in_transit": {
+      "tier_0_sources": [
+        "Organization Policy Constraints API (constraints/storage.secureHttpTransport, constraints/gcp.restrictTLSVersion)"
+      ],
+      "default_behavior": "TLS encryption enforced for all API operations",
+      "enforcement": "HTTPS required when secureHttpTransport constraint enabled; TLS 1.2+ when restrictTLSVersion enforced"
+    },
+    "access_control_iam": {
+      "tier_0_sources": [
+        "Cloud Storage JSON API (getIamPolicy, setIamPolicy, testIamPermissions)",
+        "Organization Policy Constraints API (constraints/storage.uniformBucketLevelAccess)",
+        "Policy Intelligence Recommender API (REMOVE_ROLE_STORAGE_BUCKET, REPLACE_ROLE_STORAGE_BUCKET)"
+      ],
+      "default_behavior": "IAM policies control access; ACLs available unless uniform bucket-level access enabled",
+      "best_practices": "Enable uniform bucket-level access (disables ACLs), use least-privilege roles"
+    },
+    "access_control_acls": {
+      "tier_0_sources": [
+        "Cloud Storage JSON API (BucketAccessControls, DefaultObjectAccessControls, ObjectAccessControls)"
+      ],
+      "default_behavior": "ACLs enabled by default unless uniform bucket-level access enforced",
+      "deprecation_trend": "Google recommends uniform bucket-level access for simplified permission management"
+    },
+    "public_access_prevention": {
+      "tier_0_sources": [
+        "Organization Policy Constraints API (constraints/storage.publicAccessPrevention)",
+        "Security Command Center API (PUBLIC_BUCKET_ACL detector)"
+      ],
+      "default_behavior": "Public access allowed unless explicitly prevented",
+      "enforcement": "Organization policy constraint blocks public access; Security Health Analytics detects violations"
+    },
+    "network_isolation": {
+      "tier_0_sources": [
+        "VPC Service Controls API (storage.googleapis.com in restrictedServices)"
+      ],
+      "default_behavior": "No network isolation by default",
+      "enforcement": "VPC Service Controls perimeters restrict data egress and enforce context-aware access"
+    },
+    "audit_logging": {
+      "tier_0_sources": [
+        "Cloud Audit Logs API (Admin Activity, Data Access READ/WRITE, System Events)",
+        "Organization Policy Constraints API (constraints/gcp.detailedAuditLoggingMode)"
+      ],
+      "default_behavior": "Admin Activity and System Events enabled by default; Data Access logs require explicit enable",
+      "log_types": [
+        "Admin Activity (ADMIN_WRITE) - Default ON",
+        "Data Access ADMIN_READ - Default OFF",
+        "Data Access DATA_READ - Default OFF",
+        "Data Access DATA_WRITE - Default OFF",
+        "System Events - Default ON"
+      ],
+      "detailed_logging": "Enabled via gcp.detailedAuditLoggingMode constraint (includes request/response details)"
+    },
+    "authentication_authorization": {
+      "tier_0_sources": [
+        "Organization Policy Constraints API (constraints/storage.restrictAuthTypes)"
+      ],
+      "restricted_auth_types": [
+        "SERVICE_ACCOUNT_HMAC_SIGNED_REQUESTS",
+        "USER_ACCOUNT_HMAC_SIGNED_REQUESTS",
+        "RSA_SIGNED_REQUESTS",
+        "in:ALL_HMAC_SIGNED_REQUESTS",
+        "in:ALL_SIGNED_REQUESTS"
+      ],
+      "default_behavior": "All authentication types allowed unless restricted via organization policy"
+    },
+    "data_lifecycle_retention": {
+      "tier_0_sources": [
+        "Cloud Storage JSON API (Buckets.lockRetentionPolicy)",
+        "Organization Policy Constraints API (constraints/storage.retentionPolicySeconds, constraints/storage.softDeletePolicySeconds)"
+      ],
+      "features": [
+        "Bucket retention policies (immutable after locking)",
+        "Soft delete with configurable duration",
+        "Lifecycle policies for automatic storage class transitions",
+        "Object versioning"
+      ]
+    },
+    "compliance_certifications": {
+      "tier_2_sources": [
+        "GCP Compliance Offerings Documentation"
+      ],
+      "certifications": [
+        "ISO/IEC 27001, 27017, 27018, 27701",
+        "SOC 1, SOC 2, SOC 3",
+        "PCI DSS 4.0.1",
+        "FedRAMP",
+        "HIPAA"
+      ],
+      "machine_readable": false
+    },
+    "shared_responsibility": {
+      "tier_2_sources": [
+        "GCP Shared Responsibility Model Documentation"
+      ],
+      "google_responsibilities": [
+        "Infrastructure security (physical, network, virtualization)",
+        "Default encryption at rest (AES-256)"
+      ],
+      "customer_responsibilities": [
+        "IAM configuration",
+        "Access control",
+        "Data classification",
+        "Compliance adherence",
+        "Organization policy enforcement",
+        "Audit logging configuration",
+        "Encryption key management (CMEK/CSEK)"
+      ],
+      "machine_readable": false
+    },
+    "security_defaults": {
+      "encryption": "AES-256 GCM (automatic, no configuration)",
+      "access_control": "IAM + ACLs (ACLs can be disabled via uniform bucket-level access)",
+      "public_access": "Allowed (must be explicitly prevented)",
+      "audit_logging": "Admin Activity ON, Data Access OFF by default",
+      "network_isolation": "None (must be configured via VPC Service Controls)",
+      "tls": "Required for all API operations",
+      "authentication": "All types allowed (can be restricted via organization policy)"
+    }
+  },
+  "cross_references": {
+    "cis_benchmark": {
+      "name": "CIS Google Cloud Platform Foundation Benchmark v4.0.0",
+      "download_url": "https://workbench.cisecurity.org/cis/api/v1/file/5941/download",
+      "section": "Section 5 - Storage",
+      "controls_summary": [
+        "Prevent anonymous/public bucket access",
+        "Enable uniform bucket-level access"
+      ],
+      "machine_readable": "InSpec JSON reports",
+      "github_repo": "https://github.com/GoogleCloudPlatform/inspec-gcp-cis-benchmark"
+    },
+    "nist_800_53": {
+      "name": "NIST SP 800-53 Rev. 5",
+      "compliance_url": "https://cloud.google.com/security/compliance/nist800-53",
+      "status": "GCP services including Cloud Storage undergo third-party assessment for NIST 800-53 compliance",
+      "machine_readable_mappings": "Not available for Cloud Storage as of 2026-02-07",
+      "kubernetes_policy_controller": "NIST SP 800-53 Rev. 5 constraint bundle available for GKE"
+    },
+    "gcp_security_best_practices": {
+      "sources": [
+        "Security Command Center best practices (HTML documentation)",
+        "Cloud Storage security documentation (HTML)",
+        "Organization Policy examples (HTML + JSON API)"
+      ],
+      "key_recommendations": [
+        "Enable uniform bucket-level access",
+        "Prevent public access via organization policy",
+        "Enable Data Access audit logs",
+        "Use CMEK for sensitive data",
+        "Implement VPC Service Controls for network isolation",
+        "Apply least-privilege IAM roles",
+        "Enable Security Command Center Premium/Enterprise tier",
+        "Review Policy Intelligence recommendations regularly"
+      ]
+    }
+  },
+  "documentation_urls": {
+    "cloud_storage_json_api": "https://docs.cloud.google.com/storage/docs/json_api/v1",
+    "discovery_document": "https://storage.googleapis.com/$discovery/rest?version=v1",
+    "security_command_center_api": "https://docs.cloud.google.com/security-command-center/docs/reference/rest",
+    "organization_policies": "https://docs.cloud.google.com/storage/docs/org-policy-constraints",
+    "cloud_audit_logs": "https://docs.cloud.google.com/storage/docs/audit-logging",
+    "policy_intelligence": "https://docs.cloud.google.com/policy-intelligence/docs/review-apply-role-recommendations-buckets",
+    "cloud_asset_inventory": "https://docs.cloud.google.com/asset-inventory/docs/export-cloud-storage",
+    "vpc_service_controls": "https://docs.cloud.google.com/vpc-service-controls/docs/service-perimeters",
+    "encryption_default": "https://docs.cloud.google.com/storage/docs/encryption/default-keys",
+    "encryption_cmek": "https://docs.cloud.google.com/storage/docs/encryption/customer-managed-keys",
+    "encryption_csek": "https://docs.cloud.google.com/storage/docs/encryption/using-customer-supplied-keys",
+    "compliance_offerings": "https://cloud.google.com/security/compliance/offerings",
+    "shared_responsibility": "https://docs.cloud.google.com/architecture/framework/security/shared-responsibility-shared-fate",
+    "nist_800_53": "https://cloud.google.com/security/compliance/nist800-53",
+    "cis_benchmark": "https://www.cisecurity.org/benchmark/google_cloud_computing_platform",
+    "security_health_analytics": "https://docs.cloud.google.com/security-command-center/docs/how-to-use-security-health-analytics"
+  },
+  "notes": {
+    "machine_readable_priority": "7 out of 8 Tier 0 sources provide complete JSON/API access to security properties",
+    "missing_machine_readable": [
+      "Detailed Cloud Asset Inventory bucket field schema (export format is JSON but field schema not documented in export guide)",
+      "Security Health Analytics detector catalog (API returns JSON but complete detector list not in single endpoint)",
+      "NIST 800-53 control mappings for Cloud Storage (compliance documented but not as structured JSON)"
+    ],
+    "api_access_requirements": [
+      "All GCP REST APIs require authentication via OAuth 2.0 or service account credentials",
+      "Discovery documents (e.g., storage.googleapis.com/$discovery/rest?version=v1) are unauthenticated",
+      "Cloud Asset Inventory export requires IAM permissions on destination bucket",
+      "Security Command Center requires Premium or Enterprise tier for full finding catalog"
+    ],
+    "data_freshness": [
+      "Organization Policy constraints: Up to 10 minutes propagation",
+      "Security Health Analytics: Real-time + batch modes",
+      "Policy Intelligence recommendations: 90-day observation window, refreshed periodically",
+      "Cloud Audit Logs: Near real-time ingestion",
+      "Cloud Asset Inventory: Snapshot-based, on-demand export"
+    ]
+  }
+}

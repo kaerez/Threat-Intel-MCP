@@ -1,6 +1,17 @@
 """Database models for CVE MCP server."""
 
 from cve_mcp.models.base import Base
+from cve_mcp.models.cloud_security import (
+    CloudProvider,
+    CloudService,
+    CloudSecurityProperty,
+    CloudSecurityPropertyChange,
+    CloudServiceEquivalence,
+    CloudSharedResponsibility,
+    CloudServiceAttackMapping,
+    CloudServiceCWEMapping,
+    CloudServiceCAPECMapping,
+)
 from cve_mcp.models.cve import (
     CVE,
     CVECPEMapping,
@@ -29,6 +40,15 @@ from cve_mcp.models.metadata import QueryAuditLog, SyncMetadata
 
 __all__ = [
     "Base",
+    "CloudProvider",
+    "CloudService",
+    "CloudSecurityProperty",
+    "CloudSecurityPropertyChange",
+    "CloudServiceEquivalence",
+    "CloudSharedResponsibility",
+    "CloudServiceAttackMapping",
+    "CloudServiceCWEMapping",
+    "CloudServiceCAPECMapping",
     "CVE",
     "CVEReference",
     "CVECPEMapping",

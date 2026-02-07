@@ -7,7 +7,7 @@
 [![Security](https://github.com/Ansvar-Systems/Threat-Intel-MCP/actions/workflows/docker-security.yml/badge.svg)](https://github.com/Ansvar-Systems/Threat-Intel-MCP/actions/workflows/docker-security.yml)
 [![Database](https://img.shields.io/badge/database-331K%2B%20CVEs-green)](docs/SETUP.md)
 
-Query **331,000+ CVE records**, **700+ ATT&CK techniques**, **200+ D3FEND defenses**, **200+ ATLAS AI/ML techniques**, **550+ CAPEC attack patterns**, **960+ CWE weaknesses**, **140+ threat actors** with semantic similarity search — directly from Claude, Cursor, or any MCP-compatible client.
+Query **331,000+ CVE records**, **700+ ATT&CK techniques**, **200+ D3FEND defenses**, **200+ ATLAS AI/ML techniques**, **550+ CAPEC attack patterns**, **960+ CWE weaknesses**, **140+ threat actors**, **cloud security properties for AWS/Azure/GCP** with semantic similarity search — directly from Claude, Cursor, or any MCP-compatible client.
 
 ## Modules
 
@@ -60,6 +60,15 @@ This MCP server provides comprehensive threat intelligence through multiple inte
    - Coverage analysis for defensive posture assessment
    - **Key feature**: "How do I defend against this attack?" queries
 
+7. **Cloud Security Properties** ✅ Production
+   - Comprehensive security properties for AWS, Azure, GCP services
+   - Quality-first architecture with source provenance and confidence scores
+   - Cross-provider service equivalence mapping (e.g., S3 vs Blob Storage vs Cloud Storage)
+   - Shared responsibility model breakdown by layer (physical → application → data)
+   - Change tracking with breaking change detection
+   - Cross-framework mapping to CWE, CAPEC, ATT&CK techniques
+   - **Key feature**: "What are the security properties of AWS S3?" queries
+
 ## Key Features
 
 - **331,000+ CVE records** — Full NVD dataset with CVSS, KEV, EPSS scoring
@@ -73,11 +82,14 @@ This MCP server provides comprehensive threat intelligence through multiple inte
 - **200+ D3FEND defenses** — Defensive countermeasures with ATT&CK mappings
 - **Attack-to-defense correlation** — "How do I defend against T1059?"
 - **140+ threat actor groups** — Semantic attribution based on observed TTPs
+- **Cloud security properties** — AWS/Azure/GCP service security with provenance
+- **Service equivalence mapping** — Compare S3 vs Blob Storage vs Cloud Storage
+- **Shared responsibility models** — Provider/customer boundaries by service layer
 - **Dual search modes** — Traditional keyword (<50ms) + AI semantic (<100ms)
-- **Cross-domain queries** — CVE ↔ ATT&CK ↔ ATLAS ↔ Threat Actors in single query
+- **Cross-domain queries** — CVE ↔ ATT&CK ↔ ATLAS ↔ Threat Actors ↔ Cloud Services
 - **Offline-first** — All queries run against local PostgreSQL + pgvector
 - **Sub-100ms latency** — Indexed database with vector similarity search
-- **Monthly sync** — Automatic updates from NVD, MITRE, CISA, EPSS
+- **Monthly sync** — Automatic updates from NVD, MITRE, CISA, EPSS, cloud providers
 - **RAG-ready** — <7 day freshness, eliminates 90-day staleness
 
 Built by [Ansvar Systems](https://ansvar.eu) — Stockholm, Sweden
@@ -213,6 +225,13 @@ Once connected, just ask naturally:
 - *"Get details for D3-AL (Application Lockdown)"*
 - *"Search for detection techniques in D3FEND"*
 
+**Cloud Security:**
+- *"What are the security properties of AWS S3?"*
+- *"Compare encryption settings for S3, Azure Blob Storage, and GCP Cloud Storage"*
+- *"What's the shared responsibility model for Azure SQL Database?"*
+- *"Find AWS services with encryption at rest enabled by default"*
+- *"Which GCP services support CMEK (customer-managed encryption keys)?"*
+
 ---
 
 ## What's Included
@@ -254,10 +273,18 @@ Once connected, just ask naturally:
 - **ATT&CK Mappings** — Direct correlation to offensive techniques
 - **Coverage Analysis** — Assess defensive posture against ATT&CK techniques
 
+**Cloud Security Properties:**
+- **AWS, Azure, GCP Services** — Comprehensive security property database
+- **Quality-First Design** — Source provenance, confidence scores, verification metadata
+- **Service Equivalence** — Cross-provider comparison (S3 ↔ Blob Storage ↔ Cloud Storage)
+- **Shared Responsibility** — Provider/customer boundaries by layer
+- **Change Tracking** — Automated breaking change detection with audit trail
+- **Cross-Framework Mapping** — Links to CWE, CAPEC, ATT&CK techniques
+
 **Architecture:**
 - **Offline-First** — All queries run against local PostgreSQL + pgvector
 - **Sub-100ms Latency** — Indexed database with vector similarity search
-- **Monthly Sync** — Background updates from NVD, MITRE, CISA, EPSS
+- **Monthly Sync** — Background updates from NVD, MITRE, CISA, EPSS, cloud providers
 
 **Detailed coverage:** [DESIGN.md](./DESIGN.md)
 
@@ -331,11 +358,20 @@ Once connected, just ask naturally:
 | `get_defenses_for_attack` | **KEY:** Find defenses for ATT&CK technique | "How do I defend against T1059?" |
 | `get_attack_coverage` | Analyze defensive posture vs ATT&CK | "What's my coverage with these D3FEND techniques?" |
 
+### Cloud Security (4 tools)
+
+| Tool | Description | Example Query |
+|------|-------------|---------------|
+| `search_cloud_services` | Search cloud services across AWS, Azure, GCP | "Find object storage services" |
+| `get_cloud_service_security` | Get comprehensive security properties for a service | "What are security properties of AWS S3?" |
+| `compare_cloud_services` | Compare equivalent services across providers | "Compare S3 vs Blob Storage vs Cloud Storage" |
+| `get_shared_responsibility` | Get shared responsibility model breakdown | "What's AWS responsible for in RDS?" |
+
 ### System (1 tool)
 
 | Tool | Description | Example Query |
 |------|-------------|---------------|
-| `get_data_freshness` | Check sync status and data age for all 9 sources | "Is the threat intelligence data up to date?" |
+| `get_data_freshness` | Check sync status and data age for all 10 sources | "Is the threat intelligence data up to date?" |
 
 ---
 
@@ -357,7 +393,7 @@ Once connected, just ask naturally:
               ▼
 ┌─────────────────────────────────────────┐
 │  CVE MCP Server (FastAPI)               │
-│  - 37 MCP tools                         │
+│  - 41 MCP tools                         │
 │  - Query routing & validation           │
 └─────────────┬───────────────────────────┘
               │
@@ -379,6 +415,7 @@ Once connected, just ask naturally:
 │  - MITRE CAPEC                          │
 │  - MITRE CWE                            │
 │  - MITRE D3FEND                         │
+│  - AWS Security Hub / Azure / GCP       │
 └─────────────────────────────────────────┘
 ```
 
@@ -515,6 +552,9 @@ vulns = await mcp_client.call_tool(
 | **MITRE CAPEC** | Public | Monthly | 550+ patterns, 300+ mitigations |
 | **MITRE CWE** | Public | Monthly | 960+ weaknesses, OWASP/SANS mappings |
 | **MITRE D3FEND** | Public | Quarterly | 200+ defenses, ATT&CK mappings |
+| **AWS Security Hub** | Public | Monthly | S3, RDS, EC2, Lambda security controls |
+| **Azure Policy** | Public | Monthly | Storage, Compute, Database policy definitions |
+| **GCP Org Policy** | Public | Monthly | Cloud Storage, Compute Engine constraints |
 
 All data sources are **free and public** — no API keys required (NVD API key optional for higher rate limits).
 
@@ -604,6 +644,7 @@ So we're open-sourcing it. Real-time vulnerability intelligence shouldn't requir
   - [CAPEC module](./docs/modules/capec.md) — Attack patterns, mitigations, workflows
   - [CWE module](./docs/modules/cwe.md) — Software weaknesses, OWASP mappings, workflows
   - [D3FEND module](./docs/modules/d3fend.md) — Defensive countermeasures, ATT&CK correlation
+  - [Cloud Security module](./docs/modules/cloud_security.md) — Cloud service properties, cross-provider comparison
 - **[docs/architecture/](./docs/architecture/)** — Architecture decision records
   - [Tier 1 offline-first assessment](./docs/architecture/2026-01-30-mcp-offline-first-assessment.md)
   - [Build vs. buy analysis](./docs/architecture/2026-01-30-mcp-build-vs-buy-analysis.md)
@@ -630,6 +671,7 @@ So we're open-sourcing it. Real-time vulnerability intelligence shouldn't requir
 12. ✅ MITRE CWE module (software weaknesses, OWASP/SANS mappings, semantic search)
 13. ✅ MITRE D3FEND module (defensive countermeasures, ATT&CK mappings, semantic search)
 14. ✅ v1.1.0 comprehensive bug fixes and agent usability improvements
+15. ✅ Cloud Security module (AWS/Azure/GCP properties, equivalence mapping, quality-first design)
 
 ---
 

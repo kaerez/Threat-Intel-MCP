@@ -2,17 +2,17 @@
 
 **Repository:** [Ansvar-Systems/Threat-Intel-MCP](https://github.com/Ansvar-Systems/Threat-Intel-MCP)
 **Type:** Tier 1 MCP Server (Offline-First)
-**Status:** Production (v1.1.0)
+**Status:** Production (v1.2.0)
 **Original Date:** 2026-01-30
 **Version:** 1.0 (original CVE module design)
 
-> **Note:** This document is the original design specification for the CVE module. The actual implementation (v1.1.0) includes 37 tools across 6 modules: CVE Intelligence (8), ATT&CK (7), ATLAS (5), CAPEC (5), CWE (6), D3FEND (5), and System (1). See [README.md](./README.md) for the complete tool reference. Module-specific documentation is in [docs/modules/](./docs/modules/).
+> **Note:** This document is the original design specification for the CVE module. The actual implementation (v1.2.0) includes 41 tools across 7 modules: CVE Intelligence (8), ATT&CK (7), ATLAS (5), CAPEC (5), CWE (6), D3FEND (5), Cloud Security (4), and System (1). See [README.md](./README.md) for the complete tool reference. Module-specific documentation is in [docs/modules/](./docs/modules/).
 
 ---
 
 ## Executive Summary
 
-A Model Context Protocol (MCP) server providing offline-first access to CVE vulnerability data, CISA Known Exploited Vulnerabilities (KEV), EPSS exploit prediction scores, and exploit availability tracking.
+A Model Context Protocol (MCP) server providing offline-first access to CVE vulnerability data, CISA Known Exploited Vulnerabilities (KEV), EPSS exploit prediction scores, exploit availability tracking, MITRE ATT&CK/ATLAS/CAPEC/D3FEND frameworks, CWE weaknesses, and cloud security properties.
 
 **Key Features:**
 - ✅ 331,000+ CVE records with full details
@@ -20,6 +20,9 @@ A Model Context Protocol (MCP) server providing offline-first access to CVE vuln
 - ✅ EPSS scores (exploit prediction likelihood)
 - ✅ CPE product mappings (affected software versions)
 - ✅ Exploit reference tracking (Metasploit, ExploitDB, GitHub PoCs)
+- ✅ 700+ ATT&CK techniques, 200+ ATLAS AI/ML techniques, 550+ CAPEC patterns
+- ✅ 960+ CWE weaknesses, 200+ D3FEND defenses
+- ✅ Cloud security properties (AWS/Azure/GCP) with source provenance
 - ✅ Offline-first architecture (daily background sync)
 - ✅ Sub-50ms query latency (PostgreSQL local database)
 - ✅ Air-gap deployment ready
