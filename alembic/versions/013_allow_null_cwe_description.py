@@ -1,7 +1,7 @@
 """Allow NULL description in CWE weaknesses.
 
-Revision ID: 008
-Revises: 007
+Revision ID: 013
+Revises: 012
 Create Date: 2026-02-01
 
 Some CWE entries (e.g., CWE-1004 "Sensitive Cookie Without 'HttpOnly' Flag")
@@ -16,8 +16,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers
-revision: str = "008"
-down_revision: str | None = "007"
+revision: str = "013"
+down_revision: str | None = "012"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

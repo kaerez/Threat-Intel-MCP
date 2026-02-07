@@ -1,7 +1,7 @@
 """Fix D3FEND column sizes to accommodate longer IDs.
 
-Revision ID: 007
-Revises: 006
+Revision ID: 012
+Revises: 011
 Create Date: 2026-02-01
 
 D3FEND tactic and technique IDs can be longer than 20 chars
@@ -15,8 +15,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers
-revision: str = "007"
-down_revision: str | None = "006"
+revision: str = "012"
+down_revision: str | None = "011"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
