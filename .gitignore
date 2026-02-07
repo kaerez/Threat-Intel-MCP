@@ -87,3 +87,6 @@ Thumbs.db
 # MCP/IDE tool caches
 .serena/
 .claude/
+
+# Old repo clone (pre-rename)
+CVE-MCP/

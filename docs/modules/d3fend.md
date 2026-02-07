@@ -8,7 +8,7 @@ The D3FEND module provides comprehensive access to the MITRE D3FEND (Detection, 
 
 ### Key Features
 
-- **200+ Defensive Techniques** — Comprehensive catalog of security countermeasures
+- **158 Defensive Techniques** — Comprehensive catalog of security countermeasures
 - **7 Defensive Tactics** — Model, Harden, Detect, Isolate, Deceive, Evict, Restore
 - **100+ Digital Artifacts** — What techniques produce or analyze
 - **ATT&CK Mappings** — Direct correlation to offensive techniques (counters, enables, related-to)
@@ -23,9 +23,9 @@ The D3FEND module provides comprehensive access to the MITRE D3FEND (Detection, 
 | Category | Count | Description |
 |----------|-------|-------------|
 | Tactics | 7 | Defensive phases (Model, Harden, Detect, Isolate, Deceive, Evict, Restore) |
-| Techniques | ~200 | Defensive countermeasures with ATT&CK mappings |
+| Techniques | 158 | Defensive countermeasures with ATT&CK mappings |
 | Artifacts | ~100 | Digital artifacts (files, network traffic, processes) |
-| ATT&CK Mappings | 500+ | D3FEND → ATT&CK technique correlations |
+| ATT&CK Mappings | 2,255 | D3FEND → ATT&CK technique correlations (via ontology graph) |
 | Relationship Types | 5 | counters, enables, related-to, produces, uses |
 
 ### D3FEND vs ATT&CK
@@ -732,9 +732,9 @@ python scripts/sync_d3fend_data.py
 |-----------|----------|-------|
 | Download JSON data | 10-30 sec | ~1 MB from GitHub |
 | Parse + insert tactics | 5 sec | 7 tactics |
-| Parse + insert techniques | 30 sec | ~200 techniques |
-| Validate ATT&CK mappings | 15 sec | FK validation |
-| Generate embeddings | 3-5 min | OpenAI API, ~200 requests |
+| Parse + insert techniques | 30 sec | 158 techniques |
+| Validate ATT&CK mappings | 15 sec | FK validation, 2,255 mappings |
+| Generate embeddings | 3-5 min | OpenAI API, ~158 requests |
 | **Total (with embeddings)** | **5-10 min** | One-time cost |
 | **Total (without embeddings)** | **1-2 min** | Traditional search only |
 
@@ -764,9 +764,9 @@ python scripts/sync_d3fend_data.py
 | Component | Size | Details |
 |-----------|------|---------|
 | D3FEND tactics | ~0.01 MB | 7 records |
-| D3FEND techniques | ~2 MB | ~200 records with descriptions |
+| D3FEND techniques | ~2 MB | 158 records with descriptions |
 | D3FEND artifacts | ~0.5 MB | ~100 records |
-| ATT&CK mappings | ~0.5 MB | ~500 relationship records |
+| ATT&CK mappings | ~1.5 MB | 2,255 relationship records (ontology-derived) |
 | Technique embeddings | ~3 MB | 1536-dim vectors (text-embedding-3-small) |
 | Indexes (HNSW + GIN) | ~1 MB | Vector + trigram indexes |
 | **Total D3FEND module** | **~7 MB** | Minimal overhead |
@@ -777,8 +777,8 @@ Using OpenAI `text-embedding-3-small` model:
 
 | Item | Count | Cost per 1M tokens | Total Cost |
 |------|-------|-------------------|------------|
-| Technique embeddings | ~200 | $0.02 | ~$0.04 |
-| **Total (one-time)** | **~200** | - | **~$0.04** |
+| Technique embeddings | 158 | $0.02 | ~$0.03 |
+| **Total (one-time)** | **158** | - | **~$0.03** |
 
 **Quarterly refresh cost:** ~$0.04
 

@@ -8,7 +8,7 @@ The CWE module provides comprehensive access to the MITRE CWE (Common Weakness E
 
 ### Key Features
 
-- **900+ Software Weaknesses** — Comprehensive catalog of software and hardware weakness types
+- **960+ Software Weaknesses** — Comprehensive catalog of software and hardware weakness types
 - **5 Abstraction Levels** — Hierarchical organization (Pillar → Class → Base → Variant → Compound)
 - **External Mappings** — OWASP Top 10, SANS Top 25, and other industry standards
 - **Actionable Intelligence** — Common consequences, mitigations, and detection methods
