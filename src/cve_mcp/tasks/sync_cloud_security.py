@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from cve_mcp.ingest.cloud_security_parser import (
     parse_aws_config_rule,
+    parse_aws_s3_best_practice,
     parse_aws_security_hub_control,
     parse_azure_arm_property,
     parse_azure_policy_definition,
@@ -174,30 +175,112 @@ async def sync_aws_s3_security(
         await _upsert_service(session, s3_service)
         stats["services_synced"] += 1
 
-        # Step 3: Fetch Security Hub controls for S3 from real AWS API
+        # Step 3: Fetch S3 security properties using FREE AWS APIs
+        # Priority: Direct S3 API > IAM Access Analyzer > Security Hub (if enabled)
+        aws_client = get_aws_client(
+            access_key_id=settings.aws_access_key_id,
+            secret_access_key=settings.aws_secret_access_key,
+            region=settings.aws_region,
+        )
+
+        all_properties = []
+
+        # Method 1: Direct S3 API checks (FREE, always available)
         try:
-            aws_client = get_aws_client(
-                access_key_id=settings.aws_access_key_id,
-                secret_access_key=settings.aws_secret_access_key,
-                region=settings.aws_region,
-            )
-            sample_controls = aws_client.list_security_controls(
-                service_name="s3", max_results=100
-            )
+            s3_properties = aws_client.get_s3_security_properties()
             logger.info(
-                "fetched_aws_security_hub_controls",
+                "fetched_s3_best_practices",
                 service="s3",
-                count=len(sample_controls),
+                count=len(s3_properties),
+                source="direct_api",
             )
+            all_properties.extend(s3_properties)
         except Exception as e:
             logger.error(
-                "failed_to_fetch_aws_controls",
+                "failed_to_fetch_s3_properties",
                 service="s3",
                 error=str(e),
                 exc_info=True,
             )
-            # Fall back to empty list - don't fail the entire sync
-            sample_controls = []
+
+        # Method 2: IAM Access Analyzer findings (FREE, optional)
+        try:
+            analyzer_findings = aws_client.get_access_analyzer_findings(
+                resource_type="AWS::S3::Bucket", max_results=50
+            )
+            if analyzer_findings:
+                logger.info(
+                    "fetched_access_analyzer_findings",
+                    service="s3",
+                    count=len(analyzer_findings),
+                )
+                # Convert findings to properties
+                for finding in analyzer_findings:
+                    finding_property = {
+                        "property_id": f"s3-access-analyzer-{finding.get('id', 'unknown')[:8]}",
+                        "property_name": f"IAM Access Analyzer: {finding.get('resourceType', 'Resource')} External Access",
+                        "description": f"Resource shared with external entity. Status: {finding.get('status')}, Resource: {finding.get('resource')}",
+                        "category": "access_control",
+                        "severity": "high" if finding.get('status') == 'ACTIVE' else "medium",
+                        "compliance_frameworks": ["CIS", "PCI-DSS"],
+                        "remediation_url": "https://docs.aws.amazon.com/IAM/latest/UserGuide/access-analyzer-findings.html",
+                    }
+                    all_properties.append(finding_property)
+        except Exception as e:
+            logger.debug(
+                "access_analyzer_not_available",
+                message="Access Analyzer is optional",
+                error=str(e),
+            )
+
+        # Process all properties (from Direct API + Access Analyzer)
+        for property_data in all_properties:
+            parsed = parse_aws_s3_best_practice(property_data, service_name="s3")
+            if not parsed:
+                continue
+
+            # Apply quality gates
+            passes, failures = passes_quality_gates(parsed)
+            if not passes:
+                logger.warning(
+                    "property_failed_quality_gates",
+                    service="aws-s3",
+                    property=parsed.get("property_name"),
+                    failures=failures,
+                )
+                stats["properties_failed_quality"] += 1
+                continue
+
+            # Add service_id
+            parsed["service_id"] = "aws-s3"
+
+            # Check for changes and upsert
+            change_detected = await _upsert_property_with_change_detection(
+                session, parsed, verbose=verbose
+            )
+
+            if change_detected:
+                stats["changes_detected"] += 1
+                stats["properties_updated"] += 1
+            else:
+                stats["properties_synced"] += 1
+
+        # LEGACY: Security Hub controls (if enabled - requires paid service)
+        # This is kept as optional fallback for users who have Security Hub
+        sample_controls = []
+        try:
+            sample_controls = aws_client.list_security_controls(
+                service_name="s3", max_results=100
+            )
+            if sample_controls:
+                logger.info(
+                    "fetched_security_hub_controls",
+                    service="s3",
+                    count=len(sample_controls),
+                    note="Using Security Hub (paid service)",
+                )
+        except Exception:
+            pass  # Security Hub not available - that's fine, we have free data
 
         for control_data in sample_controls:
             parsed = parse_aws_security_hub_control(control_data)

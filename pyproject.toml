@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "threat-intel-mcp"
-version = "1.0.0"
-description = "Threat Intelligence MCP Server - CVE, ATT&CK, threat actors, semantic search"
+version = "1.2.1"
+description = "Threat Intelligence MCP Server - CVE, ATT&CK, Cloud Security, threat actors, semantic search"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.11"

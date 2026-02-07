@@ -161,6 +161,90 @@ def parse_aws_config_rule(raw: dict[str, Any]) -> dict[str, Any] | None:
 # ============================================================================
 
 
+
+def parse_aws_s3_best_practice(
+    raw: dict[str, Any], service_name: str = "s3"
+) -> dict[str, Any] | None:
+    """
+    Parse AWS S3 best practice property from direct API checks.
+    
+    This parser handles security properties derived from:
+    - Direct S3 API calls (GetBucketEncryption, GetPublicAccessBlock, etc.)
+    - IAM Access Analyzer findings
+    - AWS Well-Architected Framework recommendations
+    
+    Args:
+        raw: Best practice property definition
+        service_name: AWS service name (default: s3)
+        
+    Returns:
+        Parsed property dict or None if invalid
+    """
+    property_id = raw.get("property_id")
+    property_name = raw.get("property_name")
+    description = raw.get("description")
+    
+    if not property_id or not property_name or not description:
+        return None
+    
+    # Map severity to standardized levels
+    severity_map = {
+        "critical": "CRITICAL",
+        "high": "HIGH",
+        "medium": "MEDIUM",
+        "low": "LOW",
+    }
+    severity = severity_map.get(raw.get("severity", "medium").lower(), "MEDIUM")
+    
+    # Map category to property type
+    category_to_type = {
+        "encryption": "encryption_at_rest",
+        "access_control": "access_control",
+        "data_protection": "data_protection", 
+        "monitoring": "monitoring_logging",
+        "cost_optimization": "cost_optimization",
+        "resilience": "resilience",
+    }
+    property_type = category_to_type.get(
+        raw.get("category", "access_control"), "access_control"
+    )
+    
+    property_value = {
+        "property_id": property_id,
+        "severity": severity,
+        "category": raw.get("category", "access_control"),
+        "compliance_frameworks": raw.get("compliance_frameworks", []),
+        "remediation_url": raw.get("remediation_url"),
+        "source": "aws_best_practices",
+    }
+    
+    confidence = _calculate_confidence(
+        has_source_quote=True,
+        source_is_authoritative=True,
+        verification_method="scraper_only",  # Direct API = authoritative source
+    )
+    
+    return {
+        "property_type": property_type,
+        "property_name": property_name,
+        "property_value": property_value,
+        "summary": description[:300],
+        "source_url": raw.get("remediation_url", "https://docs.aws.amazon.com/AmazonS3/latest/userguide/"),
+        "source_type": "api",
+        "source_section": f"S3 Best Practice: {property_id}",
+        "source_quote": description,
+        "confidence_score": confidence,
+        "verification_method": "scraper_only",  # Direct API source
+        "verification_metadata": {
+            "source": "AWS API + Well-Architected Framework",
+            "property_id": property_id,
+            "service": service_name,
+        },
+        "extracted_date": datetime.utcnow(),
+        "last_verified": datetime.utcnow(),
+    }
+
+
 def parse_azure_policy_definition(raw: dict[str, Any]) -> dict[str, Any] | None:
     """
     Parse Azure Policy built-in definition to security property format.
