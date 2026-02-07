@@ -82,6 +82,11 @@ class PropertyTypeEnum(str, PyEnum):
     DATA_RESIDENCY = "data_residency"
     BACKUP_RECOVERY = "backup_recovery"
     INCIDENT_RESPONSE = "incident_response"
+    # Added by migration 012 for AWS S3 best practices
+    DATA_PROTECTION = "data_protection"
+    MONITORING_LOGGING = "monitoring_logging"
+    COST_OPTIMIZATION = "cost_optimization"
+    RESILIENCE = "resilience"
 
 
 class VerificationMethodEnum(str, PyEnum):
