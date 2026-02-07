@@ -428,12 +428,15 @@ def parse_gcp_org_policy_constraint(raw: dict[str, Any]) -> dict[str, Any] | Non
         verification_method="scraper_only",
     )
 
+    # Use documentation_url from constraint if available, otherwise use default
+    source_url = raw.get("documentation_url") or "https://cloud.google.com/resource-manager/docs/organization-policy/org-policy-constraints"
+
     return {
         "property_type": property_type,
         "property_name": display_name,
         "property_value": property_value,
         "summary": description[:300] if description else display_name,
-        "source_url": "https://docs.cloud.google.com/storage/docs/org-policy-constraints",
+        "source_url": source_url,
         "source_type": "json",
         "source_section": f"Organization Policy {constraint_name}",
         "source_quote": description or display_name,

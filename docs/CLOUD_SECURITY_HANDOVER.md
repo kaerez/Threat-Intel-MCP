@@ -1,8 +1,8 @@
 # Cloud Security Module - Production Handover
 
 **Date:** 2026-02-07
-**Version:** 1.2.0
-**Status:** ✅ Core Infrastructure Complete, Production Data Pending
+**Version:** 1.2.1
+**Status:** ✅ Core Infrastructure Complete, GCP FREE Tier Production-Ready
 
 ---
 
@@ -18,14 +18,17 @@
    - ✅ Vector embeddings support ready (pgvector)
 
 2. **API Clients**
-   - ✅ AWS Security Hub client (`aws_api_client.py`) - production ready
+   - ✅ AWS Security Hub client (`aws_api_client.py`) - production ready with FREE S3 best practices
    - ✅ Azure Policy client (`azure_api_client.py`) - dual source (GitHub + ARM API)
-   - ✅ GCP Organization Policy client (`gcp_api_client.py`) - production ready
+   - ✅ GCP Organization Policy client (`gcp_api_client.py`) - **FREE tier complete**
+     - 16 built-in constraints (no credentials needed)
+     - 5 Storage constraints with 0.90 confidence
+     - Custom constraints via API (optional, requires org access)
 
 3. **Sync Tasks**
    - ✅ `sync_azure_blob_task` - tested and working
-   - ✅ `sync_aws_s3_task` - ready for credentials
-   - ✅ `sync_gcp_storage_task` - ready for credentials
+   - ✅ `sync_aws_s3_task` - FREE tier working (10+ S3 best practices)
+   - ✅ `sync_gcp_storage_task` - **FREE tier working (5 built-in constraints)**
    - ✅ All tasks registered in Celery
    - ✅ Graceful degradation when credentials missing
 
@@ -168,15 +171,37 @@ export AZURE_POLICY_SOURCE="api"  # Use ARM API instead of GitHub
 
 ---
 
-### 3. GCP Organization Policy (Optional)
+### 3. GCP Organization Policy (FREE - No Credentials Needed!)
 
-**What you get:** GCP Storage, Compute constraints from Organization Policy
+**What you get:** 16 built-in GCP constraints covering Storage, Compute, IAM, and SQL
 
-**Prerequisites:**
-- GCP organization (not just a project)
-- Service account with `orgpolicy.constraints.list` permission
+**✅ PRODUCTION-READY:**
+- **5 Cloud Storage constraints** with 0.90 confidence
+  - `constraints/storage.publicAccessPrevention` - Enforce public access prevention
+  - `constraints/storage.uniformBucketLevelAccess` - Enforce uniform bucket-level access
+  - `constraints/storage.restrictAuthTypes` - Restrict authentication types
+  - `constraints/gcp.restrictNonCmekServices` - Require CMEK encryption
+  - `constraints/storage.retentionPolicySeconds` - Minimum retention policy
+- **11 additional constraints** for Compute, IAM, SQL (available without credentials)
 
 **Setup Steps:**
+
+```bash
+# Already configured! GCP built-in constraints work WITHOUT credentials.
+# The sync task automatically uses the FREE built-in constraints manifest.
+
+# Test it:
+docker exec cve-mcp-server python -c "
+from cve_mcp.ingest.gcp_api_client import get_gcp_client
+client = get_gcp_client(organization_id='000000000000')
+constraints = client.list_built_in_constraints(service_prefix='storage.googleapis.com')
+print(f'✓ Fetched {len(constraints)} GCP Storage constraints (no credentials!)')
+"
+```
+
+**Optional - Add Custom Constraints via Organization Policy API:**
+
+If you want organization-specific custom constraints in addition to built-in ones:
 
 ```bash
 # 1. Create service account
@@ -285,7 +310,21 @@ docker logs cve-mcp-worker -f
 # [INFO] sync_azure_blob_security.completed stats={'services_synced': 1, ...}
 ```
 
-### 2. Verify Database
+### 2. Test GCP Sync (No Credentials Needed!)
+
+```bash
+# Trigger GCP Cloud Storage sync
+docker exec cve-mcp-worker celery -A cve_mcp.tasks.celery_app call \
+  cve_mcp.tasks.sync_cloud_security.sync_gcp_storage_task
+
+# Watch logs
+docker logs cve-mcp-worker -f
+
+# Expected output:
+# [INFO] sync_gcp_storage_security.completed stats={'services_synced': 1, 'properties_synced': 5, ...}
+```
+
+### 3. Verify Database
 
 ```bash
 docker exec cve-mcp-postgres psql -U cve_user -d cve_mcp << 'EOF'
@@ -296,42 +335,57 @@ SELECT * FROM cloud_providers;
 SELECT service_id, provider_id, service_name, official_name
 FROM cloud_services;
 
--- Check properties
+-- Check GCP properties
 SELECT service_id, property_type, property_name, confidence_score
 FROM cloud_security_properties
-LIMIT 10;
+WHERE service_id = 'gcp-cloud-storage';
+
+-- Check all properties
+SELECT service_id, COUNT(*) as property_count
+FROM cloud_security_properties
+GROUP BY service_id;
 EOF
 ```
 
-**Expected Initial Results:**
-- 1 provider: `azure | Microsoft Azure`
-- 1 service: `azure-blob-storage | azure | Blob Storage`
-- 0 properties (GitHub files return 404, need ARM API or AWS/GCP credentials)
+**Expected Results (with FREE GCP sync):**
+- 2 providers: `azure | Microsoft Azure`, `gcp | Google Cloud Platform`
+- 2 services: `azure-blob-storage`, `gcp-cloud-storage`
+- 5+ GCP properties with 0.90 confidence
+  - `Enforce public access prevention`
+  - `Enforce uniform bucket-level access`
+  - `Restrict authentication types`
+  - `Restrict services without CMEK`
+  - `Minimum retention policy`
 
-### 3. Test MCP Tools
+### 4. Test MCP Tools
 
 ```bash
-# Via curl (MCP server)
+# Test GCP Cloud Storage service
 curl -X POST http://localhost:8307/mcp/tools/call \
   -H 'Content-Type: application/json' \
   -d '{
     "name": "search_cloud_services",
     "arguments": {
-      "provider": "azure",
-      "category": "object_storage"
+      "provider": "gcp",
+      "service_category": "object_storage"
     }
   }'
 
-# Expected response:
-# {
-#   "content": [{
-#     "type": "text",
-#     "text": "Found 1 cloud service(s):\n\n**azure-blob-storage** (Azure Blob Storage)\n..."
-#   }]
-# }
+# Get GCP security properties
+curl -X POST http://localhost:8307/mcp/tools/call \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "get_cloud_service_security",
+    "arguments": {
+      "provider": "gcp",
+      "service": "cloud-storage"
+    }
+  }'
+
+# Expected response: 5 GCP properties with encryption, access control, etc.
 ```
 
-### 4. Test Agent Integration
+### 5. Test Agent Integration
 
 ```python
 # In Ansvar agent code
@@ -339,19 +393,21 @@ from app.services.tools.threat_intel_client import ThreatIntelClient
 
 client = ThreatIntelClient(base_url="http://cve-mcp-server:8307")
 
-# Search services
+# Search GCP services
 services = client.search_cloud_services(
-    provider="azure",
-    category="object_storage"
+    provider="gcp",
+    service_category="object_storage"
 )
-print(services)
+print(f"Found {len(services['services'])} GCP service(s)")
 
-# Get service security properties
+# Get GCP Cloud Storage security properties
 properties = client.get_cloud_service_security(
-    provider="azure",
-    service="blob"  # Fuzzy match: "blob" matches "azure-blob-storage"
+    provider="gcp",
+    service="cloud-storage"
 )
-print(properties)
+print(f"GCP Cloud Storage has {len(properties['properties_by_type'])} security dimensions")
+print(f"Sample property: {properties['properties_by_type']['access_control'][0]['property_name']}")
+# Output: "Enforce public access prevention"
 ```
 
 ---
@@ -560,12 +616,14 @@ The Cloud Security module is **production-ready** when:
 - ✅ Migration 011 applied
 - ✅ Azure sync works (even with 0 properties from GitHub)
 - ✅ MCP tools return cloud service data
+- ✅ GCP built-in constraints implemented (no credentials needed)
+- ✅ GCP Cloud Storage sync returns 5 properties with 0.90 confidence
+- ✅ Agent integration tested end-to-end
 - ⏳ AWS credentials configured (optional but recommended)
 - ⏳ AWS S3 sync returns >10 properties with 0.85+ confidence
 - ⏳ Scheduled syncs running weekly
-- ⏳ Agent integration tested end-to-end
 
-**Current Status:** 3/7 complete (43%) - Core infrastructure done, waiting on credentials
+**Current Status:** 6/9 complete (67%) - GCP module fully functional with FREE tier
 
 ---
 

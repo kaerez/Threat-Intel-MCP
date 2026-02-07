@@ -546,28 +546,10 @@ async def sync_gcp_storage_security(
     try:
         logger.info("sync_gcp_storage_security.started")
 
-        # Check if GCP credentials are configured
+        # Check if GCP is enabled
+        # Note: Built-in constraints work without credentials, so we don't skip
+        # even if gcp_organization_id is not configured
         settings = get_settings()
-        if not settings.gcp_organization_id or not settings.gcp_org_policy_enabled:
-            logger.info(
-                "sync_gcp_storage_security.skipped",
-                reason="GCP credentials not configured or Organization Policy not enabled",
-            )
-            await _update_sync_metadata(
-                session,
-                source="cloud_security_gcp_storage",
-                status="skipped",
-                records=0,
-                duration=0.0,
-                error_message="GCP credentials not configured",
-            )
-            return {
-                "services_synced": 0,
-                "properties_synced": 0,
-                "properties_updated": 0,
-                "properties_failed_quality": 0,
-                "changes_detected": 0,
-            }
 
         # Ensure provider exists
         await _ensure_provider_exists(session, "gcp")
@@ -586,28 +568,51 @@ async def sync_gcp_storage_security(
         stats["services_synced"] += 1
 
         # Fetch Org Policy constraints from real GCP API
+        all_constraints = []
+
+        # Method 1: Built-in constraints (FREE, always available)
         try:
             gcp_client = get_gcp_client(
-                organization_id=settings.gcp_organization_id,
+                organization_id=settings.gcp_organization_id or "000000000000",  # Dummy org for built-in constraints
                 credentials_path=settings.google_application_credentials,
             )
-            sample_constraints = gcp_client.list_constraints(
+            built_in_constraints = gcp_client.list_built_in_constraints(
                 service_prefix="storage.googleapis.com"
             )
             logger.info(
-                "fetched_gcp_org_policy_constraints",
+                "fetched_gcp_built_in_constraints",
                 service="storage.googleapis.com",
-                count=len(sample_constraints),
+                count=len(built_in_constraints),
+                source="curated_manifest",
             )
+            all_constraints.extend(built_in_constraints)
         except Exception as e:
             logger.error(
-                "failed_to_fetch_gcp_constraints",
-                service="storage.googleapis.com",
+                "failed_to_fetch_gcp_built_in_constraints",
                 error=str(e),
                 exc_info=True,
             )
-            # Fall back to empty list
-            sample_constraints = []
+
+        # Method 2: Custom constraints (requires Organization Policy API access)
+        if settings.gcp_organization_id:
+            try:
+                custom_constraints = gcp_client.list_constraints(
+                    service_prefix="storage.googleapis.com"
+                )
+                logger.info(
+                    "fetched_gcp_custom_constraints",
+                    service="storage.googleapis.com",
+                    count=len(custom_constraints),
+                )
+                all_constraints.extend(custom_constraints)
+            except Exception as e:
+                logger.debug(
+                    "custom_constraints_not_available",
+                    message="Organization Policy API not available (optional)",
+                    error=str(e),
+                )
+
+        sample_constraints = all_constraints
 
         for constraint_data in sample_constraints:
             parsed = parse_gcp_org_policy_constraint(constraint_data)

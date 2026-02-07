@@ -533,6 +533,187 @@ async def test_gcp_public_documentation_accessible():
     print("\n✓ Public documentation test passed")
 
 
+@pytest.mark.asyncio
+async def test_gcp_built_in_constraints_no_credentials():
+    """
+    Test GCP built-in constraints work WITHOUT credentials.
+
+    This test verifies:
+    - Built-in constraints are available without GCP credentials
+    - list_built_in_constraints returns a curated manifest
+    - Storage constraints are included in the manifest
+    - All constraints have required fields
+
+    This is the FREE tier functionality that works for everyone.
+    """
+    print("\n" + "=" * 70)
+    print("Testing GCP Built-in Constraints (NO credentials needed)")
+    print("=" * 70)
+
+    from cve_mcp.ingest.gcp_api_client import get_gcp_client
+
+    # Create client with dummy org ID (doesn't need to be real for built-in constraints)
+    client = get_gcp_client(organization_id="000000000000")
+
+    # Fetch built-in constraints
+    constraints = client.list_built_in_constraints(service_prefix="storage.googleapis.com")
+
+    print(f"\nFetched {len(constraints)} built-in Storage constraints")
+
+    # Verify we got constraints
+    assert len(constraints) > 0, "Should have built-in Storage constraints"
+    assert len(constraints) >= 5, f"Expected at least 5 Storage constraints, got {len(constraints)}"
+
+    # Check for key constraints
+    constraint_names = {c.get("name") for c in constraints}
+    expected_constraints = {
+        "constraints/storage.publicAccessPrevention",
+        "constraints/storage.uniformBucketLevelAccess",
+    }
+
+    for expected in expected_constraints:
+        assert expected in constraint_names, f"Missing critical constraint: {expected}"
+        print(f"  ✓ Found: {expected}")
+
+    # Verify structure of each constraint
+    for constraint in constraints:
+        name = constraint.get("name", "")
+        display_name = constraint.get("displayName", "")
+        description = constraint.get("description", "")
+
+        # Required fields
+        assert name, "Constraint must have name"
+        assert display_name, "Constraint must have displayName"
+        assert description, "Constraint must have description"
+        assert constraint.get("constraintType"), "Constraint must have constraintType"
+
+        # Optional but expected fields
+        assert constraint.get("resource_types"), "Constraint should have resource_types"
+        assert "storage.googleapis.com" in str(constraint.get("resource_types")), \
+            f"Storage constraint should reference storage.googleapis.com: {name}"
+
+        print(f"\n  {name}")
+        print(f"    Type: {constraint.get('constraintType')}")
+        print(f"    Resources: {constraint.get('resource_types')}")
+
+    print("\n✓ Built-in constraints test passed (NO credentials needed!)")
+    print("=" * 70)
+
+
+@pytest.mark.asyncio
+async def test_gcp_end_to_end_agent_query():
+    """
+    End-to-end test: GCP constraints -> parser -> database simulation.
+
+    This test verifies the complete integration flow:
+    1. Fetch built-in constraints (no credentials)
+    2. Parse constraints using cloud_security_parser
+    3. Validate quality gates
+    4. Verify agent can query the data
+
+    This simulates what would happen when an agent queries GCP Cloud Storage security.
+    """
+    print("\n" + "=" * 70)
+    print("End-to-End Test: GCP Constraints → Parser → Agent Query")
+    print("=" * 70)
+
+    from cve_mcp.ingest.gcp_api_client import get_gcp_client
+    from cve_mcp.ingest.cloud_security_parser import parse_gcp_org_policy_constraint
+
+    # Step 1: Fetch built-in constraints
+    client = get_gcp_client(organization_id="000000000000")
+    raw_constraints = client.list_built_in_constraints(service_prefix="storage.googleapis.com")
+
+    print(f"\nStep 1: Fetched {len(raw_constraints)} raw constraints")
+    assert len(raw_constraints) > 0, "Should fetch constraints"
+
+    # Step 2: Parse constraints
+    parsed_properties = []
+    parse_failures = []
+
+    for raw in raw_constraints:
+        parsed = parse_gcp_org_policy_constraint(raw)
+        if parsed:
+            parsed_properties.append(parsed)
+        else:
+            parse_failures.append(raw.get("name", "unknown"))
+
+    print(f"Step 2: Parsed {len(parsed_properties)} constraints")
+    print(f"  Parse failures: {len(parse_failures)}")
+    if parse_failures:
+        print(f"  Failed: {parse_failures}")
+
+    assert len(parsed_properties) > 0, "Should successfully parse at least one constraint"
+    assert len(parse_failures) == 0, f"All constraints should parse successfully, but {len(parse_failures)} failed"
+
+    # Step 3: Validate quality gates
+    quality_passed = 0
+    quality_failed = []
+
+    for prop in parsed_properties:
+        # Check required fields for quality
+        has_source_quote = bool(prop.get("source_quote"))
+        has_source_url = bool(prop.get("source_url"))
+        confidence = prop.get("confidence_score", 0.0)
+        has_property_value = bool(prop.get("property_value"))
+        has_property_name = bool(prop.get("property_name"))
+
+        if all([has_source_quote, has_source_url, confidence >= 0.70, has_property_value, has_property_name]):
+            quality_passed += 1
+        else:
+            quality_failed.append({
+                "name": prop.get("property_name"),
+                "failures": [
+                    "source_quote" if not has_source_quote else None,
+                    "source_url" if not has_source_url else None,
+                    f"confidence={confidence:.2f}" if confidence < 0.70 else None,
+                    "property_value" if not has_property_value else None,
+                    "property_name" if not has_property_name else None,
+                ],
+            })
+
+    print(f"Step 3: Quality gates - {quality_passed} passed, {len(quality_failed)} failed")
+    if quality_failed:
+        for failure in quality_failed:
+            print(f"  ✗ {failure['name']}: {[f for f in failure['failures'] if f]}")
+
+    assert quality_passed == len(parsed_properties), \
+        f"All {len(parsed_properties)} properties should pass quality gates, but {len(quality_failed)} failed"
+
+    # Step 4: Simulate agent query
+    print(f"\nStep 4: Simulating agent query...")
+
+    # Agent asks: "What are the security properties for GCP Cloud Storage?"
+    # Response should include parsed properties
+
+    # Find public access prevention property
+    public_access_prop = next(
+        (p for p in parsed_properties if "publicAccessPrevention" in p.get("property_value", {}).get("constraint_name", "")),
+        None
+    )
+
+    assert public_access_prop, "Should have public access prevention property"
+    print(f"\n  Agent Query Result:")
+    print(f"  Property: {public_access_prop['property_name']}")
+    print(f"  Type: {public_access_prop['property_type']}")
+    print(f"  Summary: {public_access_prop['summary'][:100]}...")
+    print(f"  Confidence: {public_access_prop['confidence_score']:.2f}")
+    print(f"  Source: {public_access_prop['source_url']}")
+
+    # Verify agent-friendly fields
+    assert public_access_prop.get("property_name"), "Should have property_name for agent"
+    assert public_access_prop.get("summary"), "Should have summary for agent"
+    assert public_access_prop.get("source_url"), "Should have source_url for agent"
+    assert public_access_prop.get("confidence_score") >= 0.70, "Should have high confidence"
+
+    print("\n✓ End-to-end test passed!")
+    print("  ✓ Constraints fetched (no credentials)")
+    print("  ✓ All constraints parsed successfully")
+    print("  ✓ All properties pass quality gates")
+    print("  ✓ Agent can query GCP Cloud Storage security")
+    print("=" * 70)
+
+
 # ============================================================================
 # Helper: Manual Test Runner
 # ============================================================================
@@ -583,6 +764,8 @@ if __name__ == "__main__":
 
         public_tests = [
             test_gcp_public_documentation_accessible,
+            test_gcp_built_in_constraints_no_credentials,
+            test_gcp_end_to_end_agent_query,
         ]
 
         for test_func in public_tests:
