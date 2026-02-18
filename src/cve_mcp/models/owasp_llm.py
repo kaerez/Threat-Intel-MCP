@@ -23,7 +23,7 @@ class OwaspLlmTop10(Base):
     example_attack_scenarios: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
     related_techniques: Mapped[dict | None] = mapped_column(JSONB)
     url: Mapped[str | None] = mapped_column(String(500))
-    version: Mapped[str | None] = mapped_column(String(20), default="1.1")
+    version: Mapped[str | None] = mapped_column(String(20), server_default="1.1")
     data_last_updated: Mapped[datetime | None] = mapped_column(
         DateTime, server_default="NOW()"
     )
