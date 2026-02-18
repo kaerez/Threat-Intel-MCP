@@ -108,7 +108,7 @@ async def search_weaknesses(
     _query_terms = []
     if query:
         # Split multi-word queries into individual terms and match ANY term.
-        _query_terms = [t.strip() for t in query.split() if len(t.strip()) >= 3]
+        _query_terms = [t.strip() for t in query.split() if t.strip()]
         if _query_terms:
             term_filters = []
             for term in _query_terms:

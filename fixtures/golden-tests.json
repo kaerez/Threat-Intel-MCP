@@ -505,7 +505,8 @@
           "input": {"limit": 10},
           "expect": {
             "has_data_key": true,
-            "has_metadata_key": true
+            "has_metadata_key": true,
+            "data_has": ["vulnerabilities", "total_results", "returned_results"]
           }
         },
         {
@@ -513,7 +514,8 @@
           "input": {"query": "prompt injection", "limit": 5},
           "expect": {
             "has_data_key": true,
-            "has_metadata_key": true
+            "has_metadata_key": true,
+            "data_has": ["vulnerabilities", "total_results", "returned_results"]
           }
         },
         {
@@ -521,7 +523,8 @@
           "input": {"llm_ids": ["LLM01", "LLM02"]},
           "expect": {
             "has_data_key": true,
-            "has_metadata_key": true
+            "has_metadata_key": true,
+            "data_has": ["vulnerabilities", "total_results", "returned_results"]
           }
         }
       ]
@@ -1146,7 +1149,7 @@
     },
     {
       "description": "Search tools return paginated results",
-      "applies_to": ["search_cve", "search_techniques", "search_threat_actors", "search_atlas_techniques", "search_atlas_case_studies", "search_capec_patterns", "search_capec_mitigations", "search_cwe_weaknesses", "search_defenses", "search_cloud_services"],
+      "applies_to": ["search_cve", "search_techniques", "search_threat_actors", "search_atlas_techniques", "search_atlas_case_studies", "search_capec_patterns", "search_capec_mitigations", "search_cwe_weaknesses", "search_defenses", "search_cloud_services", "search_owasp_llm_vulnerabilities"],
       "expected_data_keys": ["total_results"]
     },
     {

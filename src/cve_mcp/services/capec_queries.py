@@ -69,7 +69,7 @@ async def search_patterns(
             CAPECPattern.description_vector.op("@@")(ts_query),
             CAPECPattern.name.ilike(f"%{escape_like(query)}%"),
         )
-        terms = [t.strip() for t in query.split() if len(t.strip()) >= 3]
+        terms = [t.strip() for t in query.split() if t.strip()]
         if terms:
             for term in terms:
                 search_filter = or_(search_filter, CAPECPattern.name.ilike(f"%{escape_like(term)}%"))
@@ -296,7 +296,7 @@ async def search_mitigations(
 
     if query:
         # Split multi-word queries into individual terms and match ANY term.
-        terms = [t.strip() for t in query.split() if len(t.strip()) >= 3]
+        terms = [t.strip() for t in query.split() if t.strip()]
         if terms:
             term_filters = []
             for term in terms:

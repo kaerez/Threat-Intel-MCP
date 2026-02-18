@@ -67,7 +67,7 @@ async def search_techniques(
             AttackTechnique.name.ilike(f"%{escape_like(query)}%"),
         )
         # Also match individual terms in name (tsvector doesn't cover name)
-        terms = [t.strip() for t in query.split() if len(t.strip()) >= 3]
+        terms = [t.strip() for t in query.split() if t.strip()]
         if terms:
             for term in terms:
                 search_filter = or_(search_filter, AttackTechnique.name.ilike(f"%{escape_like(term)}%"))
@@ -207,7 +207,7 @@ async def search_threat_actors(
 
     if query:
         # Split multi-word queries into individual terms and match ANY term.
-        terms = [t.strip() for t in query.split() if len(t.strip()) >= 3]
+        terms = [t.strip() for t in query.split() if t.strip()]
         if terms:
             term_filters = []
             for term in terms:

@@ -61,7 +61,7 @@ async def search_techniques(
 
     if query:
         # Split multi-word queries into individual terms and match ANY term.
-        terms = [t.strip() for t in query.split() if len(t.strip()) >= 3]
+        terms = [t.strip() for t in query.split() if t.strip()]
         if terms:
             term_filters = []
             for term in terms:
@@ -259,7 +259,7 @@ async def search_case_studies(
 
     if query:
         # Split multi-word queries into individual terms and match ANY term.
-        terms = [t.strip() for t in query.split() if len(t.strip()) >= 3]
+        terms = [t.strip() for t in query.split() if t.strip()]
         if terms:
             term_filters = []
             for term in terms:

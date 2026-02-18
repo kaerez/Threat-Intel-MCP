@@ -99,7 +99,7 @@ async def search_defenses(
     # Keyword search on name, description, and synonyms
     if query:
         # Split multi-word queries into individual terms and match ANY term.
-        terms = [t.strip() for t in query.split() if len(t.strip()) >= 3]
+        terms = [t.strip() for t in query.split() if t.strip()]
         if terms:
             term_filters = []
             for term in terms:
