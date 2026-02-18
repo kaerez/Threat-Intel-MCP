@@ -1,10 +1,12 @@
 """MCP server implementation using official Python SDK."""
 
+import json
 from typing import Any
 
 import structlog
 from mcp.server import Server
 from mcp.types import TextContent, Tool
+from pydantic import ValidationError
 
 from cve_mcp.api.tools import MCP_TOOLS, TOOL_HANDLERS
 from cve_mcp.config import PROJECT_NAME
@@ -43,7 +45,7 @@ def create_mcp_server() -> MCPServerWrapper:
     Create and configure an MCP server instance.
 
     This function creates an MCP server using the official Python SDK and
-    registers all 41 tool handlers. The tools are defined in cve_mcp.api.tools
+    registers all 43 tool handlers. The tools are defined in cve_mcp.api.tools
     and this function acts as a thin adapter layer.
 
     Returns:
@@ -113,23 +115,55 @@ def create_mcp_server() -> MCPServerWrapper:
             raise ValueError(f"Tool not registered: {name}")
 
         try:
-            # Call the existing handler (unchanged business logic)
             result = await handler(arguments)
-
-            # Convert result to MCP TextContent format
-            # The existing handlers return dict[str, Any] which we serialize as JSON
-            import json
-
             result_text = json.dumps(result, indent=2, default=str)
-
             logger.debug("Tool call succeeded", tool=name, result_size=len(result_text))
-
             return [TextContent(type="text", text=result_text)]
 
+        except ValidationError as e:
+            # Pydantic validation - give agents clear field-level feedback
+            error_details = []
+            for err in e.errors():
+                loc = " -> ".join(str(l) for l in err["loc"])
+                error_details.append(f"  {loc}: {err['msg']}")
+            error_msg = json.dumps({
+                "error": "validation_error",
+                "tool": name,
+                "message": f"Invalid arguments for {name}",
+                "field_errors": error_details,
+                "hint": f"Check the tool schema: list_tools() -> {name}"
+            }, indent=2)
+            logger.warning("Tool validation failed", tool=name, errors=error_details)
+            return [TextContent(type="text", text=error_msg)]
+
+        except ConnectionError as e:
+            error_msg = json.dumps({
+                "error": "connection_error",
+                "tool": name,
+                "message": "Database or cache connection failed",
+                "hint": "Check that PostgreSQL and Redis are running. Try get_data_freshness to verify connectivity."
+            }, indent=2)
+            logger.error("Connection error", tool=name, error=str(e))
+            return [TextContent(type="text", text=error_msg)]
+
+        except ValueError as e:
+            error_msg = json.dumps({
+                "error": "value_error",
+                "tool": name,
+                "message": str(e),
+                "hint": "Check input values against the tool schema."
+            }, indent=2)
+            logger.warning("Value error", tool=name, error=str(e))
+            return [TextContent(type="text", text=error_msg)]
+
         except Exception as e:
+            error_msg = json.dumps({
+                "error": "internal_error",
+                "tool": name,
+                "message": f"Unexpected error: {type(e).__name__}: {str(e)}",
+                "hint": "This may be a server bug. Try get_data_freshness to check server health."
+            }, indent=2)
             logger.error("Tool call failed", tool=name, error=str(e), exc_info=True)
-            # Return error as text content (MCP protocol)
-            error_msg = f"Error calling tool {name}: {str(e)}"
             return [TextContent(type="text", text=error_msg)]
 
     # Store handler for direct access

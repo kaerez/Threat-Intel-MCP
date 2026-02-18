@@ -30,6 +30,7 @@ from cve_mcp.api.schemas import (
     GetEPSSScoreRequest,
     GetExploitsRequest,
     GetGroupProfileRequest,
+    GetOwaspLlmVulnerabilityRequest,
     GetSharedResponsibilityRequest,
     GetTechniqueBadgesRequest,
     GetTechniqueDetailsRequest,
@@ -44,6 +45,7 @@ from cve_mcp.api.schemas import (
     SearchCVERequest,
     SearchCWEWeaknessesRequest,
     SearchDefensesRequest,
+    SearchOwaspLlmVulnerabilitiesRequest,
     SearchTechniquesRequest,
     SearchThreatActorsRequest,
 )
@@ -55,6 +57,7 @@ from cve_mcp.services import (
     cloud_security_queries,
     cwe_queries,
     d3fend_queries,
+    owasp_llm_queries,
 )
 from cve_mcp.services.cache import cache_service
 from cve_mcp.services.database import db_service
@@ -630,6 +633,50 @@ MCP_TOOLS: list[MCPToolDefinition] = [
                     "maximum": 100,
                     "default": 10,
                     "description": "Max results",
+                },
+            },
+        },
+    ),
+    # OWASP LLM Top 10 Tools
+    MCPToolDefinition(
+        name="search_owasp_llm_vulnerabilities",
+        description="Search OWASP LLM Top 10 vulnerabilities for Large Language Model applications. Returns vulnerability details including common examples, prevention strategies, attack scenarios, and cross-references to ATLAS, CWE, and CAPEC. Version 1.1 (2023).",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Full-text search in vulnerability name/description (e.g., 'prompt injection', 'model theft')",
+                },
+                "llm_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "pattern": "^LLM\\d{2}$",
+                    },
+                    "description": "Filter by specific LLM IDs (e.g., ['LLM01', 'LLM02'])",
+                },
+                "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 50,
+                    "default": 10,
+                    "description": "Max results",
+                },
+            },
+        },
+    ),
+    MCPToolDefinition(
+        name="get_owasp_llm_vulnerability",
+        description="Get complete details for a specific OWASP LLM Top 10 vulnerability including common examples, prevention strategies, example attack scenarios, and related techniques (ATLAS, CWE, CAPEC).",
+        inputSchema={
+            "type": "object",
+            "required": ["llm_id"],
+            "properties": {
+                "llm_id": {
+                    "type": "string",
+                    "pattern": "^LLM\\d{2}$",
+                    "description": "OWASP LLM Top 10 ID (e.g., LLM01 for Prompt Injection, LLM10 for Model Theft)",
                 },
             },
         },
@@ -1767,6 +1814,52 @@ async def handle_find_similar_atlas_case_studies(params: dict[str, Any]) -> dict
     }
 
 
+# OWASP LLM Top 10 Tool Handlers
+
+
+async def handle_search_owasp_llm_vulnerabilities(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle search_owasp_llm_vulnerabilities tool call."""
+    start_time = time.time()
+    request = SearchOwaspLlmVulnerabilitiesRequest(**params)
+
+    async with db_service.session() as session:
+        vulnerabilities = await owasp_llm_queries.search_owasp_llm_vulnerabilities(
+            session,
+            query=request.query,
+            llm_ids=request.llm_ids,
+            limit=request.limit,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": {
+            "vulnerabilities": vulnerabilities,
+            "returned_results": len(vulnerabilities),
+        },
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
+async def handle_get_owasp_llm_vulnerability(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle get_owasp_llm_vulnerability tool call."""
+    start_time = time.time()
+    request = GetOwaspLlmVulnerabilityRequest(**params)
+
+    async with db_service.session() as session:
+        data = await owasp_llm_queries.get_owasp_llm_vulnerability(
+            session,
+            llm_id=request.llm_id,
+        )
+
+    query_time_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "data": data,
+        "metadata": await _get_metadata(query_time_ms),
+    }
+
+
 # CAPEC Tool Handlers
 
 
@@ -2356,6 +2449,9 @@ TOOL_HANDLERS = {
     "get_atlas_technique_details": handle_get_atlas_technique_details,
     "search_atlas_case_studies": handle_search_atlas_case_studies,
     "find_similar_atlas_case_studies": handle_find_similar_atlas_case_studies,
+    # OWASP LLM Top 10 handlers
+    "search_owasp_llm_vulnerabilities": handle_search_owasp_llm_vulnerabilities,
+    "get_owasp_llm_vulnerability": handle_get_owasp_llm_vulnerability,
     # CAPEC handlers
     "search_capec_patterns": handle_search_capec_patterns,
     "find_similar_capec_patterns": handle_find_similar_capec_patterns,

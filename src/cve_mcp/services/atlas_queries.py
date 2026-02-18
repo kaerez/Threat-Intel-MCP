@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from cve_mcp.models.atlas import ATLASCaseStudy, ATLASTechnique
 from cve_mcp.services.embeddings import generate_embedding
+from cve_mcp.utils import escape_like
 
 
 async def search_techniques(
@@ -59,12 +60,14 @@ async def search_techniques(
         filters.append(ATLASTechnique.ai_system_type.overlap(ai_system_type))
 
     if query:
-        # Full-text search on name and description using ILIKE
-        search_filter = or_(
-            ATLASTechnique.name.ilike(f"%{query}%"),
-            ATLASTechnique.description.ilike(f"%{query}%"),
-        )
-        filters.append(search_filter)
+        # Split multi-word queries into individual terms and match ANY term.
+        terms = [t.strip() for t in query.split() if len(t.strip()) >= 3]
+        if terms:
+            term_filters = []
+            for term in terms:
+                term_filters.append(ATLASTechnique.name.ilike(f"%{escape_like(term)}%"))
+                term_filters.append(ATLASTechnique.description.ilike(f"%{escape_like(term)}%"))
+            filters.append(or_(*term_filters))
 
     if filters:
         stmt = stmt.where(and_(*filters))
@@ -255,12 +258,14 @@ async def search_case_studies(
         filters.append(ATLASCaseStudy.techniques_used.overlap(techniques))
 
     if query:
-        # Full-text search on name and summary
-        search_filter = or_(
-            ATLASCaseStudy.name.ilike(f"%{query}%"),
-            ATLASCaseStudy.summary.ilike(f"%{query}%"),
-        )
-        filters.append(search_filter)
+        # Split multi-word queries into individual terms and match ANY term.
+        terms = [t.strip() for t in query.split() if len(t.strip()) >= 3]
+        if terms:
+            term_filters = []
+            for term in terms:
+                term_filters.append(ATLASCaseStudy.name.ilike(f"%{escape_like(term)}%"))
+                term_filters.append(ATLASCaseStudy.summary.ilike(f"%{escape_like(term)}%"))
+            filters.append(or_(*term_filters))
 
     if filters:
         stmt = stmt.where(and_(*filters))

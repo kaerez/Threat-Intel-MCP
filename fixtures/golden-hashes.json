@@ -1,0 +1,54 @@
+{
+  "$schema": "golden-hashes-v1",
+  "description": "SHA-256 hashes of critical files for drift detection. Regenerate after intentional changes.",
+  "generated": "2026-02-17T00:00:00Z",
+  "version": "1.4.0",
+  "how_to_regenerate": "shasum -a 256 <file> or sha256sum <file>",
+  "files": {
+    "src/cve_mcp/api/tools.py": {
+      "sha256": "1a50cc8328da075111c5beb2889f2449eb258f3e99164438d409091bd5929344",
+      "description": "MCP tool definitions and handlers (43 tools)",
+      "drift_impact": "critical - tool schema changes break MCP clients"
+    },
+    "src/cve_mcp/api/schemas.py": {
+      "sha256": "5f70f33f4d9c3f5e05b13b98c1004d3831a918a65a294ea7e8008518d9747433",
+      "description": "Pydantic request/response validation schemas",
+      "drift_impact": "high - schema changes affect input validation"
+    },
+    "src/cve_mcp/mcp/server.py": {
+      "sha256": "f8ba1b1460916ccfac9c5d09c16831f198134a68b8aa7552baac4eed9988d3b0",
+      "description": "MCP server wrapper with error handling",
+      "drift_impact": "critical - changes affect all tool execution"
+    },
+    "src/cve_mcp/mcp/transports.py": {
+      "sha256": "5f841a621773bc9e715ba4a9a674cf77331314812987e574ba84e06471ad3b1a",
+      "description": "MCP transport implementations (stdio, streamable HTTP)",
+      "drift_impact": "critical - transport changes break client connectivity"
+    },
+    "src/cve_mcp/api/app.py": {
+      "sha256": "923951e2094e3eea5cab83c29202939367e27b58311c575d3dbd363d599d734e",
+      "description": "FastAPI HTTP wrapper with health endpoint",
+      "drift_impact": "high - HTTP API contract"
+    },
+    "src/cve_mcp/config.py": {
+      "sha256": "b3c80beb4e54a81e849e73257c943faa98f36de342195fdfa1017a90618c3813",
+      "description": "Configuration settings and environment variables",
+      "drift_impact": "medium - config changes may require env updates"
+    },
+    "src/cve_mcp/main.py": {
+      "sha256": "eee5218610b4b3cb741b4b3c03e3f9f846723e878bd698464db30596b75947f3",
+      "description": "Entry point with mode selection (stdio/http/mcp-http/both)",
+      "drift_impact": "medium - CLI interface changes"
+    },
+    "manifest.json": {
+      "sha256": "fed4c1e4bbcec48dc9d9798ec78b189bdb2d318a74cea87ad928271165e4ffda",
+      "description": "MCP bundle manifest for package distribution",
+      "drift_impact": "medium - affects MCP client auto-discovery"
+    },
+    "sources.yml": {
+      "sha256": "36e4398c339dfbe3cde257b2110c818fdb9bb0014370b218dca802dcc26ccdaa",
+      "description": "Upstream data source provenance documentation",
+      "drift_impact": "low - documentation only"
+    }
+  }
+}

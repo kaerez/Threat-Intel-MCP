@@ -1,0 +1,1174 @@
+{
+  "$schema": "golden-tests-v1",
+  "description": "Golden contract tests for Threat Intelligence MCP Server v1.4.0",
+  "generated": "2026-02-18T00:00:00Z",
+  "server": {
+    "name": "threat-intel-mcp",
+    "version": "1.4.0",
+    "expected_tool_count": 43
+  },
+  "tool_existence": [
+    "search_cve",
+    "get_cve_details",
+    "check_kev_status",
+    "get_epss_score",
+    "search_by_product",
+    "get_exploits",
+    "get_cwe_details",
+    "batch_search",
+    "search_techniques",
+    "find_similar_techniques",
+    "get_technique_details",
+    "get_technique_badges",
+    "search_threat_actors",
+    "find_similar_threat_actors",
+    "get_group_profile",
+    "search_atlas_techniques",
+    "find_similar_atlas_techniques",
+    "get_atlas_technique_details",
+    "search_atlas_case_studies",
+    "find_similar_atlas_case_studies",
+    "search_owasp_llm_vulnerabilities",
+    "get_owasp_llm_vulnerability",
+    "search_capec_patterns",
+    "find_similar_capec_patterns",
+    "get_capec_pattern_details",
+    "search_capec_mitigations",
+    "find_similar_capec_mitigations",
+    "search_cwe_weaknesses",
+    "find_similar_cwe_weaknesses",
+    "get_cwe_weakness_details",
+    "search_by_external_mapping",
+    "get_cwe_hierarchy",
+    "find_weaknesses_for_capec",
+    "search_defenses",
+    "find_similar_defenses",
+    "get_defense_details",
+    "get_defenses_for_attack",
+    "get_attack_coverage",
+    "search_cloud_services",
+    "get_cloud_service_security",
+    "compare_cloud_services",
+    "get_shared_responsibility",
+    "get_data_freshness"
+  ],
+  "tool_contracts": [
+    {
+      "tool": "search_cve",
+      "description_contains": ["CVE", "keyword", "severity"],
+      "required_params": [],
+      "optional_params": ["keyword", "cvss_min", "cvss_max", "severity", "has_kev", "has_exploit", "epss_min", "published_after", "published_before", "cwe_ids", "limit", "offset"],
+      "test_cases": [
+        {
+          "name": "search_critical_cves",
+          "input": {"severity": ["CRITICAL"], "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "data_has": ["cves", "total_results"],
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "search_kev_cves",
+          "input": {"has_kev": true, "limit": 3},
+          "expect": {
+            "has_data_key": true,
+            "data_has": ["cves", "total_results"]
+          }
+        },
+        {
+          "name": "search_by_keyword",
+          "input": {"keyword": "remote code execution", "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "data_has": ["cves", "total_results"]
+          }
+        }
+      ]
+    },
+    {
+      "tool": "get_cve_details",
+      "description_contains": ["CVE", "details", "CVSS"],
+      "required_params": ["cve_id"],
+      "optional_params": ["include_references", "include_cpe", "include_exploits"],
+      "test_cases": [
+        {
+          "name": "get_log4shell_details",
+          "input": {"cve_id": "CVE-2021-44228"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "get_xz_backdoor_details",
+          "input": {"cve_id": "CVE-2024-3094", "include_references": true, "include_exploits": true},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "check_kev_status",
+      "description_contains": ["KEV", "CISA", "exploited"],
+      "required_params": ["cve_id"],
+      "optional_params": [],
+      "test_cases": [
+        {
+          "name": "check_known_kev_cve",
+          "input": {"cve_id": "CVE-2021-44228"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "check_outlook_kev",
+          "input": {"cve_id": "CVE-2023-23397"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "get_epss_score",
+      "description_contains": ["EPSS", "exploit", "probability"],
+      "required_params": ["cve_id"],
+      "optional_params": [],
+      "test_cases": [
+        {
+          "name": "get_log4shell_epss",
+          "input": {"cve_id": "CVE-2021-44228"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "search_by_product",
+      "description_contains": ["product", "CVEs", "version"],
+      "required_params": ["product_name"],
+      "optional_params": ["vendor", "version", "version_operator", "limit"],
+      "test_cases": [
+        {
+          "name": "search_apache_vulns",
+          "input": {"product_name": "apache", "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "search_nginx_with_vendor",
+          "input": {"product_name": "nginx", "vendor": "nginx", "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "get_exploits",
+      "description_contains": ["exploit", "Metasploit", "ExploitDB"],
+      "required_params": ["cve_id"],
+      "optional_params": ["verified_only"],
+      "test_cases": [
+        {
+          "name": "get_log4shell_exploits",
+          "input": {"cve_id": "CVE-2021-44228"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "get_verified_exploits_only",
+          "input": {"cve_id": "CVE-2024-3094", "verified_only": true},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "get_cwe_details",
+      "description_contains": ["CWE", "weakness", "mitigations"],
+      "required_params": ["cwe_id"],
+      "optional_params": [],
+      "test_cases": [
+        {
+          "name": "get_xss_cwe",
+          "input": {"cwe_id": "CWE-79"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "get_sql_injection_cwe_numeric",
+          "input": {"cwe_id": "89"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "batch_search",
+      "description_contains": ["multiple", "CVEs", "bulk"],
+      "required_params": ["cve_ids"],
+      "optional_params": ["include_kev", "include_epss"],
+      "test_cases": [
+        {
+          "name": "batch_search_multiple_cves",
+          "input": {"cve_ids": ["CVE-2021-44228", "CVE-2024-3094", "CVE-2023-23397"]},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "batch_search_without_epss",
+          "input": {"cve_ids": ["CVE-2021-44228"], "include_epss": false},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "search_techniques",
+      "description_contains": ["ATT&CK", "techniques", "keyword"],
+      "required_params": [],
+      "optional_params": ["query", "tactics", "platforms", "include_subtechniques", "active_only", "limit"],
+      "test_cases": [
+        {
+          "name": "search_phishing_techniques",
+          "input": {"query": "phishing", "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "search_by_tactic",
+          "input": {"tactics": ["initial-access"], "limit": 10},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "search_windows_techniques",
+          "input": {"platforms": ["windows"], "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "find_similar_techniques",
+      "description_contains": ["semantic", "ATT&CK", "similarity"],
+      "required_params": ["description"],
+      "optional_params": ["min_similarity", "tactics", "platforms", "active_only", "limit"],
+      "test_cases": [
+        {
+          "name": "find_phishing_scenario",
+          "input": {"description": "Attacker sent phishing email with malicious PDF that executed PowerShell commands", "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "get_technique_details",
+      "description_contains": ["ATT&CK", "technique", "details"],
+      "required_params": ["technique_id"],
+      "optional_params": [],
+      "test_cases": [
+        {
+          "name": "get_phishing_technique",
+          "input": {"technique_id": "T1566"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "get_subtechnique_details",
+          "input": {"technique_id": "T1059.001"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "get_technique_badges",
+      "description_contains": ["badge", "Navigator", "technique"],
+      "required_params": ["technique_ids"],
+      "optional_params": [],
+      "test_cases": [
+        {
+          "name": "get_badges_for_techniques",
+          "input": {"technique_ids": ["T1566", "T1059.001", "T1190"]},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "search_threat_actors",
+      "description_contains": ["threat actor", "ATT&CK", "groups"],
+      "required_params": [],
+      "optional_params": ["query", "techniques", "limit"],
+      "test_cases": [
+        {
+          "name": "search_apt28",
+          "input": {"query": "APT28", "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "search_actors_by_technique",
+          "input": {"techniques": ["T1566.001"], "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "find_similar_threat_actors",
+      "description_contains": ["semantic", "threat actor", "similarity"],
+      "required_params": ["description"],
+      "optional_params": ["min_similarity", "limit"],
+      "test_cases": [
+        {
+          "name": "find_apt_financial_targeting",
+          "input": {"description": "Advanced persistent threat targeting financial institutions with custom malware and spear phishing", "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "get_group_profile",
+      "description_contains": ["group", "profile", "ATT&CK"],
+      "required_params": ["group_id"],
+      "optional_params": [],
+      "test_cases": [
+        {
+          "name": "get_apt28_profile",
+          "input": {"group_id": "G0007"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "get_apt29_profile",
+          "input": {"group_id": "G0016"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "search_atlas_techniques",
+      "description_contains": ["ATLAS", "AI/ML", "techniques"],
+      "required_params": [],
+      "optional_params": ["query", "tactics", "ml_lifecycle_stage", "ai_system_type", "active_only", "limit"],
+      "test_cases": [
+        {
+          "name": "search_data_poisoning",
+          "input": {"query": "data poisoning", "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "search_by_lifecycle_stage",
+          "input": {"ml_lifecycle_stage": "training", "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "find_similar_atlas_techniques",
+      "description_contains": ["ATLAS", "semantic", "AI/ML"],
+      "required_params": ["description"],
+      "optional_params": ["min_similarity", "tactics", "ml_lifecycle_stage", "ai_system_type", "active_only", "limit"],
+      "test_cases": [
+        {
+          "name": "find_training_data_attack",
+          "input": {"description": "Attacker poisoned training data to create backdoor in image classifier", "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "get_atlas_technique_details",
+      "description_contains": ["ATLAS", "technique", "details"],
+      "required_params": ["technique_id"],
+      "optional_params": [],
+      "test_cases": [
+        {
+          "name": "get_atlas_technique",
+          "input": {"technique_id": "AML.T0001"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "search_atlas_case_studies",
+      "description_contains": ["ATLAS", "case studies", "AI/ML"],
+      "required_params": [],
+      "optional_params": ["query", "techniques", "limit"],
+      "test_cases": [
+        {
+          "name": "search_adversarial_case_studies",
+          "input": {"query": "adversarial", "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "search_case_studies_by_technique",
+          "input": {"techniques": ["AML.T0001"], "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "find_similar_atlas_case_studies",
+      "description_contains": ["ATLAS", "case studies", "semantic"],
+      "required_params": ["description"],
+      "optional_params": ["min_similarity", "limit"],
+      "test_cases": [
+        {
+          "name": "find_autonomous_vehicle_attack",
+          "input": {"description": "Autonomous vehicle fooled by adversarial road signs causing misclassification", "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "search_owasp_llm_vulnerabilities",
+      "description_contains": ["OWASP", "LLM", "vulnerabilities"],
+      "required_params": [],
+      "optional_params": ["query", "llm_ids", "limit"],
+      "test_cases": [
+        {
+          "name": "search_all_llm_vulns",
+          "input": {"limit": 10},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "search_prompt_injection",
+          "input": {"query": "prompt injection", "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "search_by_llm_ids",
+          "input": {"llm_ids": ["LLM01", "LLM02"]},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "get_owasp_llm_vulnerability",
+      "description_contains": ["OWASP", "LLM", "details"],
+      "required_params": ["llm_id"],
+      "optional_params": [],
+      "test_cases": [
+        {
+          "name": "get_prompt_injection",
+          "input": {"llm_id": "LLM01"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "get_excessive_agency",
+          "input": {"llm_id": "LLM08"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "search_capec_patterns",
+      "description_contains": ["CAPEC", "attack patterns", "search"],
+      "required_params": [],
+      "optional_params": ["query", "abstraction", "likelihood", "severity", "related_cwe", "active_only", "limit"],
+      "test_cases": [
+        {
+          "name": "search_injection_patterns",
+          "input": {"query": "SQL injection", "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "search_high_severity_patterns",
+          "input": {"severity": "High", "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "search_patterns_by_cwe",
+          "input": {"related_cwe": ["CWE-89"], "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "find_similar_capec_patterns",
+      "description_contains": ["CAPEC", "semantic", "similarity"],
+      "required_params": ["description"],
+      "optional_params": ["min_similarity", "abstraction", "likelihood", "severity", "active_only", "limit"],
+      "test_cases": [
+        {
+          "name": "find_sql_injection_pattern",
+          "input": {"description": "Attacker manipulates input fields to inject SQL commands and extract database contents", "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "get_capec_pattern_details",
+      "description_contains": ["CAPEC", "pattern", "details"],
+      "required_params": ["pattern_id"],
+      "optional_params": [],
+      "test_cases": [
+        {
+          "name": "get_sql_injection_pattern",
+          "input": {"pattern_id": "CAPEC-66"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "get_xss_pattern",
+          "input": {"pattern_id": "CAPEC-86"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "search_capec_mitigations",
+      "description_contains": ["CAPEC", "mitigations", "security controls"],
+      "required_params": [],
+      "optional_params": ["query", "effectiveness", "patterns", "limit"],
+      "test_cases": [
+        {
+          "name": "search_input_validation_mitigations",
+          "input": {"query": "input validation", "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "search_mitigations_for_pattern",
+          "input": {"patterns": ["CAPEC-66"], "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "find_similar_capec_mitigations",
+      "description_contains": ["CAPEC", "mitigations", "semantic"],
+      "required_params": ["description"],
+      "optional_params": ["min_similarity", "effectiveness", "limit"],
+      "test_cases": [
+        {
+          "name": "find_injection_prevention",
+          "input": {"description": "Input validation and parameterized queries to prevent injection attacks", "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "search_cwe_weaknesses",
+      "description_contains": ["CWE", "weaknesses", "search"],
+      "required_params": [],
+      "optional_params": ["query", "abstraction", "include_children", "active_only", "limit"],
+      "test_cases": [
+        {
+          "name": "search_injection_weaknesses",
+          "input": {"query": "injection", "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "search_base_abstraction",
+          "input": {"abstraction": ["Base"], "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "find_similar_cwe_weaknesses",
+      "description_contains": ["CWE", "semantic", "similarity"],
+      "required_params": ["description"],
+      "optional_params": ["min_similarity", "abstraction", "active_only", "limit"],
+      "test_cases": [
+        {
+          "name": "find_sql_injection_weakness",
+          "input": {"description": "User input is directly used in SQL queries without validation or sanitization", "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "get_cwe_weakness_details",
+      "description_contains": ["CWE", "weakness", "details"],
+      "required_params": ["weakness_id"],
+      "optional_params": [],
+      "test_cases": [
+        {
+          "name": "get_xss_weakness",
+          "input": {"weakness_id": "CWE-79"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "get_sql_injection_weakness",
+          "input": {"weakness_id": "89"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "search_by_external_mapping",
+      "description_contains": ["external", "OWASP", "mapping"],
+      "required_params": ["source"],
+      "optional_params": ["external_id", "limit"],
+      "test_cases": [
+        {
+          "name": "search_owasp_top_ten",
+          "input": {"source": "OWASP Top Ten 2021", "limit": 10},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "search_owasp_injection",
+          "input": {"source": "OWASP Top Ten 2021", "external_id": "A03:2021", "limit": 10},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "get_cwe_hierarchy",
+      "description_contains": ["CWE", "hierarchy", "parent"],
+      "required_params": ["weakness_id"],
+      "optional_params": ["direction", "depth"],
+      "test_cases": [
+        {
+          "name": "get_xss_hierarchy_both",
+          "input": {"weakness_id": "CWE-79", "direction": "both", "depth": 3},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "get_sql_injection_parents",
+          "input": {"weakness_id": "89", "direction": "parents"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "find_weaknesses_for_capec",
+      "description_contains": ["CWE", "CAPEC", "weaknesses"],
+      "required_params": ["pattern_id"],
+      "optional_params": ["limit"],
+      "test_cases": [
+        {
+          "name": "find_weaknesses_for_sql_injection",
+          "input": {"pattern_id": "CAPEC-66"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "find_weaknesses_for_xss",
+          "input": {"pattern_id": "CAPEC-86", "limit": 10},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "search_defenses",
+      "description_contains": ["D3FEND", "defensive", "search"],
+      "required_params": [],
+      "optional_params": ["query", "tactic", "include_children", "limit"],
+      "test_cases": [
+        {
+          "name": "search_network_defenses",
+          "input": {"query": "network segmentation", "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "search_by_tactic",
+          "input": {"tactic": ["Harden"], "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "find_similar_defenses",
+      "description_contains": ["D3FEND", "semantic", "similarity"],
+      "required_params": ["description"],
+      "optional_params": ["min_similarity", "tactic", "limit"],
+      "test_cases": [
+        {
+          "name": "find_lateral_movement_defense",
+          "input": {"description": "Network segmentation to prevent lateral movement between systems", "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "get_defense_details",
+      "description_contains": ["D3FEND", "technique", "details"],
+      "required_params": ["technique_id"],
+      "optional_params": [],
+      "test_cases": [
+        {
+          "name": "get_application_lockdown",
+          "input": {"technique_id": "D3-AL"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "get_file_verification",
+          "input": {"technique_id": "D3-FV"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "get_defenses_for_attack",
+      "description_contains": ["D3FEND", "countermeasures", "ATT&CK"],
+      "required_params": ["attack_technique_id"],
+      "optional_params": ["include_subtechniques", "relationship_type"],
+      "test_cases": [
+        {
+          "name": "get_defenses_for_command_execution",
+          "input": {"attack_technique_id": "T1059"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "get_defenses_for_exploit_public_app",
+          "input": {"attack_technique_id": "T1190", "include_subtechniques": false},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "get_attack_coverage",
+      "description_contains": ["coverage", "D3FEND", "gaps"],
+      "required_params": ["technique_ids"],
+      "optional_params": ["show_gaps"],
+      "test_cases": [
+        {
+          "name": "analyze_defense_coverage",
+          "input": {"technique_ids": ["D3-AL", "D3-FV"], "show_gaps": true},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "analyze_without_gaps",
+          "input": {"technique_ids": ["D3-AL"], "show_gaps": false},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "search_cloud_services",
+      "description_contains": ["cloud", "AWS", "Azure"],
+      "required_params": [],
+      "optional_params": ["query", "provider", "category", "limit"],
+      "test_cases": [
+        {
+          "name": "search_aws_services",
+          "input": {"provider": "aws", "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "search_storage_services",
+          "input": {"category": "object_storage", "limit": 10},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "search_by_query",
+          "input": {"query": "storage", "limit": 5},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "get_cloud_service_security",
+      "description_contains": ["security", "cloud", "encryption"],
+      "required_params": ["provider", "service"],
+      "optional_params": [],
+      "test_cases": [
+        {
+          "name": "get_s3_security",
+          "input": {"provider": "aws", "service": "s3"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "get_blob_storage_security",
+          "input": {"provider": "azure", "service": "blob-storage"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "get_gcs_security",
+          "input": {"provider": "gcp", "service": "cloud-storage"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "compare_cloud_services",
+      "description_contains": ["compare", "cloud", "providers"],
+      "required_params": ["service_category"],
+      "optional_params": ["providers"],
+      "test_cases": [
+        {
+          "name": "compare_object_storage",
+          "input": {"service_category": "object_storage"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "compare_compute_aws_gcp",
+          "input": {"service_category": "compute", "providers": ["aws", "gcp"]},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "get_shared_responsibility",
+      "description_contains": ["shared responsibility", "cloud", "provider"],
+      "required_params": ["provider", "service"],
+      "optional_params": ["layer"],
+      "test_cases": [
+        {
+          "name": "get_s3_shared_responsibility",
+          "input": {"provider": "aws", "service": "s3"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "get_blob_data_layer",
+          "input": {"provider": "azure", "service": "blob-storage", "layer": "data"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        },
+        {
+          "name": "get_gcs_shared_responsibility",
+          "input": {"provider": "gcp", "service": "cloud-storage"},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    },
+    {
+      "tool": "get_data_freshness",
+      "description_contains": ["freshness", "sync", "data sources"],
+      "required_params": [],
+      "optional_params": [],
+      "test_cases": [
+        {
+          "name": "check_all_sources_freshness",
+          "input": {},
+          "expect": {
+            "has_data_key": true,
+            "has_metadata_key": true
+          }
+        }
+      ]
+    }
+  ],
+  "error_contracts": [
+    {
+      "name": "invalid_cve_id_format",
+      "tool": "get_cve_details",
+      "input": {"cve_id": "not-a-cve"},
+      "expect_error": true,
+      "error_contains": "validation"
+    },
+    {
+      "name": "unknown_tool",
+      "tool": "nonexistent_tool",
+      "input": {},
+      "expect_error": true,
+      "error_contains": "not found"
+    },
+    {
+      "name": "invalid_technique_id",
+      "tool": "get_technique_details",
+      "input": {"technique_id": "INVALID"},
+      "expect_error": true
+    },
+    {
+      "name": "invalid_capec_id",
+      "tool": "get_capec_pattern_details",
+      "input": {"pattern_id": "NOT-CAPEC"},
+      "expect_error": true
+    },
+    {
+      "name": "invalid_atlas_id",
+      "tool": "get_atlas_technique_details",
+      "input": {"technique_id": "INVALID"},
+      "expect_error": true
+    },
+    {
+      "name": "invalid_cwe_id_format",
+      "tool": "get_cwe_weakness_details",
+      "input": {"weakness_id": "NOT-A-CWE"},
+      "expect_error": true
+    },
+    {
+      "name": "invalid_d3fend_id",
+      "tool": "get_defense_details",
+      "input": {"technique_id": "INVALID-123"},
+      "expect_error": true
+    },
+    {
+      "name": "missing_required_cve_id",
+      "tool": "get_cve_details",
+      "input": {},
+      "expect_error": true,
+      "error_contains": "required"
+    },
+    {
+      "name": "missing_required_product_name",
+      "tool": "search_by_product",
+      "input": {},
+      "expect_error": true,
+      "error_contains": "required"
+    },
+    {
+      "name": "invalid_cloud_provider",
+      "tool": "get_cloud_service_security",
+      "input": {"provider": "invalid", "service": "s3"},
+      "expect_error": true
+    },
+    {
+      "name": "cvss_min_out_of_range",
+      "tool": "search_cve",
+      "input": {"cvss_min": 15},
+      "expect_error": true
+    },
+    {
+      "name": "empty_batch_search",
+      "tool": "batch_search",
+      "input": {"cve_ids": []},
+      "expect_error": true
+    },
+    {
+      "name": "description_too_short_for_semantic",
+      "tool": "find_similar_techniques",
+      "input": {"description": "short"},
+      "expect_error": true
+    },
+    {
+      "name": "invalid_hierarchy_direction",
+      "tool": "get_cwe_hierarchy",
+      "input": {"weakness_id": "CWE-79", "direction": "invalid"},
+      "expect_error": true
+    }
+  ],
+  "response_shape_contracts": [
+    {
+      "description": "All tools return data + metadata envelope",
+      "applies_to": "all",
+      "expected_top_keys": ["data", "metadata"],
+      "metadata_keys": ["query_time_ms", "cache_hit", "data_freshness"]
+    },
+    {
+      "description": "Search tools return paginated results",
+      "applies_to": ["search_cve", "search_techniques", "search_threat_actors", "search_atlas_techniques", "search_atlas_case_studies", "search_capec_patterns", "search_capec_mitigations", "search_cwe_weaknesses", "search_defenses", "search_cloud_services"],
+      "expected_data_keys": ["total_results"]
+    },
+    {
+      "description": "Semantic search tools return similarity scores",
+      "applies_to": ["find_similar_techniques", "find_similar_threat_actors", "find_similar_atlas_techniques", "find_similar_atlas_case_studies", "find_similar_capec_patterns", "find_similar_capec_mitigations", "find_similar_cwe_weaknesses", "find_similar_defenses"],
+      "requires_openai_api_key": true
+    },
+    {
+      "description": "Detail tools may return null data for non-existent IDs",
+      "applies_to": ["get_cve_details", "get_cwe_weakness_details", "get_cwe_details"],
+      "data_nullable": true
+    },
+    {
+      "description": "Metadata always includes timing and freshness info",
+      "applies_to": "all",
+      "metadata_schema": {
+        "query_time_ms": "integer",
+        "cache_hit": "boolean",
+        "data_freshness": "string",
+        "last_sync_time": "string|null",
+        "data_age_hours": "integer|null"
+      }
+    }
+  ]
+}

@@ -7,11 +7,12 @@ Provides 7 async query functions for MITRE ATT&CK data:
 
 from typing import Any
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, case, func, literal, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cve_mcp.models.attack import AttackGroup, AttackTechnique
 from cve_mcp.services.embeddings import generate_embedding
+from cve_mcp.utils import escape_like
 
 
 async def search_techniques(
@@ -59,11 +60,17 @@ async def search_techniques(
         filters.append(AttackTechnique.platforms.overlap(platforms))
 
     if query:
-        # Full-text search on name and description using ILIKE
+        # Use tsvector full-text search with ILIKE name fallback for relevance.
+        ts_query = func.plainto_tsquery("english", query)
         search_filter = or_(
-            AttackTechnique.name.ilike(f"%{query}%"),
-            AttackTechnique.description.ilike(f"%{query}%"),
+            AttackTechnique.description_vector.op("@@")(ts_query),
+            AttackTechnique.name.ilike(f"%{escape_like(query)}%"),
         )
+        # Also match individual terms in name (tsvector doesn't cover name)
+        terms = [t.strip() for t in query.split() if len(t.strip()) >= 3]
+        if terms:
+            for term in terms:
+                search_filter = or_(search_filter, AttackTechnique.name.ilike(f"%{escape_like(term)}%"))
         filters.append(search_filter)
 
     if filters:
@@ -73,6 +80,13 @@ async def search_techniques(
     count_stmt = select(func.count()).select_from(stmt.subquery())
     total_result = await session.execute(count_stmt)
     total_count = total_result.scalar_one()
+
+    # Order by relevance: tsvector rank when query is provided
+    if query:
+        ts_query = func.plainto_tsquery("english", query)
+        stmt = stmt.order_by(
+            func.ts_rank(AttackTechnique.description_vector, ts_query).desc()
+        )
 
     # Apply limit and execute
     stmt = stmt.limit(limit)
@@ -192,12 +206,14 @@ async def search_threat_actors(
         filters.append(AttackGroup.techniques_used.overlap(techniques))
 
     if query:
-        # Full-text search on name, aliases, and description
-        search_filter = or_(
-            AttackGroup.name.ilike(f"%{query}%"),
-            AttackGroup.description.ilike(f"%{query}%"),
-        )
-        filters.append(search_filter)
+        # Split multi-word queries into individual terms and match ANY term.
+        terms = [t.strip() for t in query.split() if len(t.strip()) >= 3]
+        if terms:
+            term_filters = []
+            for term in terms:
+                term_filters.append(AttackGroup.name.ilike(f"%{escape_like(term)}%"))
+                term_filters.append(AttackGroup.description.ilike(f"%{escape_like(term)}%"))
+            filters.append(or_(*term_filters))
 
     if filters:
         stmt = stmt.where(and_(*filters))

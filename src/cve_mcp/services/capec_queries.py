@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from cve_mcp.models.capec import CAPECMitigation, CAPECPattern
 from cve_mcp.services.embeddings import generate_embedding
+from cve_mcp.utils import escape_like
 
 
 async def search_patterns(
@@ -62,11 +63,16 @@ async def search_patterns(
         filters.append(CAPECPattern.related_weaknesses.overlap(related_cwe))
 
     if query:
-        # Full-text search on name and description using ILIKE
+        # Use tsvector full-text search with ILIKE name fallback for relevance.
+        ts_query = func.plainto_tsquery("english", query)
         search_filter = or_(
-            CAPECPattern.name.ilike(f"%{query}%"),
-            CAPECPattern.description.ilike(f"%{query}%"),
+            CAPECPattern.description_vector.op("@@")(ts_query),
+            CAPECPattern.name.ilike(f"%{escape_like(query)}%"),
         )
+        terms = [t.strip() for t in query.split() if len(t.strip()) >= 3]
+        if terms:
+            for term in terms:
+                search_filter = or_(search_filter, CAPECPattern.name.ilike(f"%{escape_like(term)}%"))
         filters.append(search_filter)
 
     if filters:
@@ -76,6 +82,13 @@ async def search_patterns(
     count_stmt = select(func.count()).select_from(stmt.subquery())
     total_result = await session.execute(count_stmt)
     total_count = total_result.scalar_one()
+
+    # Order by relevance when query is provided
+    if query:
+        ts_query = func.plainto_tsquery("english", query)
+        stmt = stmt.order_by(
+            func.ts_rank(CAPECPattern.description_vector, ts_query).desc()
+        )
 
     # Apply limit and execute
     stmt = stmt.limit(limit)
@@ -282,12 +295,14 @@ async def search_mitigations(
         filters.append(CAPECMitigation.mitigates_patterns.overlap(patterns))
 
     if query:
-        # Full-text search on name and description
-        search_filter = or_(
-            CAPECMitigation.name.ilike(f"%{query}%"),
-            CAPECMitigation.description.ilike(f"%{query}%"),
-        )
-        filters.append(search_filter)
+        # Split multi-word queries into individual terms and match ANY term.
+        terms = [t.strip() for t in query.split() if len(t.strip()) >= 3]
+        if terms:
+            term_filters = []
+            for term in terms:
+                term_filters.append(CAPECMitigation.name.ilike(f"%{escape_like(term)}%"))
+                term_filters.append(CAPECMitigation.description.ilike(f"%{escape_like(term)}%"))
+            filters.append(or_(*term_filters))
 
     if filters:
         stmt = stmt.where(and_(*filters))

@@ -1,0 +1,302 @@
+[
+  {
+    "llm_id": "LLM01",
+    "name": "Prompt Injection",
+    "description": "Manipulating LLM via crafted inputs can cause unintended actions. Direct injections overwrite system prompts, while indirect ones manipulate inputs from external sources.",
+    "common_examples": [
+      "Overriding system prompts with malicious instructions",
+      "Injecting commands through external data sources (websites, files)",
+      "Chaining prompts to bypass safety filters",
+      "Using special tokens or formatting to escape context"
+    ],
+    "prevention_strategies": [
+      "Privilege control and least privilege for LLM actions",
+      "Add human in the loop for privileged operations",
+      "Segregate external content from user prompts",
+      "Establish trust boundaries between LLM, external sources, and user inputs",
+      "Monitor LLM input and output for anomalies"
+    ],
+    "example_attack_scenarios": [
+      "Attacker provides prompt that bypasses content filters",
+      "Malicious website content injected via indirect prompt",
+      "Chained prompts exfiltrate sensitive data through API calls"
+    ],
+    "related_techniques": {
+      "atlas": ["AML.T0051"],
+      "cwe": ["CWE-94", "CWE-74"],
+      "capec": ["CAPEC-242", "CAPEC-63"]
+    },
+    "url": "https://genai.owasp.org/llmrisk/llm01-prompt-injection/"
+  },
+  {
+    "llm_id": "LLM02",
+    "name": "Insecure Output Handling",
+    "description": "Insufficient validation of LLM outputs before passing them downstream can lead to XSS, CSRF, SSRF, privilege escalation, or remote code execution.",
+    "common_examples": [
+      "LLM output used directly in web pages without sanitization (XSS)",
+      "LLM-generated SQL queries executed without parameterization",
+      "LLM output used in system commands without validation (RCE)",
+      "Backend functions called based on LLM output without authorization checks"
+    ],
+    "prevention_strategies": [
+      "Treat LLM as untrusted user - apply input validation to LLM outputs",
+      "Encode output before display to prevent XSS/injection",
+      "Use parameterized queries for database operations",
+      "Implement least privilege for backend operations triggered by LLM",
+      "Validate and sanitize LLM responses before downstream use"
+    ],
+    "example_attack_scenarios": [
+      "LLM generates JavaScript that executes in user's browser",
+      "LLM crafts SQL injection payload that bypasses parameterization",
+      "LLM output triggers SSRF by including malicious URLs"
+    ],
+    "related_techniques": {
+      "cwe": ["CWE-79", "CWE-89", "CWE-918", "CWE-94"],
+      "capec": ["CAPEC-63", "CAPEC-66", "CAPEC-10"]
+    },
+    "url": "https://genai.owasp.org/llmrisk/llm02-insecure-output-handling/"
+  },
+  {
+    "llm_id": "LLM03",
+    "name": "Training Data Poisoning",
+    "description": "Manipulation of training data or fine-tuning processes to introduce vulnerabilities, backdoors, or biases that compromise security, effectiveness, or ethical behavior.",
+    "common_examples": [
+      "Malicious data introduced during pre-training or fine-tuning",
+      "Poisoned data from scraped internet sources",
+      "Attacker gains access to data pipeline and injects backdoors",
+      "Model trained on biased or manipulated datasets"
+    ],
+    "prevention_strategies": [
+      "Verify supply chain and source of training datasets",
+      "Validate data sources and maintain signed data provenance",
+      "Use ML-BOM (Machine Learning Bill of Materials)",
+      "Implement anomaly detection for training data",
+      "Test model outputs for biased or malicious responses",
+      "Conduct adversarial robustness testing"
+    ],
+    "example_attack_scenarios": [
+      "Attacker submits fake resumes to training set for HR screening LLM",
+      "Model trained on web scrapes includes trojan from compromised site",
+      "Fine-tuning on malicious dataset creates subtle backdoor"
+    ],
+    "related_techniques": {
+      "atlas": ["AML.T0018", "AML.T0019"],
+      "cwe": ["CWE-345"],
+      "capec": ["CAPEC-510"]
+    },
+    "url": "https://genai.owasp.org/llmrisk/llm03-training-data-poisoning/"
+  },
+  {
+    "llm_id": "LLM04",
+    "name": "Model Denial of Service",
+    "description": "Attackers cause resource-intensive operations on LLMs, leading to service degradation or high costs. This includes excessive token generation, recursive context expansion, or high-frequency requests.",
+    "common_examples": [
+      "Submitting queries that generate extremely long responses",
+      "Sending large volumes of requests to exhaust rate limits",
+      "Crafting inputs that trigger recursive or complex reasoning chains",
+      "Variable-length input floods",
+      "Continuous input overflow"
+    ],
+    "prevention_strategies": [
+      "Implement rate limiting per user/IP",
+      "Set max token limits for requests and responses",
+      "Monitor resource usage and set throttling policies",
+      "Implement queue management and load balancing",
+      "Use input validation to block resource-intensive patterns",
+      "Set timeouts for LLM operations"
+    ],
+    "example_attack_scenarios": [
+      "Attacker submits prompt causing LLM to generate massive output",
+      "Recursive prompt pattern causes exponential token consumption",
+      "Distributed requests exhaust model capacity and increase costs"
+    ],
+    "related_techniques": {
+      "cwe": ["CWE-400", "CWE-770"],
+      "capec": ["CAPEC-147", "CAPEC-469"]
+    },
+    "url": "https://genai.owasp.org/llmrisk/llm04-model-denial-of-service/"
+  },
+  {
+    "llm_id": "LLM05",
+    "name": "Supply Chain Vulnerabilities",
+    "description": "LLM applications can be compromised through vulnerable components, services, or datasets. This includes third-party models, pre-trained datasets, plugins, and infrastructure dependencies.",
+    "common_examples": [
+      "Vulnerable third-party model or plugin",
+      "Outdated libraries or dependencies with known exploits",
+      "Poisoned pre-trained models from untrusted sources",
+      "Compromised training datasets",
+      "Weak model repositories without integrity checks"
+    ],
+    "prevention_strategies": [
+      "Maintain ML-BOM (Machine Learning Bill of Materials)",
+      "Use only verified and signed models from trusted sources",
+      "Implement dependency scanning and vulnerability management",
+      "Isolate third-party components with least privilege",
+      "Monitor for anomalous behavior in model outputs",
+      "Regular security audits of supply chain components"
+    ],
+    "example_attack_scenarios": [
+      "Compromised plugin leaks sensitive data",
+      "Backdoored pre-trained model from public repository",
+      "Vulnerable dependency enables remote code execution"
+    ],
+    "related_techniques": {
+      "cwe": ["CWE-1104", "CWE-829"],
+      "capec": ["CAPEC-437", "CAPEC-439"]
+    },
+    "url": "https://genai.owasp.org/llmrisk/llm05-supply-chain-vulnerabilities/"
+  },
+  {
+    "llm_id": "LLM06",
+    "name": "Sensitive Information Disclosure",
+    "description": "LLMs may reveal confidential data in responses, including training data, system prompts, or PII. This can occur through memorization, prompt manipulation, or insufficient output filtering.",
+    "common_examples": [
+      "LLM reveals training data containing PII",
+      "Attacker extracts system prompts through crafted queries",
+      "Model memorization leaks proprietary information",
+      "Side-channel attacks extract sensitive parameters",
+      "Insufficient sanitization of API responses"
+    ],
+    "prevention_strategies": [
+      "Sanitize training data to remove PII and sensitive information",
+      "Implement output filters to detect and block sensitive data leakage",
+      "Use differential privacy techniques",
+      "Conduct regular data leakage testing",
+      "Apply strict access controls and user authentication",
+      "Monitor for anomalous extraction patterns"
+    ],
+    "example_attack_scenarios": [
+      "Attacker crafts prompts to extract memorized credit card numbers",
+      "Model reveals internal system architecture through verbose errors",
+      "Prompt injection extracts confidential business logic"
+    ],
+    "related_techniques": {
+      "atlas": ["AML.T0024", "AML.T0043"],
+      "cwe": ["CWE-200", "CWE-359"],
+      "capec": ["CAPEC-116", "CAPEC-118"]
+    },
+    "url": "https://genai.owasp.org/llmrisk/llm06-sensitive-information-disclosure/"
+  },
+  {
+    "llm_id": "LLM07",
+    "name": "Insecure Plugin Design",
+    "description": "LLM plugins with insufficient access control, validation, or authorization can be exploited to execute malicious operations, access unauthorized data, or escalate privileges.",
+    "common_examples": [
+      "Plugins accept free-form text without validation",
+      "Insufficient authorization checks before executing privileged operations",
+      "Plugins trust LLM outputs without validation",
+      "Missing input sanitization allows injection attacks",
+      "Overly broad plugin permissions"
+    ],
+    "prevention_strategies": [
+      "Implement strict input validation for plugin parameters",
+      "Enforce least privilege - plugins should have minimal necessary permissions",
+      "Require explicit user authorization for sensitive operations",
+      "Validate and sanitize all plugin inputs",
+      "Use parameterized queries and prepared statements",
+      "Implement comprehensive logging and monitoring"
+    ],
+    "example_attack_scenarios": [
+      "Email plugin allows LLM to send phishing emails without user consent",
+      "Database plugin accepts unsanitized LLM queries enabling SQL injection",
+      "File access plugin grants unrestricted read/write to filesystem"
+    ],
+    "related_techniques": {
+      "cwe": ["CWE-862", "CWE-863", "CWE-20"],
+      "capec": ["CAPEC-212", "CAPEC-681"]
+    },
+    "url": "https://genai.owasp.org/llmrisk/llm07-insecure-plugin-design/"
+  },
+  {
+    "llm_id": "LLM08",
+    "name": "Excessive Agency",
+    "description": "LLM-based systems with excessive functionality, permissions, or autonomy can perform unintended actions causing damage. This occurs when systems trust LLM outputs without sufficient oversight.",
+    "common_examples": [
+      "LLM granted excessive permissions to modify critical systems",
+      "Autonomous agents making decisions without human oversight",
+      "Unrestricted access to sensitive APIs or databases",
+      "LLM executing high-impact operations based on ambiguous instructions",
+      "Chaining of multiple actions without intermediate validation"
+    ],
+    "prevention_strategies": [
+      "Limit permissions granted to LLM-based systems (least privilege)",
+      "Require human approval for high-impact operations",
+      "Implement operation whitelisting - allow only necessary actions",
+      "Track and log all LLM-initiated operations",
+      "Use separate API keys with limited scopes",
+      "Implement rate limiting and operation throttling"
+    ],
+    "example_attack_scenarios": [
+      "LLM misinterprets instruction and deletes production database",
+      "Autonomous agent executes unauthorized financial transactions",
+      "LLM with API access exfiltrates sensitive data through chained calls"
+    ],
+    "related_techniques": {
+      "cwe": ["CWE-269", "CWE-250"],
+      "capec": ["CAPEC-122"]
+    },
+    "url": "https://genai.owasp.org/llmrisk/llm08-excessive-agency/"
+  },
+  {
+    "llm_id": "LLM09",
+    "name": "Overreliance",
+    "description": "Systems or users excessively depending on LLMs without oversight can face misinformation, miscommunication, security issues, or legal problems due to incorrect or inappropriate content.",
+    "common_examples": [
+      "Accepting LLM-generated code without security review",
+      "Using LLM output for critical decisions without human verification",
+      "Trusting LLM-generated legal/medical advice without expert review",
+      "Deploying LLM-generated content without fact-checking",
+      "Automating high-risk processes based solely on LLM recommendations"
+    ],
+    "prevention_strategies": [
+      "Implement human review for critical operations",
+      "Use LLMs as advisory tools, not decision-makers",
+      "Cross-reference LLM outputs with authoritative sources",
+      "Clearly communicate LLM limitations to users",
+      "Implement confidence scoring and uncertainty quantification",
+      "Regular validation of LLM outputs against ground truth"
+    ],
+    "example_attack_scenarios": [
+      "Company deploys LLM-generated code with security vulnerabilities",
+      "Medical system makes incorrect diagnosis due to hallucinated information",
+      "Legal advice bot provides incorrect guidance leading to compliance violations"
+    ],
+    "related_techniques": {
+      "cwe": ["CWE-1127"],
+      "capec": []
+    },
+    "url": "https://genai.owasp.org/llmrisk/llm09-overreliance/"
+  },
+  {
+    "llm_id": "LLM10",
+    "name": "Model Theft",
+    "description": "Unauthorized access to proprietary LLMs through theft, copying, or extraction. This includes physical theft, model extraction via API queries, or exploiting infrastructure vulnerabilities.",
+    "common_examples": [
+      "Model weight extraction through repeated API queries",
+      "Insider threat - employee copies model files",
+      "Infrastructure compromise grants access to model artifacts",
+      "Side-channel attacks extract model parameters",
+      "Exploiting model serving endpoints to download weights"
+    ],
+    "prevention_strategies": [
+      "Implement strong access controls for model repositories",
+      "Monitor for anomalous query patterns indicating extraction attempts",
+      "Use rate limiting to prevent model probing",
+      "Encrypt model files at rest and in transit",
+      "Implement model watermarking and fingerprinting",
+      "Conduct regular security audits of model infrastructure",
+      "Restrict API access to authenticated users with monitoring"
+    ],
+    "example_attack_scenarios": [
+      "Competitor uses API to query model and build equivalent",
+      "Attacker exploits S3 misconfiguration to download model weights",
+      "Malicious insider copies proprietary model to external storage"
+    ],
+    "related_techniques": {
+      "atlas": ["AML.T0024", "AML.T0040"],
+      "cwe": ["CWE-284", "CWE-522"],
+      "capec": ["CAPEC-116"]
+    },
+    "url": "https://genai.owasp.org/llmrisk/llm10-model-theft/"
+  }
+]

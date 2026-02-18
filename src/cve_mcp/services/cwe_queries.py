@@ -9,11 +9,12 @@ Provides 6 async query functions for MITRE CWE weakness data:
 
 from typing import Any
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, case, func, literal, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cve_mcp.models.cwe import CWEExternalMapping, CWEWeakness
 from cve_mcp.services.embeddings import generate_embedding
+from cve_mcp.utils import escape_like
 
 
 def _weakness_to_dict(weakness: CWEWeakness, include_full: bool = False) -> dict[str, Any]:
@@ -104,13 +105,16 @@ async def search_weaknesses(
     if abstraction:
         filters.append(CWEWeakness.abstraction.in_(abstraction))
 
+    _query_terms = []
     if query:
-        # Full-text search on name and description using ILIKE
-        search_filter = or_(
-            CWEWeakness.name.ilike(f"%{query}%"),
-            CWEWeakness.description.ilike(f"%{query}%"),
-        )
-        filters.append(search_filter)
+        # Split multi-word queries into individual terms and match ANY term.
+        _query_terms = [t.strip() for t in query.split() if len(t.strip()) >= 3]
+        if _query_terms:
+            term_filters = []
+            for term in _query_terms:
+                term_filters.append(CWEWeakness.name.ilike(f"%{escape_like(term)}%"))
+                term_filters.append(CWEWeakness.description.ilike(f"%{escape_like(term)}%"))
+            filters.append(or_(*term_filters))
 
     if filters:
         stmt = stmt.where(and_(*filters))
@@ -119,6 +123,20 @@ async def search_weaknesses(
     count_stmt = select(func.count()).select_from(stmt.subquery())
     total_result = await session.execute(count_stmt)
     total_count = total_result.scalar_one()
+
+    # Order by relevance: count how many query terms match each row
+    if _query_terms:
+        relevance = sum(
+            case(
+                (or_(
+                    CWEWeakness.name.ilike(f"%{escape_like(term)}%"),
+                    CWEWeakness.description.ilike(f"%{escape_like(term)}%"),
+                ), literal(1)),
+                else_=literal(0),
+            )
+            for term in _query_terms
+        )
+        stmt = stmt.order_by(relevance.desc())
 
     # Apply limit and execute
     stmt = stmt.limit(limit)
@@ -282,10 +300,10 @@ async def search_by_external_mapping(
         List of weaknesses matching the external mapping
     """
     # Build subquery to get weakness IDs from mappings
-    mapping_filters = [CWEExternalMapping.external_source.ilike(f"%{source}%")]
+    mapping_filters = [CWEExternalMapping.external_source.ilike(f"%{escape_like(source)}%")]
 
     if external_id:
-        mapping_filters.append(CWEExternalMapping.external_id.ilike(f"%{external_id}%"))
+        mapping_filters.append(CWEExternalMapping.external_id.ilike(f"%{escape_like(external_id)}%"))
 
     mapping_stmt = (
         select(CWEExternalMapping.weakness_id, CWEExternalMapping)

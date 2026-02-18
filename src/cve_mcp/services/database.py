@@ -1,5 +1,7 @@
 """Database service for CVE MCP server."""
 
+import structlog
+
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -21,6 +23,7 @@ from cve_mcp.models import (
     SyncMetadata,
 )
 from cve_mcp.models.base import AsyncSessionLocal
+from cve_mcp.utils import escape_like
 
 
 class DatabaseService:
@@ -86,7 +89,7 @@ class DatabaseService:
                     CVE.description_vector.op("@@")(func.plainto_tsquery("english", keyword)),
                     and_(
                         CVE.description_vector.is_(None),
-                        CVE.description.ilike(f"%{keyword}%"),
+                        CVE.description.ilike(f"%{escape_like(keyword)}%"),
                     ),
                 )
             )
@@ -381,11 +384,11 @@ class DatabaseService:
                 CVECPEMapping.vulnerable,
             )
             .join(CVECPEMapping, CVE.cve_id == CVECPEMapping.cve_id)
-            .where(CVECPEMapping.cpe_product.ilike(f"%{product_name}%"))
+            .where(CVECPEMapping.cpe_product.ilike(f"%{escape_like(product_name)}%"))
         )
 
         if vendor:
-            query = query.where(CVECPEMapping.cpe_vendor.ilike(f"%{vendor}%"))
+            query = query.where(CVECPEMapping.cpe_vendor.ilike(f"%{escape_like(vendor)}%"))
 
         if version and not version_operator:
             # Simple exact version matching when no operator specified (backward compatibility)
@@ -396,8 +399,12 @@ class DatabaseService:
 
         # If version operator is specified, we need to filter in Python after fetching
         if version and version_operator:
-            # Fetch all results for version comparison
-            result = await session.execute(query)
+            # Safety cap to prevent unbounded memory usage
+            # Version comparison requires Python-side filtering, but we limit
+            # the SQL result set to prevent OOM on large databases
+            SAFETY_CAP = 10000
+            capped_query = query.limit(SAFETY_CAP)
+            result = await session.execute(capped_query)
             all_rows = result.all()
 
             # Filter by version comparison
@@ -408,6 +415,16 @@ class DatabaseService:
 
             rows = filtered_rows[:limit]
             total_count = len(filtered_rows)
+
+            # Warn if safety cap was hit (results may be incomplete)
+            if len(all_rows) >= SAFETY_CAP:
+                logger = structlog.get_logger()
+                logger.warning(
+                    "search_by_product hit safety cap",
+                    product=product_name,
+                    safety_cap=SAFETY_CAP,
+                    note="Results may be incomplete. Refine search with vendor filter.",
+                )
         else:
             # Original path: apply limit at SQL level
             # Get count

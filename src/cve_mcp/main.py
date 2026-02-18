@@ -27,6 +27,9 @@ Examples:
   # HTTP REST API (for Ansvar platform)
   %(prog)s --mode http
 
+  # Streamable HTTP transport (for ChatGPT, open-source MCP clients)
+  %(prog)s --mode mcp-http
+
   # Both modes simultaneously (for development/testing)
   %(prog)s --mode both
         """,
@@ -34,9 +37,9 @@ Examples:
 
     parser.add_argument(
         "--mode",
-        choices=["stdio", "http", "both"],
+        choices=["stdio", "http", "mcp-http", "both"],
         default=None,
-        help="Server mode: stdio (MCP clients), http (Ansvar platform), or both (dev/test)",
+        help="Server mode: stdio (MCP clients), http (Ansvar platform), mcp-http (Streamable HTTP for universal MCP clients), or both (dev/test)",
     )
 
     parser.add_argument(
@@ -144,7 +147,7 @@ def main() -> None:
         "Starting Threat Intel MCP server",
         project=PROJECT_NAME,
         mode=mode,
-        version="1.3.0",
+        version="1.4.0",
     )
 
     try:
@@ -154,11 +157,16 @@ def main() -> None:
         elif mode == "http":
             # Run HTTP mode (Ansvar platform)
             run_http_mode(host, port)
+        elif mode == "mcp-http":
+            # Run Streamable HTTP mode (universal MCP clients)
+            from cve_mcp.mcp.transports import run_streamable_http_transport
+            server = create_mcp_server()
+            asyncio.run(run_streamable_http_transport(server.server, host, port))
         elif mode == "both":
             # Run both modes simultaneously
             asyncio.run(run_both_modes(host, port))
         else:
-            logger.error(f"Invalid mode: {mode}. Must be 'stdio', 'http', or 'both'")
+            logger.error(f"Invalid mode: {mode}. Must be 'stdio', 'http', 'mcp-http', or 'both'")
             sys.exit(1)
     except KeyboardInterrupt:
         logger.info("Server stopped by user")

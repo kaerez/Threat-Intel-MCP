@@ -14,6 +14,7 @@ from cve_mcp.models.cloud_security import (
     CloudSharedResponsibility,
 )
 from cve_mcp.services.embeddings import generate_embedding
+from cve_mcp.utils import escape_like
 
 
 # ============================================================================
@@ -53,13 +54,15 @@ async def search_services(
         filters.append(CloudService.service_category == category)
 
     if query:
-        # Use ILIKE for case-insensitive search
-        search_filter = or_(
-            CloudService.service_name.ilike(f"%{query}%"),
-            CloudService.official_name.ilike(f"%{query}%"),
-            CloudService.description.ilike(f"%{query}%"),
-        )
-        filters.append(search_filter)
+        # Split multi-word queries into individual terms and match ANY term.
+        terms = [t.strip() for t in query.split() if len(t.strip()) >= 3]
+        if terms:
+            term_filters = []
+            for term in terms:
+                term_filters.append(CloudService.service_name.ilike(f"%{escape_like(term)}%"))
+                term_filters.append(CloudService.official_name.ilike(f"%{escape_like(term)}%"))
+                term_filters.append(CloudService.description.ilike(f"%{escape_like(term)}%"))
+            filters.append(or_(*term_filters))
 
     if filters:
         stmt = stmt.where(and_(*filters))
@@ -409,11 +412,14 @@ async def search_properties(
         filters.append(CloudSecurityProperty.confidence_score >= min_confidence)
 
     if query:
-        search_filter = or_(
-            CloudSecurityProperty.property_name.ilike(f"%{query}%"),
-            CloudSecurityProperty.summary.ilike(f"%{query}%"),
-        )
-        filters.append(search_filter)
+        # Split multi-word queries into individual terms and match ANY term.
+        terms = [t.strip() for t in query.split() if len(t.strip()) >= 3]
+        if terms:
+            term_filters = []
+            for term in terms:
+                term_filters.append(CloudSecurityProperty.property_name.ilike(f"%{escape_like(term)}%"))
+                term_filters.append(CloudSecurityProperty.summary.ilike(f"%{escape_like(term)}%"))
+            filters.append(or_(*term_filters))
 
     if filters:
         stmt = stmt.where(and_(*filters))

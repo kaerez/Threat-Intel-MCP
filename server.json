@@ -1,0 +1,28 @@
+{
+  "name": "threat-intel-mcp",
+  "display_name": "Threat Intelligence MCP Server",
+  "description": "Offline-first threat intelligence with semantic search. Query 331,000+ CVEs, MITRE ATT&CK/ATLAS/CAPEC/CWE/D3FEND frameworks, OWASP LLM Top 10, threat actors, and cloud security properties from any MCP client.",
+  "version": "1.4.0",
+  "author": {
+    "name": "Ansvar Systems",
+    "url": "https://ansvar.eu"
+  },
+  "repository": "https://github.com/Ansvar-Systems/threat-intel-mcp",
+  "license": "Apache-2.0",
+  "runtime": "python",
+  "mcpVersion": "2025-03-26",
+  "transport": ["stdio"],
+  "categories": ["security", "threat-intelligence", "vulnerability-management"],
+  "features": {
+    "tools": true,
+    "resources": false,
+    "prompts": false,
+    "sampling": false
+  },
+  "installation": {
+    "docker": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "ghcr.io/ansvar-systems/threat-intel-mcp:latest"]
+    }
+  }
+}

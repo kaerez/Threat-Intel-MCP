@@ -21,6 +21,7 @@ from cve_mcp.models.d3fend import (
     D3FENDTechniqueAttackMapping,
 )
 from cve_mcp.services.embeddings import generate_embedding
+from cve_mcp.utils import escape_like
 
 
 def _technique_to_dict(technique: D3FENDTechnique, include_full: bool = False) -> dict[str, Any]:
@@ -97,14 +98,19 @@ async def search_defenses(
 
     # Keyword search on name, description, and synonyms
     if query:
-        search_filter = or_(
-            D3FENDTechnique.name.ilike(f"%{query}%"),
-            D3FENDTechnique.description.ilike(f"%{query}%"),
-            func.coalesce(
-                func.array_to_string(D3FENDTechnique.synonyms, ' ', ''), ''
-            ).ilike(f"%{query}%"),
-        )
-        filters.append(search_filter)
+        # Split multi-word queries into individual terms and match ANY term.
+        terms = [t.strip() for t in query.split() if len(t.strip()) >= 3]
+        if terms:
+            term_filters = []
+            for term in terms:
+                term_filters.append(D3FENDTechnique.name.ilike(f"%{escape_like(term)}%"))
+                term_filters.append(D3FENDTechnique.description.ilike(f"%{escape_like(term)}%"))
+                term_filters.append(
+                    func.coalesce(
+                        func.array_to_string(D3FENDTechnique.synonyms, ' ', ''), ''
+                    ).ilike(f"%{escape_like(term)}%")
+                )
+            filters.append(or_(*term_filters))
 
     # Tactic filter (join with tactics table)
     if tactic:

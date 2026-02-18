@@ -37,6 +37,7 @@ from cve_mcp.models.d3fend import (
 from cve_mcp.models.exploit import ExploitReference
 from cve_mcp.models.intelligence import CISAKEV, EPSSScore
 from cve_mcp.models.metadata import QueryAuditLog, SyncMetadata
+from cve_mcp.models.owasp_llm import OwaspLlmTop10
 
 __all__ = [
     "Base",
@@ -70,4 +71,5 @@ __all__ = [
     "D3FENDTechniqueAttackMapping",
     "SyncMetadata",
     "QueryAuditLog",
+    "OwaspLlmTop10",
 ]

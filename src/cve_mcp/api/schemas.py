@@ -315,6 +315,25 @@ class FindSimilarATLASCaseStudiesRequest(BaseModel):
     limit: int = Field(10, ge=1, le=100, description="Max results")
 
 
+# OWASP LLM Top 10 Request Schemas
+
+
+class SearchOwaspLlmVulnerabilitiesRequest(BaseModel):
+    """Request schema for search_owasp_llm_vulnerabilities tool."""
+
+    query: str | None = Field(None, description="Full-text search in name/description")
+    llm_ids: list[str] | None = Field(None, description="Filter by specific LLM IDs (e.g., ['LLM01', 'LLM02'])")
+    limit: int = Field(10, ge=1, le=50, description="Max results")
+
+
+class GetOwaspLlmVulnerabilityRequest(BaseModel):
+    """Request schema for get_owasp_llm_vulnerability tool."""
+
+    llm_id: str = Field(
+        ..., description="OWASP LLM Top 10 ID (e.g., LLM01)", pattern=r"^LLM\d{2}$"
+    )
+
+
 # CAPEC Request Schemas
 
 

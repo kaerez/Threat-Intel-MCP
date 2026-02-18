@@ -23,6 +23,7 @@ celery_app = Celery(
         "cve_mcp.tasks.sync_cwe",
         "cve_mcp.tasks.sync_d3fend",
         "cve_mcp.tasks.sync_cloud_security",
+        "cve_mcp.tasks.sync_owasp_llm",
         "cve_mcp.tasks.maintenance",
     ],
 )
@@ -90,6 +91,12 @@ celery_app.conf.beat_schedule = {
         "task": "cve_mcp.tasks.sync_d3fend.sync_d3fend",
         "schedule": crontab(hour=6, minute=0, day_of_week=0),  # Sunday 06:00 UTC
         "options": {"expires": 1800},
+    },
+    # OWASP LLM Top 10 sync (weekly on Sunday 06:15 UTC)
+    "sync-owasp-llm": {
+        "task": "cve_mcp.tasks.sync_owasp_llm.sync_owasp_llm",
+        "schedule": crontab(hour=6, minute=15, day_of_week=0),  # Sunday 06:15 UTC
+        "options": {"expires": 600},  # 10-min timeout (static data, fast sync)
     },
     # Cloud security syncs (weekly on Sunday 06:30-07:15 UTC)
     "sync-aws-s3-security": {

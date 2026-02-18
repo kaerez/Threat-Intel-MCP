@@ -1,0 +1,224 @@
+# Threat Intelligence MCP Server - Authoritative Data Sources
+# Last updated: 2026-02-17
+#
+# This file documents every upstream data source ingested by the
+# Threat Intelligence MCP Server, including provenance, licensing,
+# update cadence, and the corresponding ingestion script.
+
+sources:
+
+  # ──────────────────────────────────────────────
+  #  Vulnerability Intelligence
+  # ──────────────────────────────────────────────
+
+  - name: NVD (National Vulnerability Database)
+    url: https://services.nvd.nist.gov/rest/json/cves/2.0
+    publisher: NIST (National Institute of Standards and Technology)
+    license: Public Domain
+    update_frequency: Continuous (API polling)
+    last_verified: 2026-02-17
+    data_format: JSON
+    record_count: 331000
+    description: >
+      The NVD is the U.S. government repository of standards-based
+      vulnerability management data. Provides CVE records enriched
+      with CVSS v2, v3.1, and v4.0 severity scores, CWE classifications,
+      and CPE applicability statements.
+    ingestion_script: src/cve_mcp/tasks/sync_nvd.py
+
+  - name: CISA KEV (Known Exploited Vulnerabilities)
+    url: https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json
+    publisher: CISA (Cybersecurity and Infrastructure Security Agency)
+    license: Public Domain
+    update_frequency: Weekly
+    last_verified: 2026-02-17
+    data_format: JSON
+    record_count: 1500
+    description: >
+      Catalog of CVEs that CISA has confirmed are actively exploited
+      in the wild. Each entry includes a remediation due date, required
+      action, and affected vendor/product details. Federal agencies are
+      mandated to remediate these under BOD 22-01.
+    ingestion_script: src/cve_mcp/tasks/sync_cisa_kev.py
+
+  - name: EPSS (Exploit Prediction Scoring System)
+    url: https://epss.cyentia.com/epss_scores-current.csv.gz
+    publisher: FIRST.org
+    license: CC-BY-4.0
+    update_frequency: Daily
+    last_verified: 2026-02-17
+    data_format: CSV
+    record_count: 313000
+    description: >
+      Machine-learning-driven probability scores estimating the
+      likelihood that a CVE will be exploited in the wild within the
+      next 30 days. Each record includes an EPSS probability (0-1) and
+      a percentile ranking across all scored CVEs.
+    ingestion_script: src/cve_mcp/tasks/sync_epss.py
+
+  - name: ExploitDB
+    url: https://gitlab.com/exploit-database/exploitdb/-/raw/main/files_exploits.csv
+    publisher: OffSec (Offensive Security)
+    license: GPL-2.0
+    update_frequency: Daily
+    last_verified: 2026-02-17
+    data_format: CSV
+    record_count: 45000
+    description: >
+      Public archive of exploit code and proof-of-concept references,
+      cross-referenced to CVE identifiers. Used to enrich CVE records
+      with known public exploit availability.
+    ingestion_script: src/cve_mcp/tasks/sync_exploitdb.py
+
+  # ──────────────────────────────────────────────
+  #  MITRE Frameworks
+  # ──────────────────────────────────────────────
+
+  - name: MITRE ATT&CK
+    url: https://github.com/mitre/cti
+    publisher: MITRE Corporation
+    license: Apache-2.0
+    update_frequency: Quarterly (major releases), monthly (patches)
+    last_verified: 2026-02-17
+    data_format: STIX
+    record_count: 1554
+    description: >
+      Knowledge base of adversary tactics, techniques, and procedures
+      (TTPs) based on real-world observations. Covers Enterprise,
+      Mobile, and ICS domains with 700+ techniques across 14 tactics,
+      140+ threat groups, and 700+ software entries.
+    ingestion_script: src/cve_mcp/tasks/sync_attack.py
+
+  - name: MITRE ATLAS (Adversarial Threat Landscape for AI Systems)
+    url: https://github.com/mitre-atlas/atlas-data
+    publisher: MITRE Corporation
+    license: Apache-2.0
+    update_frequency: Quarterly
+    last_verified: 2026-02-17
+    data_format: YAML
+    record_count: 230
+    description: >
+      Knowledge base of adversary tactics and techniques targeting
+      AI and machine-learning systems. Includes 200+ AI/ML-specific
+      techniques and 30+ real-world case studies of attacks against
+      ML pipelines and models.
+    ingestion_script: src/cve_mcp/tasks/sync_atlas.py
+
+  - name: MITRE CAPEC (Common Attack Pattern Enumeration and Classification)
+    url: https://capec.mitre.org/data/xml/capec_latest.xml
+    publisher: MITRE Corporation
+    license: Public Domain
+    update_frequency: Quarterly
+    last_verified: 2026-02-17
+    data_format: XML
+    record_count: 850
+    description: >
+      Comprehensive dictionary of known attack patterns. Each entry
+      describes attack execution flow, prerequisites, required skills,
+      and related weaknesses (CWE) and techniques (ATT&CK). Includes
+      550+ attack patterns and 300+ mitigations.
+    ingestion_script: src/cve_mcp/tasks/sync_capec.py
+
+  - name: MITRE CWE (Common Weakness Enumeration)
+    url: https://cwe.mitre.org/data/xml/cwec_latest.xml.zip
+    publisher: MITRE Corporation
+    license: Public Domain
+    update_frequency: Quarterly
+    last_verified: 2026-02-17
+    data_format: XML
+    record_count: 960
+    description: >
+      Community-developed list of common software and hardware
+      weakness types. Provides a hierarchical taxonomy of
+      vulnerabilities organized by research concepts, development
+      concepts, and architectural concepts. Used by the NVD to
+      classify CVE root causes.
+    ingestion_script: src/cve_mcp/tasks/sync_cwe.py
+
+  - name: MITRE D3FEND
+    url: https://d3fend.mitre.org
+    publisher: MITRE Corporation / NSA
+    license: Apache-2.0
+    update_frequency: Semi-annual
+    last_verified: 2026-02-17
+    data_format: API
+    record_count: 200
+    description: >
+      Knowledge graph of cybersecurity countermeasure techniques.
+      Provides a taxonomy of 200+ defensive techniques with formal
+      mappings to ATT&CK offensive techniques, enabling defenders
+      to identify countermeasures for specific adversary behaviors.
+    ingestion_script: src/cve_mcp/tasks/sync_d3fend.py
+
+  # ──────────────────────────────────────────────
+  #  Cloud Security
+  # ──────────────────────────────────────────────
+
+  # ──────────────────────────────────────────────
+  #  AI/LLM Security
+  # ──────────────────────────────────────────────
+
+  - name: OWASP Top 10 for LLM Applications
+    url: https://genai.owasp.org/llm-top-10/
+    publisher: OWASP Foundation
+    license: CC-BY-SA-4.0
+    update_frequency: Annual
+    last_verified: 2026-02-18
+    data_format: JSON (bundled)
+    record_count: 10
+    description: >
+      The OWASP Top 10 for LLM Applications v1.1 (2023) identifies the
+      most critical security risks for applications using Large Language
+      Models. Covers prompt injection, insecure output handling, training
+      data poisoning, model DoS, supply chain vulnerabilities, sensitive
+      information disclosure, insecure plugin design, excessive agency,
+      overreliance, and model theft. Each entry includes common examples,
+      prevention strategies, and cross-references to ATT&CK/CWE/CAPEC.
+    ingestion_script: src/cve_mcp/tasks/sync_owasp_llm.py
+
+  # ──────────────────────────────────────────────
+  #  Cloud Security
+  # ──────────────────────────────────────────────
+
+  - name: AWS Security Hub
+    url: https://docs.aws.amazon.com/securityhub/latest/userguide/
+    publisher: Amazon Web Services
+    license: Apache-2.0
+    update_frequency: Continuous (API-driven)
+    last_verified: 2026-02-17
+    data_format: API
+    record_count: ~350
+    description: >
+      AWS security best practices, shared responsibility model
+      properties, and Security Hub control definitions. Provides
+      security properties and configuration baselines for AWS
+      services.
+    ingestion_script: src/cve_mcp/tasks/sync_cloud_security.py
+
+  - name: Azure Policy
+    url: https://github.com/Azure/azure-policy
+    publisher: Microsoft
+    license: MIT
+    update_frequency: Continuous (API-driven)
+    last_verified: 2026-02-17
+    data_format: JSON
+    record_count: ~800
+    description: >
+      Azure built-in policy definitions and security benchmarks.
+      Covers compliance controls, security baselines, and shared
+      responsibility model properties for Azure services.
+    ingestion_script: src/cve_mcp/tasks/sync_cloud_security.py
+
+  - name: GCP Organization Policy
+    url: https://cloud.google.com/resource-manager/docs/organization-policy/overview
+    publisher: Google Cloud
+    license: Apache-2.0
+    update_frequency: Continuous (API-driven)
+    last_verified: 2026-02-17
+    data_format: API
+    record_count: ~200
+    description: >
+      GCP organization policy constraints and security properties.
+      Provides security configuration baselines and shared
+      responsibility model properties for Google Cloud services.
+    ingestion_script: src/cve_mcp/tasks/sync_cloud_security.py
