@@ -1835,6 +1835,7 @@ async def handle_search_owasp_llm_vulnerabilities(params: dict[str, Any]) -> dic
     return {
         "data": {
             "vulnerabilities": vulnerabilities,
+            "total_results": len(vulnerabilities),
             "returned_results": len(vulnerabilities),
         },
         "metadata": await _get_metadata(query_time_ms),

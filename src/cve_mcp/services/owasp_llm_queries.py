@@ -3,7 +3,7 @@
 import json
 from typing import Any
 
-from sqlalchemy import func, or_, select, text
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cve_mcp.models.owasp_llm import OwaspLlmTop10
@@ -40,7 +40,7 @@ async def search_owasp_llm_vulnerabilities(
 
     if query:
         # Split query into individual terms and OR across them (simple ILIKE matching)
-        terms = [t.strip() for t in query.split() if len(t.strip()) >= 3]
+        terms = [t.strip() for t in query.split() if t.strip()]
         if terms:
             term_filters = []
             for term in terms:
