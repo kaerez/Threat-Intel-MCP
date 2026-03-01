@@ -25,7 +25,7 @@ concurrency:
 
 env:
   REGISTRY: ansvardev.azurecr.io
-  CONTAINER_APP: "ca-mcp-threat-intel"
+  CONTAINER_APP: "ca-mcp-cve-intel"
   RESOURCE_GROUP: "rg-ansvar-dev"
 
 jobs:
