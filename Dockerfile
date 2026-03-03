@@ -34,6 +34,12 @@ RUN chown -R cve_mcp:cve_mcp /app
 # Switch to non-root user
 USER cve_mcp
 
+# Default to MCP Streamable HTTP transport for Docker/Azure deployment.
+# Override MCP_MODE=http for FastAPI wrapper or MCP_MODE=stdio for stdio.
+ENV MCP_MODE=mcp-http \
+    MCP_PORT=8307 \
+    MCP_HOST=0.0.0.0
+
 # Default command
 CMD ["python", "-m", "cve_mcp.main"]
 

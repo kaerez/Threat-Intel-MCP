@@ -48,8 +48,26 @@ def get_async_session_maker() -> Callable[[], AsyncSession]:
     return async_sessionmaker(engine, expire_on_commit=False)
 
 
-# Async session maker for FastAPI dependency injection (persistent event loop)
-AsyncSessionLocal = get_async_session_maker()
+class _LazySessionLocal:
+    """Lazy wrapper that defers engine creation until first use.
+
+    Creating the engine at module import time causes immediate failure if
+    DATABASE_URL is not set or malformed (e.g. during CLI --help or import
+    checks). This wrapper delays engine creation until the first session
+    is actually requested.
+    """
+
+    _maker: Callable[[], AsyncSession] | None = None
+
+    def __call__(self) -> AsyncSession:
+        if self._maker is None:
+            self._maker = get_async_session_maker()
+        return self._maker()
+
+
+# Async session maker for FastAPI dependency injection (persistent event loop).
+# Lazy: engine is created on first session request, not at import time.
+AsyncSessionLocal = _LazySessionLocal()
 
 
 @asynccontextmanager

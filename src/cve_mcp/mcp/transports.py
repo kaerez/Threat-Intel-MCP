@@ -1,12 +1,15 @@
 """Transport implementations for MCP protocol."""
 
 import asyncio
+import json
 
 import structlog
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from starlette.applications import Starlette
-from starlette.routing import Mount
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+from starlette.routing import Mount, Route
 
 logger = structlog.get_logger(__name__)
 
@@ -44,10 +47,11 @@ async def run_streamable_http_transport(server: Server, host: str, port: int) ->
     (ChatGPT, open-source MCP clients, web integrations). It uses the official
     MCP SDK's StreamableHTTPServerTransport.
 
-    The transport exposes a single /mcp endpoint that handles:
-    - POST /mcp - JSON-RPC requests (tool calls, tool listing)
-    - GET /mcp - SSE stream for server-initiated messages
-    - DELETE /mcp - Session termination
+    The transport exposes:
+    - POST /mcp   — JSON-RPC requests (tool calls, tool listing)
+    - GET  /mcp   — SSE stream for server-initiated messages
+    - DELETE /mcp — Session termination
+    - GET /health — Health check for Docker/Azure probes
 
     Args:
         server: MCP server instance
@@ -63,15 +67,21 @@ async def run_streamable_http_transport(server: Server, host: str, port: int) ->
         endpoint="/mcp",
     )
 
-    # Create the Streamable HTTP transport
+    # Create the Streamable HTTP transport.
+    # mcp_endpoint="/" because the Starlette Mount at "/mcp" already
+    # provides the path prefix. Using "/" here avoids a /mcp/mcp path.
     transport = StreamableHTTPServerTransport(
-        mcp_endpoint="/mcp",
+        mcp_endpoint="/",
         is_json_response_enabled=True,
     )
 
-    # Mount the transport's ASGI app under /mcp
+    async def health_check(request: Request) -> JSONResponse:
+        """Health check endpoint for Docker/Azure container probes."""
+        return JSONResponse({"status": "ok", "server": "threat-intel-mcp"})
+
     app = Starlette(
         routes=[
+            Route("/health", health_check, methods=["GET"]),
             Mount("/mcp", app=transport.asgi_app),
         ],
     )
