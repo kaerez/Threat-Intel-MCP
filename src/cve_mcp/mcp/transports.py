@@ -1,7 +1,6 @@
 """Transport implementations for MCP protocol."""
 
 import asyncio
-import json
 
 import structlog
 from mcp.server import Server
@@ -45,20 +44,20 @@ async def run_streamable_http_transport(server: Server, host: str, port: int) ->
 
     This is the MCP-standard HTTP transport for universal client compatibility
     (ChatGPT, open-source MCP clients, web integrations). It uses the official
-    MCP SDK's StreamableHTTPServerTransport.
+    MCP SDK's StreamableHTTPSessionManager for automatic session handling.
 
     The transport exposes:
-    - POST /mcp   — JSON-RPC requests (tool calls, tool listing)
-    - GET  /mcp   — SSE stream for server-initiated messages
-    - DELETE /mcp — Session termination
-    - GET /health — Health check for Docker/Azure probes
+    - POST /mcp   -- JSON-RPC requests (tool calls, tool listing)
+    - GET  /mcp   -- SSE stream for server-initiated messages
+    - DELETE /mcp -- Session termination
+    - GET /health -- Health check for Docker/Azure probes
 
     Args:
         server: MCP server instance
         host: Host to bind to
         port: Port to bind to
     """
-    from mcp.server.streamable_http import StreamableHTTPServerTransport
+    from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 
     logger.info(
         "Starting MCP server with Streamable HTTP transport",
@@ -67,12 +66,13 @@ async def run_streamable_http_transport(server: Server, host: str, port: int) ->
         endpoint="/mcp",
     )
 
-    # Create the Streamable HTTP transport.
-    # mcp_endpoint="/" because the Starlette Mount at "/mcp" already
-    # provides the path prefix. Using "/" here avoids a /mcp/mcp path.
-    transport = StreamableHTTPServerTransport(
-        mcp_endpoint="/",
-        is_json_response_enabled=True,
+    # StreamableHTTPSessionManager wraps the MCP server and manages
+    # per-client sessions automatically (session creation, routing,
+    # cleanup). json_response=True returns JSON instead of SSE for
+    # simple request/response tool calls.
+    session_manager = StreamableHTTPSessionManager(
+        app=server,
+        json_response=True,
     )
 
     async def health_check(request: Request) -> JSONResponse:
@@ -82,11 +82,10 @@ async def run_streamable_http_transport(server: Server, host: str, port: int) ->
     app = Starlette(
         routes=[
             Route("/health", health_check, methods=["GET"]),
-            Mount("/mcp", app=transport.asgi_app),
+            Mount("/mcp", app=session_manager.handle_request),
         ],
     )
 
-    # Start serving in background, then connect server to transport
     import uvicorn
 
     config = uvicorn.Config(
@@ -97,19 +96,4 @@ async def run_streamable_http_transport(server: Server, host: str, port: int) ->
     )
     uvicorn_server = uvicorn.Server(config)
 
-    # Run uvicorn and MCP server connection concurrently
-    async def serve_mcp() -> None:
-        """Connect MCP server to the transport after HTTP is ready."""
-        # Small delay to let uvicorn start
-        await asyncio.sleep(0.5)
-        logger.info("Connecting MCP server to Streamable HTTP transport")
-        await server.run(
-            transport.read_stream,
-            transport.write_stream,
-            server.create_initialization_options(),
-        )
-
-    await asyncio.gather(
-        uvicorn_server.serve(),
-        serve_mcp(),
-    )
+    await uvicorn_server.serve()
