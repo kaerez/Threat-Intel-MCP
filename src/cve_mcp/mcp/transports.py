@@ -1,6 +1,5 @@
 """Transport implementations for MCP protocol."""
 
-import asyncio
 import json
 
 import structlog
@@ -38,16 +37,20 @@ async def run_streamable_http_transport(server: Server, host: str, port: int) ->
     )
 
     async def app(scope, receive, send):
-        """Raw ASGI app: routes /mcp and /health."""
+        """Raw ASGI app with /mcp and /health routing."""
         if scope["type"] == "lifespan":
-            # Accept lifespan events (uvicorn sends these)
-            while True:
-                msg = await receive()
-                if msg["type"] == "lifespan.startup":
-                    await send({"type": "lifespan.startup.complete"})
-                elif msg["type"] == "lifespan.shutdown":
-                    await send({"type": "lifespan.shutdown.complete"})
-                    return
+            msg = await receive()
+            if msg["type"] == "lifespan.startup":
+                # Start session manager task group
+                scope["state"] = scope.get("state", {})
+                scope["state"]["_sm_cm"] = session_manager.run()
+                await scope["state"]["_sm_cm"].__aenter__()
+                await send({"type": "lifespan.startup.complete"})
+            msg = await receive()
+            if msg["type"] == "lifespan.shutdown":
+                await scope["state"]["_sm_cm"].__aexit__(None, None, None)
+                await send({"type": "lifespan.shutdown.complete"})
+            return
 
         if scope["type"] != "http":
             return
@@ -63,8 +66,6 @@ async def run_streamable_http_transport(server: Server, host: str, port: int) ->
             return
 
         if path in ("/mcp", "/mcp/"):
-            # Normalize path to /mcp for the session manager
-            scope["path"] = "/mcp"
             await session_manager.handle_request(scope, receive, send)
             return
 
