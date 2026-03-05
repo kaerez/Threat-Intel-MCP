@@ -1,34 +1,19 @@
 """Transport implementations for MCP protocol."""
 
 import asyncio
+import json
 
 import structlog
+import uvicorn
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from starlette.applications import Starlette
-from starlette.requests import Request
-from starlette.responses import JSONResponse
-from starlette.routing import Mount, Route
 
 logger = structlog.get_logger(__name__)
 
 
 async def run_stdio_transport(server: Server) -> None:
-    """
-    Run MCP server using stdio transport (for Claude Desktop, Cursor, etc.).
-
-    This transport reads JSON-RPC 2.0 messages from stdin and writes responses
-    to stdout. stderr is used for logging.
-
-    Args:
-        server: MCP server instance
-    """
+    """Run MCP server using stdio transport (for Claude Desktop, Cursor, etc.)."""
     logger.info("Starting MCP server with stdio transport")
-    logger.info(
-        "Server ready for JSON-RPC 2.0 communication",
-        protocol="MCP",
-        transport="stdio",
-    )
 
     async with stdio_server() as (read_stream, write_stream):
         await server.run(
@@ -39,61 +24,56 @@ async def run_stdio_transport(server: Server) -> None:
 
 
 async def run_streamable_http_transport(server: Server, host: str, port: int) -> None:
-    """
-    Run MCP server using Streamable HTTP transport.
-
-    This is the MCP-standard HTTP transport for universal client compatibility
-    (ChatGPT, open-source MCP clients, web integrations). It uses the official
-    MCP SDK's StreamableHTTPSessionManager for automatic session handling.
-
-    The transport exposes:
-    - POST /mcp   -- JSON-RPC requests (tool calls, tool listing)
-    - GET  /mcp   -- SSE stream for server-initiated messages
-    - DELETE /mcp -- Session termination
-    - GET /health -- Health check for Docker/Azure probes
-
-    Args:
-        server: MCP server instance
-        host: Host to bind to
-        port: Port to bind to
-    """
+    """Run MCP server using Streamable HTTP transport (SDK 1.26.0)."""
     from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 
     logger.info(
         "Starting MCP server with Streamable HTTP transport",
-        host=host,
-        port=port,
-        endpoint="/mcp",
+        host=host, port=port, endpoint="/mcp",
     )
 
-    # StreamableHTTPSessionManager wraps the MCP server and manages
-    # per-client sessions automatically (session creation, routing,
-    # cleanup). json_response=True returns JSON instead of SSE for
-    # simple request/response tool calls.
     session_manager = StreamableHTTPSessionManager(
         app=server,
         json_response=True,
     )
 
-    async def health_check(request: Request) -> JSONResponse:
-        """Health check endpoint for Docker/Azure container probes."""
-        return JSONResponse({"status": "ok", "server": "threat-intel-mcp"})
+    async def app(scope, receive, send):
+        """Raw ASGI app: routes /mcp and /health."""
+        if scope["type"] == "lifespan":
+            # Accept lifespan events (uvicorn sends these)
+            while True:
+                msg = await receive()
+                if msg["type"] == "lifespan.startup":
+                    await send({"type": "lifespan.startup.complete"})
+                elif msg["type"] == "lifespan.shutdown":
+                    await send({"type": "lifespan.shutdown.complete"})
+                    return
 
-    app = Starlette(
-        routes=[
-            Route("/health", health_check, methods=["GET"]),
-            Mount("/mcp", app=session_manager.handle_request),
-        ],
-    )
+        if scope["type"] != "http":
+            return
 
-    import uvicorn
+        path = scope.get("path", "")
 
-    config = uvicorn.Config(
-        app,
-        host=host,
-        port=port,
-        log_level="info",
-    )
+        if path == "/health":
+            body = json.dumps({"status": "ok", "server": "threat-intel-mcp"}).encode()
+            await send({"type": "http.response.start", "status": 200, "headers": [
+                [b"content-type", b"application/json"],
+            ]})
+            await send({"type": "http.response.body", "body": body})
+            return
+
+        if path in ("/mcp", "/mcp/"):
+            # Normalize path to /mcp for the session manager
+            scope["path"] = "/mcp"
+            await session_manager.handle_request(scope, receive, send)
+            return
+
+        body = json.dumps({"error": "not found"}).encode()
+        await send({"type": "http.response.start", "status": 404, "headers": [
+            [b"content-type", b"application/json"],
+        ]})
+        await send({"type": "http.response.body", "body": body})
+
+    config = uvicorn.Config(app, host=host, port=port, log_level="info")
     uvicorn_server = uvicorn.Server(config)
-
     await uvicorn_server.serve()
