@@ -63,10 +63,10 @@ async def run_stdio_mode() -> None:
     logger.info("Starting server in stdio mode", protocol="MCP", transport="stdio")
 
     # Create MCP server
-    server = create_mcp_server()
+    wrapper = create_mcp_server()
 
-    # Run with stdio transport
-    await run_stdio_transport(server)
+    # Run with stdio transport (pass inner SDK Server, not the wrapper)
+    await run_stdio_transport(wrapper.server)
 
 
 def run_http_mode(host: str, port: int) -> None:

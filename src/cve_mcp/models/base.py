@@ -1,5 +1,6 @@
 """Base database model and engine setup."""
 
+import threading
 from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 
@@ -54,14 +55,18 @@ class _LazySessionLocal:
     Creating the engine at module import time causes immediate failure if
     DATABASE_URL is not set or malformed (e.g. during CLI --help or import
     checks). This wrapper delays engine creation until the first session
-    is actually requested.
+    is actually requested. Thread-safe via lock.
     """
 
-    _maker: Callable[[], AsyncSession] | None = None
+    def __init__(self) -> None:
+        self._maker: Callable[[], AsyncSession] | None = None
+        self._lock = threading.Lock()
 
     def __call__(self) -> AsyncSession:
         if self._maker is None:
-            self._maker = get_async_session_maker()
+            with self._lock:
+                if self._maker is None:
+                    self._maker = get_async_session_maker()
         return self._maker()
 
 

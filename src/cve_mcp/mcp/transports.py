@@ -7,6 +7,8 @@ import uvicorn
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 
+from cve_mcp.services.cache import cache_service
+
 logger = structlog.get_logger(__name__)
 
 
@@ -14,12 +16,18 @@ async def run_stdio_transport(server: Server) -> None:
     """Run MCP server using stdio transport (for Claude Desktop, Cursor, etc.)."""
     logger.info("Starting MCP server with stdio transport")
 
-    async with stdio_server() as (read_stream, write_stream):
-        await server.run(
-            read_stream,
-            write_stream,
-            server.create_initialization_options(),
-        )
+    # Connect cache for stdio mode too — tools expect it
+    await cache_service.connect()
+
+    try:
+        async with stdio_server() as (read_stream, write_stream):
+            await server.run(
+                read_stream,
+                write_stream,
+                server.create_initialization_options(),
+            )
+    finally:
+        await cache_service.disconnect()
 
 
 async def run_streamable_http_transport(server: Server, host: str, port: int) -> None:
@@ -41,6 +49,10 @@ async def run_streamable_http_transport(server: Server, host: str, port: int) ->
         if scope["type"] == "lifespan":
             msg = await receive()
             if msg["type"] == "lifespan.startup":
+                # Initialize application services
+                await cache_service.connect()
+                logger.info("Application services initialized")
+
                 # Start session manager task group
                 scope["state"] = scope.get("state", {})
                 scope["state"]["_sm_cm"] = session_manager.run()
@@ -49,6 +61,8 @@ async def run_streamable_http_transport(server: Server, host: str, port: int) ->
             msg = await receive()
             if msg["type"] == "lifespan.shutdown":
                 await scope["state"]["_sm_cm"].__aexit__(None, None, None)
+                await cache_service.disconnect()
+                logger.info("Application services shut down")
                 await send({"type": "lifespan.shutdown.complete"})
             return
 
@@ -58,7 +72,13 @@ async def run_streamable_http_transport(server: Server, host: str, port: int) ->
         path = scope.get("path", "")
 
         if path == "/health":
-            body = json.dumps({"status": "ok", "server": "threat-intel-mcp"}).encode()
+            cache_ok = await cache_service.health_check()
+            status = "ok" if cache_ok else "degraded"
+            body = json.dumps({
+                "status": status,
+                "server": "threat-intel-mcp",
+                "cache": "connected" if cache_ok else "unavailable",
+            }).encode()
             await send({"type": "http.response.start", "status": 200, "headers": [
                 [b"content-type", b"application/json"],
             ]})
