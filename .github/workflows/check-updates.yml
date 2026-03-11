@@ -1,0 +1,109 @@
+name: Check Source Updates
+
+on:
+  schedule:
+    - cron: '0 7 * * 1'  # Weekly Monday 7 AM UTC
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  check-freshness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check NVD API availability
+        id: nvd
+        run: |
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage=1")
+          echo "status=$HTTP_CODE" >> $GITHUB_OUTPUT
+          echo "NVD API status: $HTTP_CODE"
+
+      - name: Check CISA KEV freshness
+        id: kev
+        run: |
+          LAST_MODIFIED=$(curl -sI "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json" | grep -i "last-modified" | cut -d' ' -f2-)
+          echo "last_modified=$LAST_MODIFIED" >> $GITHUB_OUTPUT
+          echo "CISA KEV last modified: $LAST_MODIFIED"
+
+      - name: Check EPSS freshness
+        id: epss
+        run: |
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://epss.cyentia.com/epss_scores-current.csv.gz")
+          echo "status=$HTTP_CODE" >> $GITHUB_OUTPUT
+          echo "EPSS status: $HTTP_CODE"
+
+      - name: Check MITRE ATT&CK version
+        id: attack
+        run: |
+          LATEST=$(curl -s "https://api.github.com/repos/mitre/cti/releases/latest" | jq -r '.tag_name // "unknown"')
+          echo "version=$LATEST" >> $GITHUB_OUTPUT
+          echo "ATT&CK latest release: $LATEST"
+
+      - name: Check MITRE CAPEC version
+        id: capec
+        run: |
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://capec.mitre.org/data/xml/capec_latest.xml")
+          echo "status=$HTTP_CODE" >> $GITHUB_OUTPUT
+
+      - name: Check MITRE CWE version
+        id: cwe
+        run: |
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://cwe.mitre.org/data/xml/cwec_latest.xml.zip")
+          echo "status=$HTTP_CODE" >> $GITHUB_OUTPUT
+
+      - name: Check MITRE ATLAS version
+        id: atlas
+        run: |
+          LATEST=$(curl -s "https://api.github.com/repos/mitre-atlas/atlas-data/releases/latest" | jq -r '.tag_name // "unknown"')
+          echo "version=$LATEST" >> $GITHUB_OUTPUT
+          echo "ATLAS latest release: $LATEST"
+
+      - name: Create freshness report
+        run: |
+          cat << 'EOF' > freshness-report.md
+          ## Data Source Freshness Report
+
+          | Source | Status | Details |
+          |--------|--------|---------|
+          | NVD API | ${{ steps.nvd.outputs.status }} | API availability check |
+          | CISA KEV | ${{ steps.kev.outputs.last_modified }} | Last-Modified header |
+          | EPSS | ${{ steps.epss.outputs.status }} | Endpoint availability |
+          | MITRE ATT&CK | ${{ steps.attack.outputs.version }} | Latest GitHub release |
+          | MITRE CAPEC | ${{ steps.capec.outputs.status }} | Endpoint availability |
+          | MITRE CWE | ${{ steps.cwe.outputs.status }} | Endpoint availability |
+          | MITRE ATLAS | ${{ steps.atlas.outputs.version }} | Latest GitHub release |
+
+          _Checked: $(date -u +"%Y-%m-%dT%H:%M:%SZ")_
+          EOF
+          cat freshness-report.md
+
+      - name: Check for source failures
+        id: check_failures
+        run: |
+          FAILED=false
+          if [ "${{ steps.nvd.outputs.status }}" != "200" ]; then FAILED=true; fi
+          if [ "${{ steps.epss.outputs.status }}" != "200" ]; then FAILED=true; fi
+          if [ "${{ steps.capec.outputs.status }}" != "200" ]; then FAILED=true; fi
+          if [ "${{ steps.cwe.outputs.status }}" != "200" ]; then FAILED=true; fi
+          echo "has_failures=$FAILED" >> $GITHUB_OUTPUT
+
+      - name: Create issue on failures
+        if: steps.check_failures.outputs.has_failures == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('freshness-report.md', 'utf8');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[Data Freshness] Source availability issue detected - ${new Date().toISOString().split('T')[0]}`,
+              body: report,
+              labels: ['data-freshness', 'automated']
+            });
