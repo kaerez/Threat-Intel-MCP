@@ -63,7 +63,12 @@ async def _sync_cisa_kev_async() -> dict:
     sync_start = datetime.now()
 
     # Download KEV catalog
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    # CISA uses Cloudflare which blocks requests without a proper User-Agent
+    headers = {
+        "User-Agent": "Ansvar-Threat-Intel-MCP/1.4.0 (security-research; +https://ansvar.eu)",
+        "Accept": "application/json",
+    }
+    async with httpx.AsyncClient(timeout=30.0, headers=headers, follow_redirects=True) as client:
         response = await client.get(settings.cisa_kev_url)
         response.raise_for_status()
         data = response.json()
