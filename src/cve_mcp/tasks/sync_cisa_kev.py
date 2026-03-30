@@ -63,15 +63,26 @@ async def _sync_cisa_kev_async() -> dict:
     sync_start = datetime.now()
 
     # Download KEV catalog
-    # CISA uses Cloudflare which blocks requests without a proper User-Agent
+    # CISA uses Akamai which blocks European datacenter IPs.
+    # Try CISA directly first, fall back to self-hosted GitHub mirror.
     headers = {
         "User-Agent": "Ansvar-Threat-Intel-MCP/1.4.0 (security-research; +https://ansvar.eu)",
         "Accept": "application/json",
     }
+    data = None
     async with httpx.AsyncClient(timeout=30.0, headers=headers, follow_redirects=True) as client:
-        response = await client.get(settings.cisa_kev_url)
-        response.raise_for_status()
-        data = response.json()
+        for url in [settings.cisa_kev_url, settings.cisa_kev_mirror_url]:
+            try:
+                response = await client.get(url)
+                response.raise_for_status()
+                data = response.json()
+                logger.info("Downloaded KEV catalog", source=url)
+                break
+            except httpx.HTTPStatusError as e:
+                logger.warning("KEV source unavailable, trying next", url=url, status=e.response.status_code)
+                continue
+        if data is None:
+            raise RuntimeError("All KEV sources unavailable (CISA + GitHub mirror)")
 
     vulnerabilities = data.get("vulnerabilities", [])
     logger.info("Downloaded CISA KEV catalog", count=len(vulnerabilities))
