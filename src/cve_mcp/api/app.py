@@ -261,6 +261,84 @@ def create_app() -> FastAPI:
         result = await TOOL_HANDLERS["batch_search"](params)
         return JSONResponse(content=result)
 
+    # ── Standard MCP Streamable HTTP Endpoint ──────────────────────
+    # Handles JSON-RPC 2.0 over POST /mcp for platform proxy + watchdog.
+    # The platform sends standard MCP protocol to base_url + /mcp.
+    # This translates JSON-RPC requests to internal tool handlers.
+
+    @app.post("/mcp")
+    async def mcp_streamable_http(request: Request) -> JSONResponse:
+        """Standard MCP Streamable HTTP endpoint (JSON-RPC 2.0).
+
+        Translates MCP protocol requests to internal tool handlers so that
+        the Ansvar platform proxy and watchdog can communicate using the
+        standard MCP Streamable HTTP transport.
+        """
+        body = await request.json()
+        jsonrpc = body.get("jsonrpc", "2.0")
+        req_id = body.get("id")
+        method = body.get("method", "")
+        params = body.get("params", {})
+
+        # Notifications (no id) — acknowledge silently
+        if req_id is None:
+            return JSONResponse(content={}, status_code=202)
+
+        if method == "initialize":
+            return JSONResponse(content={
+                "jsonrpc": jsonrpc,
+                "id": req_id,
+                "result": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {"tools": {}},
+                    "serverInfo": {"name": "threat-intel-mcp", "version": "1.4.0"},
+                },
+            })
+
+        if method == "tools/list":
+            tools_list = get_mcp_tools()
+            return JSONResponse(content={
+                "jsonrpc": jsonrpc,
+                "id": req_id,
+                "result": {
+                    "tools": [t.model_dump() for t in tools_list],
+                },
+            })
+
+        if method == "tools/call":
+            name = params.get("name")
+            arguments = params.get("arguments", {})
+            try:
+                mcp_server = request.app.state.mcp_server
+                result_contents = await mcp_server.call_tool(name, arguments)
+                content = [
+                    {"type": item.type, "text": item.text}
+                    for item in result_contents
+                ]
+                is_error = any(
+                    isinstance(item, TextContent)
+                    and item.text.startswith("Error calling tool")
+                    for item in result_contents
+                )
+                return JSONResponse(content={
+                    "jsonrpc": jsonrpc,
+                    "id": req_id,
+                    "result": {"content": content, "isError": is_error},
+                })
+            except Exception as e:
+                logger.exception("MCP tools/call error", tool=name, error=str(e))
+                return JSONResponse(content={
+                    "jsonrpc": jsonrpc,
+                    "id": req_id,
+                    "error": {"code": -32603, "message": str(e)},
+                })
+
+        return JSONResponse(content={
+            "jsonrpc": jsonrpc,
+            "id": req_id,
+            "error": {"code": -32601, "message": f"Method not found: {method}"},
+        })
+
     return app
 
 
