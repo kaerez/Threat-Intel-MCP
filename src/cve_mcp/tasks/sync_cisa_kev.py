@@ -64,25 +64,38 @@ async def _sync_cisa_kev_async() -> dict:
 
     # Download KEV catalog
     # CISA uses Akamai which blocks European datacenter IPs.
-    # Try CISA directly first, fall back to self-hosted GitHub mirror.
+    # Try CISA directly first, fall back to bundled mirror file
+    # (updated daily by mirror-cisa-kev.yml GitHub Action).
     headers = {
         "User-Agent": "Ansvar-Threat-Intel-MCP/1.4.0 (security-research; +https://ansvar.eu)",
         "Accept": "application/json",
     }
     data = None
     async with httpx.AsyncClient(timeout=30.0, headers=headers, follow_redirects=True) as client:
-        for url in [settings.cisa_kev_url, settings.cisa_kev_mirror_url]:
-            try:
-                response = await client.get(url)
-                response.raise_for_status()
-                data = response.json()
-                logger.info("Downloaded KEV catalog", source=url)
+        try:
+            response = await client.get(settings.cisa_kev_url)
+            response.raise_for_status()
+            data = response.json()
+            logger.info("Downloaded KEV catalog from CISA")
+        except httpx.HTTPStatusError as e:
+            logger.warning("CISA blocked, trying bundled mirror", status=e.response.status_code)
+
+    if data is None:
+        # Fall back to bundled file (baked into Docker image by mirror workflow)
+        import json
+        from pathlib import Path
+        mirror_paths = [
+            Path("/app/data/known_exploited_vulnerabilities.json"),
+            Path("data/known_exploited_vulnerabilities.json"),
+        ]
+        for path in mirror_paths:
+            if path.exists() and path.stat().st_size > 1000:
+                data = json.loads(path.read_text())
+                logger.info("Loaded KEV catalog from bundled mirror", path=str(path))
                 break
-            except httpx.HTTPStatusError as e:
-                logger.warning("KEV source unavailable, trying next", url=url, status=e.response.status_code)
-                continue
-        if data is None:
-            raise RuntimeError("All KEV sources unavailable (CISA + GitHub mirror)")
+
+    if data is None:
+        raise RuntimeError("All KEV sources unavailable (CISA blocked, no bundled mirror)")
 
     vulnerabilities = data.get("vulnerabilities", [])
     logger.info("Downloaded CISA KEV catalog", count=len(vulnerabilities))

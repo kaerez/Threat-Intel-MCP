@@ -30,10 +30,8 @@ class Settings(BaseSettings):
     cisa_kev_url: str = (
         "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
     )
-    # Fallback: self-hosted GitHub mirror (CISA blocks European datacenter IPs via Akamai)
-    cisa_kev_mirror_url: str = (
-        "https://raw.githubusercontent.com/Ansvar-Systems/Threat-Intel-MCP/main/data/known_exploited_vulnerabilities.json"
-    )
+    # Fallback: bundled mirror at data/known_exploited_vulnerabilities.json
+    # Updated daily by mirror-cisa-kev.yml (CISA blocks European datacenter IPs via Akamai)
 
     # EPSS
     epss_url: str = "https://epss.cyentia.com/epss_scores-current.csv.gz"
