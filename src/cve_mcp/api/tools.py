@@ -4,6 +4,8 @@ import time
 from datetime import datetime
 from typing import Any
 
+from cve_mcp.citation import build_citation
+
 from cve_mcp.api.schemas import (
     BatchSearchRequest,
     CheckKEVStatusRequest,
@@ -1373,6 +1375,13 @@ async def handle_get_cve_details(params: dict[str, Any]) -> dict[str, Any]:
         return {
             "data": cached,
             "metadata": await _get_metadata(query_time_ms, cache_hit=True),
+            "_citation": build_citation(
+                request.cve_id,
+                request.cve_id,
+                "get_cve_details",
+                {"cve_id": request.cve_id},
+                f"https://nvd.nist.gov/vuln/detail/{request.cve_id}",
+            ),
         }
 
     # Execute query
@@ -1393,6 +1402,13 @@ async def handle_get_cve_details(params: dict[str, Any]) -> dict[str, Any]:
     return {
         "data": data,
         "metadata": await _get_metadata(query_time_ms),
+        "_citation": build_citation(
+            request.cve_id,
+            request.cve_id,
+            "get_cve_details",
+            {"cve_id": request.cve_id},
+            f"https://nvd.nist.gov/vuln/detail/{request.cve_id}",
+        ),
     }
 
 
@@ -1484,10 +1500,18 @@ async def handle_get_cwe_details(params: dict[str, Any]) -> dict[str, Any]:
         data = await cwe_queries.get_weakness_details(session, weakness_id=request.cwe_id)
 
     query_time_ms = int((time.time() - start_time) * 1000)
+    cid = request.cwe_id
 
     return {
         "data": data,
         "metadata": await _get_metadata(query_time_ms),
+        "_citation": build_citation(
+            f"CWE-{cid}",
+            f"CWE-{cid}",
+            "get_cwe_details",
+            {"cwe_id": cid},
+            f"https://cwe.mitre.org/data/definitions/{cid}.html",
+        ),
     }
 
 
@@ -1584,10 +1608,18 @@ async def handle_get_technique_details(params: dict[str, Any]) -> dict[str, Any]
         )
 
     query_time_ms = int((time.time() - start_time) * 1000)
+    tid = request.technique_id
 
     return {
         "data": data,
         "metadata": await _get_metadata(query_time_ms),
+        "_citation": build_citation(
+            tid,
+            f"MITRE ATT&CK {tid}",
+            "get_technique_details",
+            {"technique_id": tid},
+            f"https://attack.mitre.org/techniques/{tid.replace('.', '/')}/",
+        ),
     }
 
 
@@ -1676,10 +1708,18 @@ async def handle_get_group_profile(params: dict[str, Any]) -> dict[str, Any]:
         )
 
     query_time_ms = int((time.time() - start_time) * 1000)
+    gid = request.group_id
 
     return {
         "data": data,
         "metadata": await _get_metadata(query_time_ms),
+        "_citation": build_citation(
+            gid,
+            f"MITRE ATT&CK group {gid}",
+            "get_group_profile",
+            {"group_id": gid},
+            f"https://attack.mitre.org/groups/{gid}/",
+        ),
     }
 
 
@@ -1756,10 +1796,18 @@ async def handle_get_atlas_technique_details(params: dict[str, Any]) -> dict[str
         )
 
     query_time_ms = int((time.time() - start_time) * 1000)
+    tid = request.technique_id
 
     return {
         "data": data,
         "metadata": await _get_metadata(query_time_ms),
+        "_citation": build_citation(
+            tid,
+            f"MITRE ATLAS {tid}",
+            "get_atlas_technique_details",
+            {"technique_id": tid},
+            f"https://atlas.mitre.org/techniques/{tid}",
+        ),
     }
 
 
@@ -1854,10 +1902,18 @@ async def handle_get_owasp_llm_vulnerability(params: dict[str, Any]) -> dict[str
         )
 
     query_time_ms = int((time.time() - start_time) * 1000)
+    lid = request.llm_id
 
     return {
         "data": data,
         "metadata": await _get_metadata(query_time_ms),
+        "_citation": build_citation(
+            lid,
+            f"OWASP LLM Top 10 — {lid}",
+            "get_owasp_llm_vulnerability",
+            {"llm_id": lid},
+            "https://owasp.org/www-project-top-10-for-large-language-model-applications/",
+        ),
     }
 
 
@@ -1935,10 +1991,18 @@ async def handle_get_capec_pattern_details(params: dict[str, Any]) -> dict[str, 
         )
 
     query_time_ms = int((time.time() - start_time) * 1000)
+    pid = request.pattern_id
 
     return {
         "data": data,
         "metadata": await _get_metadata(query_time_ms),
+        "_citation": build_citation(
+            f"CAPEC-{pid}",
+            f"CAPEC-{pid}",
+            "get_capec_pattern_details",
+            {"pattern_id": pid},
+            f"https://capec.mitre.org/data/definitions/{pid}.html",
+        ),
     }
 
 
@@ -2065,10 +2129,18 @@ async def handle_get_cwe_weakness_details(params: dict[str, Any]) -> dict[str, A
         )
 
     query_time_ms = int((time.time() - start_time) * 1000)
+    wid = request.weakness_id
 
     return {
         "data": data,
         "metadata": await _get_metadata(query_time_ms),
+        "_citation": build_citation(
+            f"CWE-{wid}",
+            f"CWE-{wid}",
+            "get_cwe_weakness_details",
+            {"weakness_id": wid},
+            f"https://cwe.mitre.org/data/definitions/{wid}.html",
+        ),
     }
 
 
@@ -2211,10 +2283,18 @@ async def handle_get_defense_details(params: dict[str, Any]) -> dict[str, Any]:
         )
 
     query_time_ms = int((time.time() - start_time) * 1000)
+    did = request.technique_id
 
     return {
         "data": data,
         "metadata": await _get_metadata(query_time_ms),
+        "_citation": build_citation(
+            did,
+            f"D3FEND {did}",
+            "get_defense_details",
+            {"technique_id": did},
+            f"https://d3fend.mitre.org/technique/{did}/",
+        ),
     }
 
 
@@ -2368,6 +2448,12 @@ async def handle_get_cloud_service_security(params: dict[str, Any]) -> dict[str,
     return {
         "data": data,
         "metadata": await _get_metadata(query_time_ms),
+        "_citation": build_citation(
+            f"{request.provider}:{request.service}",
+            f"{request.provider} {request.service} security profile",
+            "get_cloud_service_security",
+            {"provider": request.provider, "service": request.service},
+        ),
     }
 
 
