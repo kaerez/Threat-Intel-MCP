@@ -1,14 +1,13 @@
 """Cloud security properties models with quality-first architecture."""
 
 from datetime import datetime
-from enum import Enum as PyEnum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     ARRAY,
     Boolean,
-    Column,
     DateTime,
     Enum,
     Float,
@@ -33,7 +32,7 @@ if TYPE_CHECKING:
 # ============================================================================
 
 
-class CloudProviderEnum(str, PyEnum):
+class CloudProviderEnum(StrEnum):
     """Cloud provider identifiers."""
 
     AWS = "aws"
@@ -42,7 +41,7 @@ class CloudProviderEnum(str, PyEnum):
     MULTI_CLOUD = "multi-cloud"  # For generic patterns
 
 
-class ServiceCategoryEnum(str, PyEnum):
+class ServiceCategoryEnum(StrEnum):
     """Service categories for equivalency mapping."""
 
     OBJECT_STORAGE = "object_storage"
@@ -67,7 +66,7 @@ class ServiceCategoryEnum(str, PyEnum):
     EVENT_BUS = "event_bus"
 
 
-class PropertyTypeEnum(str, PyEnum):
+class PropertyTypeEnum(StrEnum):
     """Security property types for structured organization."""
 
     ENCRYPTION_AT_REST = "encryption_at_rest"
@@ -89,7 +88,7 @@ class PropertyTypeEnum(str, PyEnum):
     RESILIENCE = "resilience"
 
 
-class VerificationMethodEnum(str, PyEnum):
+class VerificationMethodEnum(StrEnum):
     """How a property was verified."""
 
     SCRAPER_ONLY = "scraper_only"
@@ -99,7 +98,7 @@ class VerificationMethodEnum(str, PyEnum):
     ALL_METHODS = "all_methods"  # Scraper + LLM + human
 
 
-class ChangeSignificanceEnum(str, PyEnum):
+class ChangeSignificanceEnum(StrEnum):
     """Significance level for property changes."""
 
     MAJOR = "major"  # Breaking change, security impact
@@ -108,7 +107,7 @@ class ChangeSignificanceEnum(str, PyEnum):
     REFRESH = "refresh"  # Re-verification without changes
 
 
-class ResponsibilityLayerEnum(str, PyEnum):
+class ResponsibilityLayerEnum(StrEnum):
     """Shared responsibility model layers."""
 
     PHYSICAL = "physical"  # Data center security
@@ -121,7 +120,7 @@ class ResponsibilityLayerEnum(str, PyEnum):
     CLIENT_ENDPOINT = "client_endpoint"  # User device security
 
 
-class ResponsibilityOwnerEnum(str, PyEnum):
+class ResponsibilityOwnerEnum(StrEnum):
     """Who owns responsibility for a layer."""
 
     PROVIDER = "provider"  # Cloud provider's responsibility

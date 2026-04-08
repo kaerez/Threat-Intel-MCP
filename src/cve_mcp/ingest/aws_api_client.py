@@ -10,9 +10,10 @@ Quality-first design:
 - Optional credential chain for IAM roles
 """
 
+from typing import Any
+
 import boto3
 import structlog
-from typing import Any
 
 logger = structlog.get_logger(__name__)
 
@@ -178,10 +179,10 @@ class AWSSecurityHubClient:
     def get_s3_security_properties(self) -> list[dict[str, Any]]:
         """
         Get S3 security properties using direct S3 API calls (FREE).
-        
+
         This method checks AWS account-level and S3 bucket-level security settings
         without requiring Security Hub or Config. All API calls used are free.
-        
+
         Returns:
             List of S3 security property definitions based on AWS best practices:
                 {
@@ -194,14 +195,14 @@ class AWSSecurityHubClient:
                 }
         """
         properties = []
-        
+
         try:
             # Check account-level public access block
             try:
                 account_id = self.session.client('sts').get_caller_identity()['Account']
                 response = self.s3control.get_public_access_block(AccountId=account_id)
                 config = response.get('PublicAccessBlockConfiguration', {})
-                
+
                 properties.append({
                     "property_id": "s3-account-public-access-block",
                     "property_name": "S3 Account-Level Public Access Block",
@@ -213,7 +214,7 @@ class AWSSecurityHubClient:
                 })
             except Exception as e:
                 logger.debug("could_not_check_account_public_access_block", error=str(e))
-            
+
             # Define S3 best practice properties based on AWS Well-Architected Framework
             best_practices = [
                 {
@@ -298,16 +299,16 @@ class AWSSecurityHubClient:
                     "remediation_url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication.html",
                 },
             ]
-            
+
             properties.extend(best_practices)
-            
+
             logger.info(
                 "generated_s3_security_properties",
                 count=len(properties),
                 source="direct_api_best_practices",
             )
             return properties
-            
+
         except Exception as e:
             logger.error(
                 "failed_to_get_s3_security_properties",
@@ -321,14 +322,14 @@ class AWSSecurityHubClient:
     ) -> list[dict[str, Any]]:
         """
         Get IAM Access Analyzer findings for S3 buckets (FREE).
-        
+
         Access Analyzer identifies resources shared with external entities.
         This is a free service that provides security insights.
-        
+
         Args:
             resource_type: AWS resource type to analyze
             max_results: Maximum findings to fetch
-            
+
         Returns:
             List of Access Analyzer findings converted to security properties
         """
@@ -336,18 +337,18 @@ class AWSSecurityHubClient:
             # First, list analyzers
             analyzers_response = self.accessanalyzer.list_analyzers(type='ACCOUNT')
             analyzers = analyzers_response.get('analyzers', [])
-            
+
             if not analyzers:
                 logger.info(
                     "no_access_analyzers_found",
                     message="No Access Analyzers configured. This is optional but recommended.",
                 )
                 return []
-            
+
             findings = []
             for analyzer in analyzers[:1]:  # Use first analyzer
                 analyzer_arn = analyzer.get('arn')
-                
+
                 # List findings for this analyzer
                 paginator = self.accessanalyzer.get_paginator('list_findings')
                 for page in paginator.paginate(
@@ -356,14 +357,14 @@ class AWSSecurityHubClient:
                     PaginationConfig={'MaxItems': max_results}
                 ):
                     findings.extend(page.get('findings', []))
-            
+
             logger.info(
                 "fetched_access_analyzer_findings",
                 count=len(findings),
                 resource_type=resource_type,
             )
             return findings
-            
+
         except Exception as e:
             logger.error(
                 "failed_to_fetch_access_analyzer_findings",

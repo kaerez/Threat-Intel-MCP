@@ -34,7 +34,6 @@ from cve_mcp.models.cwe import (
 )
 from cve_mcp.models.metadata import SyncMetadata
 from cve_mcp.services.embeddings import generate_embeddings_batch
-
 from cve_mcp.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -269,7 +268,8 @@ async def sync_category_memberships(
         Number of category memberships synced
     """
     from sqlalchemy import select
-    from cve_mcp.models.cwe import CWEWeakness, CWECategory, CWEView
+
+    from cve_mcp.models.cwe import CWECategory, CWEView, CWEWeakness
 
     logger.info("Syncing category memberships")
 

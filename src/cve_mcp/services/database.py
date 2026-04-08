@@ -1,12 +1,11 @@
 """Database service for CVE MCP server."""
 
-import structlog
-
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Any
 
+import structlog
 from packaging.version import InvalidVersion, Version
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -402,8 +401,8 @@ class DatabaseService:
             # Safety cap to prevent unbounded memory usage
             # Version comparison requires Python-side filtering, but we limit
             # the SQL result set to prevent OOM on large databases
-            SAFETY_CAP = 10000
-            capped_query = query.limit(SAFETY_CAP)
+            safety_cap = 10000
+            capped_query = query.limit(safety_cap)
             result = await session.execute(capped_query)
             all_rows = result.all()
 
@@ -417,12 +416,12 @@ class DatabaseService:
             total_count = len(filtered_rows)
 
             # Warn if safety cap was hit (results may be incomplete)
-            if len(all_rows) >= SAFETY_CAP:
+            if len(all_rows) >= safety_cap:
                 logger = structlog.get_logger()
                 logger.warning(
                     "search_by_product hit safety cap",
                     product=product_name,
-                    safety_cap=SAFETY_CAP,
+                    safety_cap=safety_cap,
                     note="Results may be incomplete. Refine search with vendor filter.",
                 )
         else:

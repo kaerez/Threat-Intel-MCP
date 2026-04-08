@@ -10,9 +10,10 @@ Quality-first design:
 - Async HTTP client with proper error handling
 """
 
+from typing import Any
+
 import httpx
 import structlog
-from typing import Any
 
 logger = structlog.get_logger(__name__)
 

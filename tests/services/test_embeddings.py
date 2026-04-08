@@ -45,7 +45,7 @@ async def test_generate_embeddings_batch():
 @pytest.mark.asyncio
 async def test_embedding_similarity():
     """Test that similar texts have similar embeddings."""
-    from cve_mcp.services.embeddings import generate_embedding, cosine_similarity
+    from cve_mcp.services.embeddings import cosine_similarity, generate_embedding
 
     emb1 = await generate_embedding("SQL injection in login form")
     emb2 = await generate_embedding("SQL injection vulnerability in authentication")

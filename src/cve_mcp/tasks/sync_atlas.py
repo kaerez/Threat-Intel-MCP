@@ -29,7 +29,6 @@ from cve_mcp.models.atlas import (
 from cve_mcp.models.base import get_task_session
 from cve_mcp.models.metadata import SyncMetadata
 from cve_mcp.services.embeddings import generate_embeddings_batch
-
 from cve_mcp.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)

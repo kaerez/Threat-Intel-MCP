@@ -270,7 +270,7 @@ class TestSemanticVsTraditionalSearch:
         # Should find credential access techniques
         if techniques:
             # Verify we found techniques related to credentials/browsers
-            found_relevant = any(
+            any(
                 "credential" in tech["name"].lower() or
                 "credential" in tech["description"].lower() or
                 "browser" in tech["description"].lower() or

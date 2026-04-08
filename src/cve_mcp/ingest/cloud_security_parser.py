@@ -4,7 +4,6 @@ import hashlib
 from datetime import datetime
 from typing import Any
 
-
 # ============================================================================
 # AWS Parsers
 # ============================================================================
@@ -167,26 +166,26 @@ def parse_aws_s3_best_practice(
 ) -> dict[str, Any] | None:
     """
     Parse AWS S3 best practice property from direct API checks.
-    
+
     This parser handles security properties derived from:
     - Direct S3 API calls (GetBucketEncryption, GetPublicAccessBlock, etc.)
     - IAM Access Analyzer findings
     - AWS Well-Architected Framework recommendations
-    
+
     Args:
         raw: Best practice property definition
         service_name: AWS service name (default: s3)
-        
+
     Returns:
         Parsed property dict or None if invalid
     """
     property_id = raw.get("property_id")
     property_name = raw.get("property_name")
     description = raw.get("description")
-    
+
     if not property_id or not property_name or not description:
         return None
-    
+
     # Map severity to standardized levels
     severity_map = {
         "critical": "CRITICAL",
@@ -195,12 +194,12 @@ def parse_aws_s3_best_practice(
         "low": "LOW",
     }
     severity = severity_map.get(raw.get("severity", "medium").lower(), "MEDIUM")
-    
+
     # Map category to property type
     category_to_type = {
         "encryption": "encryption_at_rest",
         "access_control": "access_control",
-        "data_protection": "data_protection", 
+        "data_protection": "data_protection",
         "monitoring": "monitoring_logging",
         "cost_optimization": "cost_optimization",
         "resilience": "resilience",
@@ -208,7 +207,7 @@ def parse_aws_s3_best_practice(
     property_type = category_to_type.get(
         raw.get("category", "access_control"), "access_control"
     )
-    
+
     property_value = {
         "property_id": property_id,
         "severity": severity,
@@ -217,13 +216,13 @@ def parse_aws_s3_best_practice(
         "remediation_url": raw.get("remediation_url"),
         "source": "aws_best_practices",
     }
-    
+
     confidence = _calculate_confidence(
         has_source_quote=True,
         source_is_authoritative=True,
         verification_method="scraper_only",  # Direct API = authoritative source
     )
-    
+
     return {
         "property_type": property_type,
         "property_name": property_name,

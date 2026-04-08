@@ -6,6 +6,7 @@ Focuses on useful integration tests that verify production behavior.
 """
 
 import pytest
+
 from cve_mcp.services.database import DatabaseService
 
 
@@ -210,8 +211,9 @@ class TestAPISchemas:
 
     def test_search_cve_request_cvss_validation(self):
         """CVSS scores must be between 0 and 10."""
-        from cve_mcp.api.schemas import SearchCVERequest
         from pydantic import ValidationError
+
+        from cve_mcp.api.schemas import SearchCVERequest
 
         # Invalid: CVSS > 10
         with pytest.raises(ValidationError):
@@ -223,8 +225,9 @@ class TestAPISchemas:
 
     def test_cve_id_pattern_validation(self):
         """CVE ID must match CVE-YYYY-NNNNN pattern."""
-        from cve_mcp.api.schemas import GetCVEDetailsRequest
         from pydantic import ValidationError
+
+        from cve_mcp.api.schemas import GetCVEDetailsRequest
 
         # Valid CVE ID
         request = GetCVEDetailsRequest(cve_id="CVE-2021-44228")
@@ -492,8 +495,9 @@ class TestHTTPIntegration:
     @pytest.mark.slow
     def test_multiple_concurrent_requests(self, base_url, server_running):
         """Server handles concurrent requests."""
-        import httpx
         import asyncio
+
+        import httpx
 
         async def make_request():
             async with httpx.AsyncClient() as client:

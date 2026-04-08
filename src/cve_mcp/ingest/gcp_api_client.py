@@ -10,10 +10,11 @@ Quality-first design:
 """
 
 import os
+from typing import Any
+
 import structlog
 from google.cloud.orgpolicy_v2 import OrgPolicyClient
 from google.cloud.orgpolicy_v2.types import ListCustomConstraintsRequest
-from typing import Any
 
 logger = structlog.get_logger(__name__)
 

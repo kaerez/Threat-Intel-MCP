@@ -19,7 +19,6 @@ Usage:
 import os
 from typing import Any
 
-import httpx
 import pytest
 
 pytestmark = [pytest.mark.integration, pytest.mark.aws]
@@ -344,7 +343,7 @@ async def test_aws_control_parameters():
 
         print(f"\n{control_id}: {len(params)} parameter(s)")
 
-        assert isinstance(params, (dict, list)), "Parameters should be dict or list"
+        assert isinstance(params, dict | list), "Parameters should be dict or list"
 
         # If Parameters is a dict, verify structure
         if isinstance(params, dict):

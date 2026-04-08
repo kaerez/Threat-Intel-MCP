@@ -157,8 +157,9 @@ class TestATLASSchemas:
 
     def test_find_similar_atlas_techniques_description_validation(self):
         """FindSimilarATLASTechniquesRequest validates description length."""
-        from cve_mcp.api.schemas import FindSimilarATLASTechniquesRequest
         from pydantic import ValidationError
+
+        from cve_mcp.api.schemas import FindSimilarATLASTechniquesRequest
 
         # Valid description
         request = FindSimilarATLASTechniquesRequest(
@@ -172,8 +173,9 @@ class TestATLASSchemas:
 
     def test_find_similar_atlas_techniques_similarity_validation(self):
         """FindSimilarATLASTechniquesRequest validates similarity range."""
-        from cve_mcp.api.schemas import FindSimilarATLASTechniquesRequest
         from pydantic import ValidationError
+
+        from cve_mcp.api.schemas import FindSimilarATLASTechniquesRequest
 
         # Valid similarity
         request = FindSimilarATLASTechniquesRequest(
@@ -198,8 +200,9 @@ class TestATLASSchemas:
 
     def test_get_atlas_technique_details_request(self):
         """GetATLASTechniqueDetailsRequest validates ATLAS technique ID."""
-        from cve_mcp.api.schemas import GetATLASTechniqueDetailsRequest
         from pydantic import ValidationError
+
+        from cve_mcp.api.schemas import GetATLASTechniqueDetailsRequest
 
         # Valid ATLAS technique ID
         request = GetATLASTechniqueDetailsRequest(technique_id="AML.T0001")
@@ -228,8 +231,9 @@ class TestATLASSchemas:
 
     def test_find_similar_atlas_case_studies_request(self):
         """FindSimilarATLASCaseStudiesRequest validates correctly."""
-        from cve_mcp.api.schemas import FindSimilarATLASCaseStudiesRequest
         from pydantic import ValidationError
+
+        from cve_mcp.api.schemas import FindSimilarATLASCaseStudiesRequest
 
         # Valid request
         request = FindSimilarATLASCaseStudiesRequest(

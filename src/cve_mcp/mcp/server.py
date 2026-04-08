@@ -124,7 +124,7 @@ def create_mcp_server() -> MCPServerWrapper:
             # Pydantic validation - give agents clear field-level feedback
             error_details = []
             for err in e.errors():
-                loc = " -> ".join(str(l) for l in err["loc"])
+                loc = " -> ".join(str(part) for part in err["loc"])
                 error_details.append(f"  {loc}: {err['msg']}")
             error_msg = json.dumps({
                 "error": "validation_error",

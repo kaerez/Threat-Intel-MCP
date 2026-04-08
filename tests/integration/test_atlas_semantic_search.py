@@ -13,6 +13,7 @@ These are REAL integration tests - they require:
 """
 
 import pytest
+
 from cve_mcp.api.tools import call_tool
 
 

@@ -4,7 +4,6 @@ Tests JSON-RPC 2.0 message format, stdio transport simulation,
 and MCP server protocol implementation.
 """
 
-import asyncio
 import json
 from io import StringIO
 
@@ -312,8 +311,9 @@ class TestMCPSchemaValidation:
     @pytest.mark.asyncio
     async def test_search_cve_schema_validation(self):
         """search_cve validates parameters correctly."""
-        from cve_mcp.api.schemas import SearchCVERequest
         from pydantic import ValidationError
+
+        from cve_mcp.api.schemas import SearchCVERequest
 
         # Valid request
         request = SearchCVERequest(keyword="apache", cvss_min=7.0, limit=50)
@@ -327,8 +327,9 @@ class TestMCPSchemaValidation:
     @pytest.mark.asyncio
     async def test_get_cve_details_schema_validation(self):
         """get_cve_details validates CVE ID pattern."""
-        from cve_mcp.api.schemas import GetCVEDetailsRequest
         from pydantic import ValidationError
+
+        from cve_mcp.api.schemas import GetCVEDetailsRequest
 
         # Valid CVE ID
         request = GetCVEDetailsRequest(cve_id="CVE-2021-44228")
@@ -361,7 +362,7 @@ class TestProtocolCompliance:
         """Server implements required MCP methods."""
         from cve_mcp.mcp.server import create_mcp_server
 
-        server = create_mcp_server()
+        create_mcp_server()
 
         # MCP SDK server should have these capabilities
         # These are internal to SDK but we verify via our tools

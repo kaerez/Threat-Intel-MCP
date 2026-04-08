@@ -3,8 +3,6 @@
 Tests running both stdio and HTTP modes simultaneously.
 """
 
-import asyncio
-import json
 import subprocess
 import time
 
@@ -182,7 +180,7 @@ class TestModeSelectionLogic:
         # Just verify config allows it
         from cve_mcp.config import get_settings
 
-        settings = get_settings()
+        get_settings()
         assert "http" in ["stdio", "http", "both"]
 
     def test_stdio_only_mode(self):
@@ -190,7 +188,7 @@ class TestModeSelectionLogic:
         # Verify config allows it
         from cve_mcp.config import get_settings
 
-        settings = get_settings()
+        get_settings()
         assert "stdio" in ["stdio", "http", "both"]
 
     def test_both_mode_allowed(self):
@@ -198,7 +196,7 @@ class TestModeSelectionLogic:
         # Verify config allows it
         from cve_mcp.config import get_settings
 
-        settings = get_settings()
+        get_settings()
         assert "both" in ["stdio", "http", "both"]
 
 
@@ -256,7 +254,6 @@ class TestModeEnvironmentVariables:
         """MCP_MODE environment variable sets mode."""
         monkeypatch.setenv("MCP_MODE", "stdio")
 
-        from cve_mcp.config import Settings
 
         # Clear cache and reload
         from cve_mcp.config import get_settings

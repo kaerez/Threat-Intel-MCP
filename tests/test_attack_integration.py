@@ -116,8 +116,9 @@ class TestAttackSchemas:
 
     def test_find_similar_techniques_description_validation(self):
         """FindSimilarTechniquesRequest validates description length."""
-        from cve_mcp.api.schemas import FindSimilarTechniquesRequest
         from pydantic import ValidationError
+
+        from cve_mcp.api.schemas import FindSimilarTechniquesRequest
 
         # Valid request
         request = FindSimilarTechniquesRequest(
@@ -135,8 +136,9 @@ class TestAttackSchemas:
 
     def test_find_similar_techniques_similarity_validation(self):
         """min_similarity must be between 0 and 1."""
-        from cve_mcp.api.schemas import FindSimilarTechniquesRequest
         from pydantic import ValidationError
+
+        from cve_mcp.api.schemas import FindSimilarTechniquesRequest
 
         # Valid similarity values
         request1 = FindSimilarTechniquesRequest(
@@ -200,8 +202,9 @@ class TestAttackSchemas:
 
     def test_find_similar_threat_actors_request(self):
         """FindSimilarThreatActorsRequest validates description length."""
-        from cve_mcp.api.schemas import FindSimilarThreatActorsRequest
         from pydantic import ValidationError
+
+        from cve_mcp.api.schemas import FindSimilarThreatActorsRequest
 
         # Valid request
         request = FindSimilarThreatActorsRequest(

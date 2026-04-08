@@ -7,7 +7,7 @@ Provides 7 async query functions for MITRE ATT&CK data:
 
 from typing import Any
 
-from sqlalchemy import and_, case, func, literal, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cve_mcp.models.attack import AttackGroup, AttackTechnique

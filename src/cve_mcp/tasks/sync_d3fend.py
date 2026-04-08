@@ -23,8 +23,8 @@ from cve_mcp.ingest.d3fend_parser import (
     extract_ontology_attack_mappings,
     parse_technique,
 )
-from cve_mcp.models.base import get_task_session
 from cve_mcp.models.attack import AttackTechnique
+from cve_mcp.models.base import get_task_session
 from cve_mcp.models.d3fend import (
     D3FENDRelationshipType,
     D3FENDTactic,
@@ -33,7 +33,6 @@ from cve_mcp.models.d3fend import (
 )
 from cve_mcp.models.metadata import SyncMetadata
 from cve_mcp.services.embeddings import generate_embedding
-
 from cve_mcp.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)

@@ -10,15 +10,17 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from cve_mcp.config import get_settings
+from cve_mcp.ingest.aws_api_client import get_aws_client
+from cve_mcp.ingest.azure_api_client import get_azure_client
 from cve_mcp.ingest.cloud_security_parser import (
-    parse_aws_config_rule,
     parse_aws_s3_best_practice,
     parse_aws_security_hub_control,
-    parse_azure_arm_property,
     parse_azure_policy_definition,
     parse_cloud_service,
     parse_gcp_org_policy_constraint,
 )
+from cve_mcp.ingest.gcp_api_client import get_gcp_client
 from cve_mcp.models.base import get_task_session
 from cve_mcp.models.cloud_security import (
     CloudProvider,
@@ -29,10 +31,6 @@ from cve_mcp.models.cloud_security import (
 )
 from cve_mcp.models.metadata import SyncMetadata
 from cve_mcp.tasks.celery_app import celery_app
-from cve_mcp.config import get_settings
-from cve_mcp.ingest.aws_api_client import get_aws_client
-from cve_mcp.ingest.azure_api_client import get_azure_client
-from cve_mcp.ingest.gcp_api_client import get_gcp_client
 
 logger = structlog.get_logger(__name__)
 slogger = structlog.stdlib.get_logger(__name__)
@@ -384,7 +382,7 @@ async def sync_azure_blob_security(
         # Check if Azure credentials are configured (only needed for API source)
         settings = get_settings()
         use_api = settings.azure_policy_source == "api"
-        
+
         if use_api and not settings.azure_client_id:
             logger.info(
                 "sync_azure_blob_security.skipped",

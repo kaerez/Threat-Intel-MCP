@@ -173,7 +173,7 @@ def create_app() -> FastAPI:
             errors = e.errors()
             messages = []
             for err in errors:
-                loc = " -> ".join(str(l) for l in err["loc"])
+                loc = " -> ".join(str(part) for part in err["loc"])
                 messages.append(f"{loc}: {err['msg']}")
             return MCPToolCallResponse(
                 content=[{"type": "text", "text": f"Validation error: {'; '.join(messages)}"}],

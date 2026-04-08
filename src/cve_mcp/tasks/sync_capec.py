@@ -28,7 +28,6 @@ from cve_mcp.models.capec import (
 )
 from cve_mcp.models.metadata import SyncMetadata
 from cve_mcp.services.embeddings import generate_embeddings_batch
-
 from cve_mcp.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)

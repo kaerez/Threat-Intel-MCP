@@ -7,7 +7,7 @@ Note: NO rate limiting middleware - this is internal deployment only.
 """
 
 import time
-from typing import Callable
+from collections.abc import Callable
 
 import structlog
 from fastapi import Request, Response

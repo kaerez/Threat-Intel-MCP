@@ -1,6 +1,6 @@
 """Adapter to convert existing tool handlers to MCP tool definitions."""
 
-from typing import Any, Callable
+from typing import Any
 
 from mcp.server import Server
 from mcp.types import Tool

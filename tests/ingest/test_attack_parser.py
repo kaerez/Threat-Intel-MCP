@@ -2,8 +2,6 @@
 
 from datetime import datetime
 
-import pytest
-
 
 class TestParseTechnique:
     """Test parse_technique function."""

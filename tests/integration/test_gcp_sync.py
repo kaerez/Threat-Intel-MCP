@@ -230,7 +230,7 @@ async def test_fetch_gcp_storage_org_policy_constraints():
 
         # Check for storage-related constraints
         if "storage" in name.lower():
-            print(f"  → Storage-related constraint")
+            print("  → Storage-related constraint")
 
     print("\n" + "=" * 70)
     print("✓ GCP Organization Policy API test passed")
@@ -287,7 +287,7 @@ async def test_gcp_constraint_types():
             assert list_constraint.get("supportsIn") or list_constraint.get("supportsUnder"), \
                 "LIST constraint should support either 'in' or 'under' conditions"
 
-    print(f"\nSummary:")
+    print("\nSummary:")
     print(f"  BOOLEAN constraints: {len(boolean_constraints)}")
     print(f"  LIST constraints: {len(list_constraints)}")
 
@@ -361,7 +361,7 @@ async def test_gcp_credentials_authentication():
 
     # Verify credentials file is readable and valid JSON
     try:
-        with open(creds_path, "r") as f:
+        with open(creds_path) as f:
             creds_data = json.load(f)
 
         print("\n✓ Credentials file is valid JSON")
@@ -442,7 +442,7 @@ async def test_gcp_storage_iam_permissions_structure():
         elif "objects." in permission_name:
             object_permissions.append(perm)
 
-    print(f"\nSummary:")
+    print("\nSummary:")
     print(f"  Bucket permissions: {len(bucket_permissions)}")
     print(f"  Object permissions: {len(object_permissions)}")
 
@@ -472,7 +472,7 @@ async def test_gcp_constraint_enforcement_states():
     # Note: Actual policy *enforcement* requires querying getPolicy/listPolicies
     # This test just verifies constraint definitions support enforcement metadata
 
-    constraints = await fetch_gcp_org_policy_constraints(max_results=5)
+    await fetch_gcp_org_policy_constraints(max_results=5)
 
     print("\nConstraint definitions retrieved successfully")
     print("Note: Actual enforcement state requires separate getPolicy API calls")
@@ -523,10 +523,10 @@ async def test_gcp_public_documentation_accessible():
                 print(f"  Status: {response.status_code}")
 
                 assert response.status_code == 200, f"Documentation URL not accessible: {url}"
-                print(f"  ✓ Accessible")
+                print("  ✓ Accessible")
 
             except httpx.TimeoutException:
-                print(f"  ⚠ Timeout (may be transient)")
+                print("  ⚠ Timeout (may be transient)")
             except Exception as e:
                 print(f"  ⚠ Error: {str(e)[:50]}")
 
@@ -617,8 +617,8 @@ async def test_gcp_end_to_end_agent_query():
     print("End-to-End Test: GCP Constraints → Parser → Agent Query")
     print("=" * 70)
 
-    from cve_mcp.ingest.gcp_api_client import get_gcp_client
     from cve_mcp.ingest.cloud_security_parser import parse_gcp_org_policy_constraint
+    from cve_mcp.ingest.gcp_api_client import get_gcp_client
 
     # Step 1: Fetch built-in constraints
     client = get_gcp_client(organization_id="000000000000")
@@ -681,7 +681,7 @@ async def test_gcp_end_to_end_agent_query():
         f"All {len(parsed_properties)} properties should pass quality gates, but {len(quality_failed)} failed"
 
     # Step 4: Simulate agent query
-    print(f"\nStep 4: Simulating agent query...")
+    print("\nStep 4: Simulating agent query...")
 
     # Agent asks: "What are the security properties for GCP Cloud Storage?"
     # Response should include parsed properties
@@ -693,7 +693,7 @@ async def test_gcp_end_to_end_agent_query():
     )
 
     assert public_access_prop, "Should have public access prevention property"
-    print(f"\n  Agent Query Result:")
+    print("\n  Agent Query Result:")
     print(f"  Property: {public_access_prop['property_name']}")
     print(f"  Type: {public_access_prop['property_type']}")
     print(f"  Summary: {public_access_prop['summary'][:100]}...")

@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from cve_mcp.models.cloud_security import (
-    CloudProvider,
     CloudSecurityProperty,
     CloudService,
     CloudServiceEquivalence,
@@ -15,7 +14,6 @@ from cve_mcp.models.cloud_security import (
 )
 from cve_mcp.services.embeddings import generate_embedding
 from cve_mcp.utils import escape_like
-
 
 # ============================================================================
 # Service Queries

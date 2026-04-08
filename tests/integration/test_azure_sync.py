@@ -17,7 +17,6 @@ Usage:
     AZURE_SUBSCRIPTION_ID=xxx pytest tests/integration/test_azure_sync.py -v
 """
 
-import json
 import os
 from typing import Any
 
@@ -285,7 +284,7 @@ async def test_azure_policy_rule_structure():
         # Check for Storage resource type references
         if_str = str(if_clause)
         if "Microsoft.Storage" in if_str:
-            print(f"  References: Microsoft.Storage resources")
+            print("  References: Microsoft.Storage resources")
 
     print("\n✓ Policy rule structure test passed")
 

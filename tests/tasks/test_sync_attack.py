@@ -1,8 +1,6 @@
 """Tests for ATT&CK data sync tasks."""
 
 import json
-from datetime import datetime
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -209,7 +207,7 @@ class TestImportStixBundle:
             mock_session_maker.return_value = mock_session
 
             with patch("cve_mcp.tasks.sync_attack.generate_embeddings_batch") as mock_embed:
-                stats = await import_stix_bundle(
+                await import_stix_bundle(
                     bundle_path,
                     framework="enterprise",
                     generate_embeddings=False
@@ -276,7 +274,7 @@ class TestSyncAttackData:
 
         with patch("cve_mcp.tasks.sync_attack.download_stix_bundle") as mock_download:
             with patch("cve_mcp.tasks.sync_attack.import_stix_bundle") as mock_import:
-                with patch("cve_mcp.tasks.sync_attack.process_relationships") as mock_process:
+                with patch("cve_mcp.tasks.sync_attack.process_relationships"):
                     # Mock download paths
                     mock_download.return_value = tmp_path / "test.json"
                     (tmp_path / "test.json").write_text('{"type": "bundle", "objects": []}')

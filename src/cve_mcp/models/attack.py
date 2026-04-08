@@ -7,11 +7,9 @@ from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     ARRAY,
     Boolean,
-    CheckConstraint,
     DateTime,
     ForeignKey,
     Index,
-    Integer,
     String,
     Text,
     func,

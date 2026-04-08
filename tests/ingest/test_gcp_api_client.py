@@ -155,8 +155,8 @@ class TestGCPOrgPolicyClient:
     @patch("cve_mcp.ingest.gcp_api_client.orgpolicy_v2.OrgPolicyClient")
     def test_list_constraints_with_update_time(self, mock_client_class):
         """Test constraint serialization with update_time."""
+
         from cve_mcp.ingest.gcp_api_client import GCPOrgPolicyClient
-        from datetime import datetime, timezone
 
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
