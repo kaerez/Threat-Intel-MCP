@@ -4,8 +4,6 @@ import time
 from datetime import datetime
 from typing import Any
 
-from cve_mcp.citation import build_citation
-
 from cve_mcp.api.schemas import (
     BatchSearchRequest,
     CheckKEVStatusRequest,
@@ -51,6 +49,7 @@ from cve_mcp.api.schemas import (
     SearchTechniquesRequest,
     SearchThreatActorsRequest,
 )
+from cve_mcp.citation import build_citation
 from cve_mcp.config import get_settings
 from cve_mcp.services import (
     atlas_queries,
