@@ -46,7 +46,7 @@ dependencies = [
     "boto3>=1.34.0",  # AWS Security Hub API
     "botocore>=1.34.0",
     "azure-identity>=1.15.0",  # Azure Policy API
-    "azure-mgmt-resource>=23.0.0",
+    "azure-mgmt-resource>=25.0.0",
     "google-cloud-org-policy>=1.10.0",  # GCP Organization Policy API
     "google-auth>=2.27.0",
 ]
