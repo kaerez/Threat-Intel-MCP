@@ -41,7 +41,7 @@ dependencies = [
     "numpy>=1.24.0",
     "lxml>=5.0.0",  # For CWE XML parsing
     "pyyaml>=6.0.0",  # For ATLAS YAML parsing
-    "mcp>=1.26.0",  # Official MCP Python SDK for JSON-RPC 2.0 protocol
+    "mcp>=1.27.0",  # Official MCP Python SDK for JSON-RPC 2.0 protocol
     # Cloud provider APIs (for Cloud Security module production data)
     "boto3>=1.34.0",  # AWS Security Hub API
     "botocore>=1.34.0",
