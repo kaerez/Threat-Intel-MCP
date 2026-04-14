@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   mcpb:
-    uses: Ansvar-Systems/mcp-server-template/.github/workflows/mcpb-bundle-python.yml@main
+    uses: kaerez/mcp-server-template/.github/workflows/mcpb-bundle-python.yml@main
     with:
       server-name: threat-intel-mcp
       src-dirs: src run.py
