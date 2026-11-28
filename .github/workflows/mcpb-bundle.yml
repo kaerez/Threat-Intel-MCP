@@ -12,6 +12,8 @@ permissions:
 jobs:
   mcpb:
     uses: kaerez/mcp-server-template/.github/workflows/mcpb-bundle-python.yml@main
+    secrets:
+      SECURITY_API_TOKEN: ${{ secrets.SECURITY_API_TOKEN }}
     with:
       server-name: threat-intel-mcp
       src-dirs: src run.py
